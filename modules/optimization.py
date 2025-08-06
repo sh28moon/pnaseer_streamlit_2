@@ -2,8 +2,9 @@
 import streamlit as st
 import pandas as pd
 import time
+import random
 
-from modules.global_css import GLOBAL_CSS
+from pages.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
 def show():
@@ -249,8 +250,60 @@ def show():
                         progress.progress(i)
                     st.success("Completed Calculation")
 
-                    # Create result and save to job with selected data
+                    # Create comprehensive result datasets during optimization
                     import datetime
+                    
+                    # Generate composition results
+                    composition_results = {
+                        "Component": ["PEG", "API", "Buffer", "Stabilizer", "Excipient"],
+                        "Percentage (%)": [
+                            f"{random.randint(10,40)}%",
+                            f"{random.randint(15,35)}%", 
+                            f"{random.randint(5,20)}%",
+                            f"{random.randint(2,10)}%",
+                            f"{random.randint(5,15)}%"
+                        ],
+                        "Concentration (mg/mL)": [
+                            f"{random.randint(50,200):.1f}",
+                            f"{random.randint(25,100):.1f}",
+                            f"{random.randint(10,50):.1f}",
+                            f"{random.randint(2,20):.1f}",
+                            f"{random.randint(5,30):.1f}"
+                        ]
+                    }
+                    
+                    # Generate performance metrics
+                    performance_metrics = {
+                        "metrics": ["Stability", "Efficacy", "Safety", "Bioavailability", "Manufacturability"],
+                        "values": [random.uniform(0.6, 1.0) for _ in range(5)],
+                        "ratings": []
+                    }
+                    # Add ratings based on values
+                    performance_metrics["ratings"] = [
+                        "Excellent" if v > 0.8 else "Good" if v > 0.6 else "Fair" 
+                        for v in performance_metrics["values"]
+                    ]
+                    
+                    # Generate evaluation criteria and scores
+                    evaluation_criteria = {
+                        "Injectability": random.randint(70,95),
+                        "Release Time": random.randint(80,100),
+                        "Encapsulation Rate": random.randint(85,98)
+                    }
+                    
+                    evaluation_scores = {
+                        k: random.randint(6,10) for k in evaluation_criteria.keys()
+                    }
+                    
+                    # Generate additional metrics
+                    additional_metrics = {
+                        "Cost Effectiveness": random.randint(7,10),
+                        "Production Scalability": random.randint(7,10),
+                        "Regulatory Compliance": random.randint(7,10),
+                        "Market Potential": random.randint(7,10)
+                    }
+                    
+                    # Create comprehensive result data with all generated datasets
                     result_data = {
                         "type": prefix,
                         "model_name": selected,
@@ -261,15 +314,23 @@ def show():
                         "selected_target_name": selected_target_name,
                         "model_data": current_job.model_dataset[selected] if selected else None,
                         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "status": "completed"
+                        "status": "completed",
+                        
+                        # Generated result datasets
+                        "composition_results": composition_results,
+                        "performance_metrics": performance_metrics,
+                        "evaluation_criteria": evaluation_criteria,
+                        "evaluation_scores": evaluation_scores,
+                        "additional_metrics": additional_metrics
                     }
                     
                     current_job.result_dataset = result_data
                     st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"Results saved to job '{current_job_name}' using:")
+                    st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
                     st.info(f"• API: {selected_api_name}")
                     st.info(f"• Target: {selected_target_name}")
                     st.info(f"• Model: {selected}")
+                    st.info("• All result datasets generated and stored")
 
     # Render each tab
     render_model_tab("encapsulation", tab_encap)
