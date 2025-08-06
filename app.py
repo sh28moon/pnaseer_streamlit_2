@@ -46,6 +46,9 @@ class Job:
     def has_evaluation_results(self):
         """Check if evaluation has been completed"""
         return self.evaluation_results_data is not None
+        if not hasattr(self, 'evaluation_results_data'):
+            self.evaluation_results_data = None
+        return self.evaluation_results_data is not None
     
     def get_input_status(self):
         """Check if both API and target data are present"""
@@ -181,4 +184,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
