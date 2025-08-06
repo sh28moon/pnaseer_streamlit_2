@@ -206,6 +206,9 @@ def show():
                     st.dataframe(model_df, use_container_width=True)
                 else:
                     st.warning("No model selected")
+
+            # Submit button and Clear Results button
+            can_submit = has_api_data and has_target_data and has_model_data
             
             # Submit button and Clear Results button
             col_submit, col_clear = st.columns(2)
