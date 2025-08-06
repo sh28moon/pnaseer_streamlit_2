@@ -20,7 +20,7 @@ def show():
     st.info(f"📁 Working on job: **{current_job_name}**")
 
     # Top-level tabs
-    tab_encap = st.tabs(["Model #1"])
+    tab_encap = st.tabs(["Model #1"])[0]
 
     def render_model_tab(prefix, tab):
         with tab:
@@ -316,6 +316,5 @@ def show():
                     st.info("• All result datasets generated and stored")
 
     # Render each tab
-    render_model_tab("model#1", tab_encap)
     render_model_tab("model#1", tab_encap)
 
