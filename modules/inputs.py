@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pages.global_css import GLOBAL_CSS
+from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
 def show():
@@ -260,3 +260,4 @@ def show():
                     st.warning("Dataset needs at least 4 columns for radar chart")
             else:
                 st.info("Select a dataset from job to view radar diagram")
+
