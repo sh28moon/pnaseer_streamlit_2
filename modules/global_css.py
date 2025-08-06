@@ -7,7 +7,7 @@ GLOBAL_CSS = """
   --font-large:       2.5rem;
   --import-box-width: 500px;
   --tab-text-size:    1.5rem;
-  --button-text-size: 0.2rem;
+  --button-text-size: 0.5rem;
   --sidebar-selectbox-width: 120px;
   --sidebar-button-width: 180px;
   --sidebar-create-job-width: 80px;
@@ -138,4 +138,5 @@ button:not([role="tab"]) {
 [data-testid="stSidebar"] .stInfo {
   width: var(--sidebar-notification-width) !important;
 }
+
 """
