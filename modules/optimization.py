@@ -222,24 +222,24 @@ def show():
                     # Create comprehensive result datasets during optimization
                     import datetime
                     
-                    # Generate composition results
-                    composition_results = {
-                        "Component": ["PEG", "API", "Buffer", "Stabilizer", "Excipient"],
-                        "Percentage (%)": [
-                            f"{random.randint(10,40)}%",
-                            f"{random.randint(15,35)}%", 
-                            f"{random.randint(5,20)}%",
-                            f"{random.randint(2,10)}%",
-                            f"{random.randint(5,15)}%"
-                        ],
-                        "Concentration (mg/mL)": [
-                            f"{random.randint(50,200):.1f}",
-                            f"{random.randint(25,100):.1f}",
-                            f"{random.randint(10,50):.1f}",
-                            f"{random.randint(2,20):.1f}",
-                            f"{random.randint(5,30):.1f}"
-                        ]
-                    }
+                    # Generate composition results - 3 rows with 4 components, all percentages sum to 100%
+                    composition_results = []
+                    for i in range(3):  # Create 3 rows
+                        buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
+                        remaining_pct = 100 - buffer_pct
+                        
+                        # Distribute remaining percentage among other 3 components
+                        assembled_pct = random.randint(1, remaining_pct - 2)
+                        excipient_pct = random.randint(1, remaining_pct - assembled_pct - 1)
+                        stabilizer_pct = remaining_pct - assembled_pct - excipient_pct
+                        
+                        composition_results.append({
+                            "Row": f"Formulation {i+1}",
+                            "Assembled Polymer": f"{assembled_pct}%",
+                            "Excipient Polymer": f"{excipient_pct}%", 
+                            "Stabilizer": f"{stabilizer_pct}%",
+                            "Buffer": f"{buffer_pct}%"
+                        })
                     
                     # Generate performance metrics
                     performance_metrics = {
