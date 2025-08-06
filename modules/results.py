@@ -149,84 +149,155 @@ def show():
 
     # ── Evaluation Tab ───────────────────────────────────────────────────────
     with tab_evaluation:
-        st.subheader("Evaluation Criteria")
-        st.info(f"📁 Showing fixed evaluation for job: **{current_job_name}**")
+        st.subheader("Evaluation")
+        st.info(f"📁 Working on job: **{current_job_name}**")
         
-        # Clear results button
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.markdown(" ")  # Spacer
-        with col2:
-            if st.button("🗑️ Clear Results", key="clear_eval_results", help="Remove results from current job"):
-                current_job.result_dataset = None
-                st.success(f"Results cleared from job '{current_job_name}'")
-                st.rerun()
+        # Initialize evaluation data storage in job if not exists
+        if not hasattr(current_job, 'evaluation_criteria_data'):
+            current_job.evaluation_criteria_data = None
+        if not hasattr(current_job, 'evaluation_results_data'):
+            current_job.evaluation_results_data = None
         
-        result_data_eval = current_job.result_dataset
-
-        # First row: two columns
-        col1, col2 = st.columns(2)
+        # 1st Row: Evaluation Criteria Import, Clear, and Start Evaluation
+        st.markdown("**Evaluation Setup**")
+        col1, col2, col3 = st.columns(3)
+        
         with col1:
-            st.markdown("**Job Information**")
-            st.write(f"**Job:** {current_job_name}")
-            st.write(f"**Type:** {result_data_eval.get('type', 'Unknown')}")
-            st.write(f"**Model:** {result_data_eval.get('model_name', 'Unknown')}")
-            st.write(f"**Completed:** {result_data_eval.get('timestamp', 'Unknown')}")
+            st.markdown("**Import Evaluation Criteria**")
+            uploaded_criteria = st.file_uploader(
+                "Upload Evaluation Criteria (CSV)",
+                type=["csv"],
+                key="evaluation_criteria_file",
+                help="CSV file with evaluation criteria as column headers"
+            )
             
+            if uploaded_criteria:
+                try:
+                    df_criteria = pd.read_csv(uploaded_criteria)
+                    if len(df_criteria.columns) > 0:
+                        current_job.evaluation_criteria_data = df_criteria
+                        st.session_state.jobs[current_job_name] = current_job
+                        st.success(f"✅ {len(df_criteria.columns)} criteria loaded")
+                        
+                        # Show preview of criteria
+                        with st.expander("📋 Criteria Preview", expanded=False):
+                            st.write("**Evaluation Criteria:**")
+                            for col in df_criteria.columns:
+                                st.write(f"• {col}")
+                    else:
+                        st.error("❌ Empty file or no columns found")
+                except Exception as e:
+                    st.error(f"❌ Error reading file: {str(e)}")
+        
         with col2:
-            st.markdown("**Evaluation Criteria**")
-            # Use pre-generated evaluation criteria from optimization
-            if 'evaluation_criteria' in result_data_eval:
-                crit_comp = {k: f"{v}%" for k, v in result_data_eval['evaluation_criteria'].items()}
-                df_crit = pd.DataFrame([crit_comp])
-                st.table(df_crit)
+            st.markdown("**Clear Criteria**")
+            if current_job.evaluation_criteria_data is not None:
+                if st.button("🗑️ Clear Criteria", key="clear_criteria", help="Clear imported evaluation criteria"):
+                    current_job.evaluation_criteria_data = None
+                    current_job.evaluation_results_data = None  # Also clear results
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success("Evaluation criteria cleared")
+                    st.rerun()
+                    
+                # Show current criteria status
+                criteria_count = len(current_job.evaluation_criteria_data.columns)
+                st.info(f"📊 {criteria_count} criteria loaded")
             else:
-                st.warning("No evaluation criteria found. Please re-run optimization.")
-
-        # Second row: Evaluation results
-        st.subheader("Evaluation Results")
-        ecol1, ecol2 = st.columns(2)
-        with ecol1:
-            # Use pre-generated evaluation scores from optimization
-            if 'evaluation_scores' in result_data_eval:
-                eval_vals = result_data_eval['evaluation_scores']
-                df_eval = pd.DataFrame([eval_vals])
-                st.markdown("**Evaluation Scores (1-10)**")
-                st.table(df_eval)
-            else:
-                st.warning("No evaluation scores found. Please re-run optimization.")
+                st.button("🗑️ Clear Criteria", key="clear_criteria_disabled", disabled=True)
+                st.info("No criteria imported")
+        
+        with col3:
+            st.markdown("**Start Evaluation**")
+            can_evaluate = (current_job.evaluation_criteria_data is not None and 
+                          current_job.has_result_data())
             
-            # Additional metrics using stored data
-            st.markdown("**Additional Metrics**")
-            if 'additional_metrics' in result_data_eval:
-                add_metrics = result_data_eval['additional_metrics']
-                additional_metrics = {
-                    "Metric": list(add_metrics.keys()),
-                    "Score": [str(v) for v in add_metrics.values()],
-                    "Status": ["✅ Passed" for _ in add_metrics]
-                }
-                df_additional = pd.DataFrame(additional_metrics)
-                st.dataframe(df_additional, use_container_width=True)
-            else:
-                st.warning("No additional metrics found. Please re-run optimization.")
+            if st.button("🚀 Start Evaluation", key="start_evaluation", disabled=not can_evaluate):
+                if can_evaluate:
+                    # Generate evaluation scores based on imported criteria
+                    criteria_columns = current_job.evaluation_criteria_data.columns.tolist()
+                    
+                    # Generate random scores (1-10) for each criterion
+                    import random
+                    evaluation_scores = {}
+                    for criterion in criteria_columns:
+                        evaluation_scores[criterion] = random.randint(1, 10)
+                    
+                    # Store evaluation results in job
+                    current_job.evaluation_results_data = {
+                        "scores": evaluation_scores,
+                        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    st.session_state.jobs[current_job_name] = current_job
+                    
+                    st.success("✅ Evaluation completed!")
+                    st.rerun()
+                else:
+                    if not current_job.has_result_data():
+                        st.error("❌ No optimization results found. Please run optimization first.")
+                    else:
+                        st.error("❌ No evaluation criteria imported. Please import criteria first.")
             
-        with ecol2:
+            # Show evaluation status
+            if not can_evaluate:
+                missing = []
+                if not current_job.has_result_data():
+                    missing.append("optimization results")
+                if current_job.evaluation_criteria_data is None:
+                    missing.append("evaluation criteria")
+                st.warning(f"Missing: {', '.join(missing)}")
+            else:
+                st.success("✅ Ready to evaluate")
+        
+        st.divider()
+        
+        # 2nd Row: Evaluation Results
+        st.markdown("**Evaluation Results**")
+        
+        if current_job.evaluation_results_data is not None:
+            evaluation_scores = current_job.evaluation_results_data["scores"]
+            eval_timestamp = current_job.evaluation_results_data["timestamp"]
+            
+            # Top: Evaluation Scores Table
+            st.markdown(f"**Evaluation Scores (1-10)** - *Completed: {eval_timestamp}*")
+            df_eval_scores = pd.DataFrame([evaluation_scores])
+            st.table(df_eval_scores)
+            
+            st.divider()
+            
+            # Bottom: Radar Chart
             st.markdown("**Evaluation Radar Chart**")
-            # Use pre-generated evaluation scores for radar chart
-            if 'evaluation_scores' in result_data_eval:
-                eval_vals = result_data_eval['evaluation_scores']
-                labels = list(eval_vals.keys())
-                vals = list(eval_vals.values())
+            
+            labels = list(evaluation_scores.keys())
+            vals = list(evaluation_scores.values())
+            
+            if len(labels) > 0:
+                # Create radar chart
                 angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
-                vals += vals[:1]
-                angles += angles[:1]
-                fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
-                ax.plot(angles, vals, marker="o", linewidth=2, color='#ff7f0e')
-                ax.fill(angles, vals, alpha=0.25, color='#ff7f0e')
-                ax.set_thetagrids(np.degrees(angles[:-1]), labels)
+                vals_plot = vals + vals[:1]  # Complete the circle
+                angles_plot = angles + angles[:1]  # Complete the circle
+                
+                fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={'polar': True})
+                ax.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#ff7f0e')
+                ax.fill(angles_plot, vals_plot, alpha=0.25, color='#ff7f0e')
+                ax.set_thetagrids(np.degrees(angles), labels)
                 ax.set_ylim(0, 10)
-                ax.set_title(f"Evaluation Profile: {current_job_name}", y=1.1, fontweight='bold')
-                ax.grid(True)
+                ax.set_title(f"Evaluation Profile: {current_job_name}", y=1.08, fontsize=16, fontweight='bold')
+                ax.grid(True, alpha=0.3)
+                
+                # Add score labels on the chart
+                for angle, val, label in zip(angles, vals, labels):
+                    ax.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                           fontsize=10, fontweight='bold', color='red')
+                
                 st.pyplot(fig)
             else:
-                st.warning("No evaluation data found for radar chart. Please re-run optimization.")
+                st.warning("No evaluation scores to display in radar chart")
+                
+        else:
+            # Show blank state before evaluation
+            st.info("🔍 **No evaluation results yet.**")
+            st.markdown("**Instructions:**")
+            st.markdown("1. Import evaluation criteria (CSV file)")
+            st.markdown("2. Ensure optimization has been completed")
+            st.markdown("3. Click 'Start Evaluation' to generate scores")
+            st.markdown("4. Results will appear here with scores and radar chart")
