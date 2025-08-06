@@ -95,9 +95,6 @@ def main():
         st.session_state.current_tab = "Optimization"
     if st.sidebar.button("Result"):
         st.session_state.current_tab = "Results"
-
-    st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
-
     if st.sidebar.button("Data Management"):
         st.session_state.current_tab = "Data Management"
 
@@ -166,4 +163,5 @@ def main():
         show_data_management()
 
 if __name__ == "__main__":
+
     main()
