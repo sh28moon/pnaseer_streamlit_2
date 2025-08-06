@@ -102,6 +102,8 @@ def show():
         with col_import:
             st.markdown("**Import Data**")
             uploaded_tp = st.file_uploader(
+                "Label",
+                label_visibility="hidden",
                 "Import Target Data (CSV only)",
                 type=["csv"],
                 key="target_profile_file"
@@ -260,3 +262,4 @@ def show():
                     st.warning("Dataset needs at least 4 columns for radar chart")
             else:
                 st.info("Select a dataset from job to view radar diagram")
+
