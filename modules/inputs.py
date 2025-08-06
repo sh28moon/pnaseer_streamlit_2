@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-from modules.global_css import GLOBAL_CSS
+from pages.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
 def show():
@@ -94,13 +94,12 @@ def show():
             st.session_state["input_target_datasets"] = {}
             st.session_state["input_target_manual_count"] = 0
 
-        # Main 2-column structure
-        col_left, col_right = st.columns(2)
+        # Row 1: Target Profile Input - 2 columns with same height
+        st.markdown("**Target Profile Input**")
+        col_import, col_manual = st.columns(2)
 
-        # ── Left Column: Target Profile Input ──────────────────────────────────
-        with col_left:
-            st.subheader("Target Profile Input")
-            
+        # Left Column: Import Data
+        with col_import:
             st.markdown("**Import Data**")
             uploaded_tp = st.file_uploader(
                 "Import Target Data (CSV only)",
@@ -114,10 +113,8 @@ def show():
                     # Validate data structure
                     if 'Name' not in df_tp.columns:
                         st.error("❌ Target CSV must have a 'Name' column for dataset identification.")
-                        st.error("Expected structure: [Name, Modulus, Encapsulation Rate, Release Time (Day)]")
                     elif len(df_tp.columns) < 4:
                         st.error(f"❌ Invalid file structure. Expected at least 4 columns, got {len(df_tp.columns)}.")
-                        st.error("Required structure: [Name, Modulus, Encapsulation Rate, Release Time (Day)]")
                     elif len(df_tp) == 0:
                         st.error("❌ File is empty. Please upload a file with data.")
                     else:
@@ -133,26 +130,12 @@ def show():
                         # File structure is valid
                         if target_datasets:
                             st.session_state["temp_target_data"] = target_datasets
-                            st.success(f"✅ {len(target_datasets)} target datasets loaded from '{uploaded_tp.name}'")
-                            st.info(f"📊 Datasets: {', '.join(list(target_datasets.keys())[:3])}" + 
-                                   (f" and {len(target_datasets)-3} more" if len(target_datasets) > 3 else ""))
-                            
-                            # Show column preview
-                            with st.expander("📄 Preview Dataset Structure", expanded=False):
-                                first_dataset = list(target_datasets.values())[0]
-                                col_info = {
-                                    "Column Index": list(range(len(first_dataset.columns))),
-                                    "Column Name": first_dataset.columns.tolist(),
-                                    "Expected": ["Name", "Modulus", "Encapsulation Rate", "Release Time (Day)"] + ["Additional"] * (len(first_dataset.columns) - 4)
-                                }
-                                df_preview = pd.DataFrame(col_info)
-                                st.dataframe(df_preview, use_container_width=True)
+                            st.success(f"✅ {len(target_datasets)} target datasets loaded")
                         else:
                             st.error("❌ No valid datasets found. Check that Name column contains values.")
                         
                 except Exception as e:
                     st.error(f"❌ Error reading file: {str(e)}")
-                    st.error("Please ensure the file is a valid CSV format.")
                     
             # Save imported data to job button
             if st.session_state.get("temp_target_data"):
@@ -163,11 +146,11 @@ def show():
                     else:
                         current_job.target_profile_dataset = temp_data
                     st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"{len(temp_data)} imported dataset(s) saved to job '{current_job_name}'")
+                    st.success(f"{len(temp_data)} imported dataset(s) saved to job")
                     st.rerun()
 
-            st.divider()
-            
+        # Right Column: Manual Input
+        with col_manual:
             st.markdown("**Manual Input**")
             
             # Dataset name input
@@ -198,26 +181,27 @@ def show():
                         current_job.target_profile_dataset = {dataset_name.strip(): df_manual}
                     
                     st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"Dataset '{dataset_name.strip()}' added to job '{current_job_name}'")
+                    st.success(f"Dataset '{dataset_name.strip()}' added to job")
                     st.rerun()
 
-            st.divider()
-            
             # Global clear button
             if current_job.has_target_data():
-                if st.button("🗑️ Clear All Target Data from Job", key="clear_all_target_data", help="Remove all target data from current job"):
+                if st.button("🗑️ Clear All Target Data", key="clear_all_target_data"):
                     current_job.target_profile_dataset = None
                     st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"All target data cleared from job '{current_job_name}'")
+                    st.success(f"All target data cleared from job")
                     st.rerun()
 
-        # ── Right Column: Input Summary ──────────────────────────────────────
-        with col_right:
-            st.subheader("Input Summary")
-            
+        st.divider()
+
+        # Row 2: Input Summary - 2 columns with same height  
+        st.markdown("**Input Summary**")
+        col_functions, col_diagram = st.columns(2)
+
+        # Left Column: Functions (data selection, table, remove button)
+        with col_functions:
             # Only show data from current job (no temporary datasets)
             if current_job.has_target_data():
-                st.success("✅ Target data saved to current job")
                 job_data = current_job.target_profile_dataset
                 
                 selected = st.selectbox(
@@ -227,7 +211,7 @@ def show():
                 )
                 
                 # Remove dataset button
-                if st.button(f"🗑️ Remove '{selected}' from Job", key="remove_selected_dataset", help=f"Remove {selected} from current job"):
+                if st.button(f"🗑️ Remove '{selected}'", key="remove_selected_dataset"):
                     # Remove the selected dataset from job
                     if selected in current_job.target_profile_dataset:
                         del current_job.target_profile_dataset[selected]
@@ -235,7 +219,7 @@ def show():
                         if not current_job.target_profile_dataset:
                             current_job.target_profile_dataset = None
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Dataset '{selected}' removed from job '{current_job_name}'")
+                        st.success(f"Dataset '{selected}' removed from job")
                         st.rerun()
                 
                 df_sel = job_data[selected]
@@ -243,7 +227,14 @@ def show():
                 # Show table
                 st.markdown("**Data Table**")
                 st.dataframe(df_sel, use_container_width=True)
+            else:
+                st.info("No target datasets in current job. Import data or add manual input to get started.")
+                selected = None
+                df_sel = None
 
+        # Right Column: Radar Diagram
+        with col_diagram:
+            if current_job.has_target_data() and selected and df_sel is not None:
                 # Show radar chart for job data
                 if len(df_sel.columns) >= 4:  # Check if we have enough columns (name + 3 data columns)
                     # Skip first column (profile names) and get the 3 data columns
@@ -266,6 +257,6 @@ def show():
                     else:
                         st.warning("Insufficient data columns for radar chart")
                 else:
-                    st.warning("Dataset needs at least 4 columns (name + 3 data values) for radar chart")
+                    st.warning("Dataset needs at least 4 columns for radar chart")
             else:
-                st.info("No target datasets in current job. Import data or add manual input to get started.")
+                st.info("Select a dataset from job to view radar diagram")
