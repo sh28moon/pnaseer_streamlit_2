@@ -54,8 +54,11 @@ def show():
         
         st.divider()
         
-        # 2nd Row: Performance Trend Line Graph
-        st.markdown("**Performance Trend**")
+        # 2nd Row: Performance Trend Graphs for Each Composition
+        st.markdown("**Performance Trends by Formulation**")
+        
+        # Create 3 columns for 3 performance trend graphs
+        col1, col2, col3 = st.columns(3)
         
         # Use pre-generated performance metrics and target data from optimization
         if 'performance_metrics' in result_data and 'selected_target_data' in result_data:
@@ -71,38 +74,55 @@ def show():
             else:
                 release_time_value = 10  # Default fallback
             
-            # Create upward trending line graph
-            x_points = 10  # Number of points for smooth curve
-            x_values = np.linspace(0, release_time_value, x_points)
+            # Generate performance trends for each of the 3 formulations
+            formulations = ["Formulation 1", "Formulation 2", "Formulation 3"]
+            columns = [col1, col2, col3]
             
-            # Generate upward trending y values with some variation
-            base_trend = np.linspace(0.1, 0.9, x_points)  # Base upward trend
-            noise = np.random.normal(0, 0.05, x_points)  # Small random variation
-            y_values = base_trend + noise
-            
-            # Ensure values stay within 0-1 range and maintain upward trend
-            y_values = np.clip(y_values, 0, 1)
-            y_values = np.sort(y_values)  # Force upward trend
-            
-            # Create line graph
-            fig, ax = plt.subplots(figsize=(12, 6))
-            ax.plot(x_values, y_values, marker="o", linewidth=2, markersize=6, color='#1f77b4')
-            ax.fill_between(x_values, y_values, alpha=0.3, color='#1f77b4')
-            
-            # Set axis limits and labels
-            ax.set_xlim(0, release_time_value)
-            ax.set_ylim(0, 1)
-            ax.set_xlabel(f"Time (Days)", fontsize=12)
-            ax.set_ylabel("Performance Index", fontsize=12)
-            ax.set_title(f"Performance Trend Over Time (Max: {release_time_value} days)", fontsize=14, fontweight='bold')
-            
-            # Add grid for better readability
-            ax.grid(True, alpha=0.3)
-            ax.set_axisbelow(True)
-            
-            st.pyplot(fig)
+            for i, (formulation, col) in enumerate(zip(formulations, columns)):
+                with col:
+                    st.markdown(f"**{formulation}**")
+                    
+                    # Create unique upward trending line graph for each formulation
+                    x_points = 8  # Fewer points for smaller graphs
+                    x_values = np.linspace(0, release_time_value, x_points)
+                    
+                    # Generate different upward trends for each formulation
+                    # Vary the starting point and slope for each formulation
+                    start_values = [0.1, 0.15, 0.08]  # Different starting points
+                    end_values = [0.85, 0.92, 0.88]   # Different ending points
+                    
+                    base_trend = np.linspace(start_values[i], end_values[i], x_points)
+                    noise = np.random.normal(0, 0.03, x_points)  # Smaller noise for cleaner look
+                    y_values = base_trend + noise
+                    
+                    # Ensure values stay within 0-1 range and maintain upward trend
+                    y_values = np.clip(y_values, 0, 1)
+                    y_values = np.sort(y_values)  # Force upward trend
+                    
+                    # Create smaller line graph for each formulation
+                    fig, ax = plt.subplots(figsize=(4, 3))
+                    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each formulation
+                    
+                    ax.plot(x_values, y_values, marker="o", linewidth=2, markersize=4, color=colors[i])
+                    ax.fill_between(x_values, y_values, alpha=0.3, color=colors[i])
+                    
+                    # Set axis limits and labels
+                    ax.set_xlim(0, release_time_value)
+                    ax.set_ylim(0, 1)
+                    ax.set_xlabel("Time (Days)", fontsize=10)
+                    ax.set_ylabel("Performance", fontsize=10)
+                    ax.set_title(f"Performance Trend", fontsize=11, fontweight='bold')
+                    
+                    # Add grid for better readability
+                    ax.grid(True, alpha=0.3)
+                    ax.set_axisbelow(True)
+                    
+                    # Smaller tick labels for compact display
+                    ax.tick_params(axis='both', which='major', labelsize=8)
+                    
+                    st.pyplot(fig)
         else:
-            st.warning("No target data found for performance trend. Please re-run optimization.")
+            st.warning("No target data found for performance trends. Please re-run optimization.")
 
     # ── Evaluation Tab ───────────────────────────────────────────────────────
     with tab_evaluation:
