@@ -399,8 +399,4 @@ def show():
         else:
             # Show blank state before evaluation
             st.info("🔍 **No evaluation results yet.**")
-            st.markdown("**Instructions:**")
-            st.markdown("1. Import evaluation criteria (CSV file)")
-            st.markdown("2. Ensure optimization has been completed")
-            st.markdown("3. Click 'Start Evaluation' to generate scores")
-            st.markdown("4. Results will appear here with scores and radar chart")
+
