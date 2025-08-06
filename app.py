@@ -19,8 +19,6 @@ class Job:
         self.target_profile_dataset = None
         self.model_dataset = None
         self.result_dataset = None
-        self.evaluation_criteria_data = None  # NEW: For imported evaluation criteria
-        self.evaluation_results_data = None   # NEW: For evaluation results
         self.created_at = st.session_state.get('current_time', 'Unknown')
     
     def has_api_data(self):
@@ -35,20 +33,11 @@ class Job:
     def has_result_data(self):
         return self.result_dataset is not None
     
-    def has_evaluation_criteria(self):
-        """Check if evaluation criteria are imported"""
-        return self.evaluation_criteria_data is not None
-        # Backward compatibility for existing jobs
-        if not hasattr(self, 'evaluation_criteria_data'):
-            self.evaluation_criteria_data = None
-        return self.evaluation_criteria_data is not None
-    
-    def has_evaluation_results(self):
-        """Check if evaluation has been completed"""
-        return self.evaluation_results_data is not None
-        if not hasattr(self, 'evaluation_results_data'):
-            self.evaluation_results_data = None
-        return self.evaluation_results_data is not None
+    def has_evaluation_diagrams(self):
+        """Check if evaluation diagrams data exists in results"""
+        # Check if evaluation diagrams exist in result dataset
+        return (self.has_result_data() and 
+                'evaluation_diagrams' in self.result_dataset)
     
     def get_input_status(self):
         """Check if both API and target data are present"""
@@ -162,13 +151,13 @@ def main():
         _show_status("Input data ready", current_job.get_input_status())
         _show_status("Model selected", current_job.get_model_status())
         _show_status("Optimization completed", current_job.get_result_status())
-        _show_status("Evaluation completed", current_job.has_evaluation_results())  # NEW: Evaluation status
+        _show_status("Evaluation completed", current_job.has_evaluation_diagrams())  # Updated for new evaluation system
     else:
         st.sidebar.markdown("**Job Status: No job selected**")
         _show_status("Input data ready", False)
         _show_status("Model selected", False)
         _show_status("Optimization completed", False)
-        _show_status("Evaluation completed", False)  # NEW: Evaluation status
+        _show_status("Evaluation completed", False)  # Updated for new evaluation system
 
     # render pages
     tab = st.session_state.current_tab
@@ -184,5 +173,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-
-
