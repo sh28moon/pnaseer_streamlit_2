@@ -222,9 +222,9 @@ def show():
                     # Create comprehensive result datasets during optimization
                     import datetime
                     
-                    # Generate composition results - 5 rows with 4 components, all percentages sum to 100%
+                    # Generate composition results - 3 rows with 4 components, all percentages sum to 100%
                     composition_results = []
-                    for i in range(5):  # Create 5 rows instead of 3
+                    for i in range(3):  # Create 3 rows
                         buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
                         remaining_pct = 100 - buffer_pct
                         
