@@ -207,141 +207,167 @@ def show():
                 else:
                     st.warning("No model selected")
             
-            # Submit button - only enabled if all data is ready
-            can_submit = has_api_data and has_target_data and has_model_data
-
-            if st.button("Submit Job", key=f"{prefix}_run", disabled=not can_submit):
-                if not can_submit:
-                    st.error("Please ensure API data, target data, and model are all selected before submitting.")
-                else:
-                    progress = st.progress(0)
-                    for i in range(101):
-                        time.sleep(0.02)
-                        progress.progress(i)
-                    st.success("Completed Calculation")
-
-                    # Create comprehensive result datasets during optimization
-                    import datetime
-                    
-                    # Generate composition results - 3 rows with 4 components, all percentages sum to 100%
-                    composition_results = []
-                    for i in range(3):  # Create 3 rows
-                        buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
-                        remaining_pct = 100 - buffer_pct
-                        
-                        # Distribute remaining percentage among other 3 components
-                        assembled_pct = random.randint(1, remaining_pct - 2)
-                        excipient_pct = random.randint(1, remaining_pct - assembled_pct - 1)
-                        stabilizer_pct = remaining_pct - assembled_pct - excipient_pct
-                        
-                        composition_results.append({
-                            "Row": f"Formulation {i+1}",
-                            "Assembled Polymer": f"{assembled_pct}%",
-                            "Excipient Polymer": f"{excipient_pct}%", 
-                            "Stabilizer": f"{stabilizer_pct}%",
-                            "Buffer": f"{buffer_pct}%"
-                        })
-                    
-                    # Generate performance metrics
-                    performance_metrics = {
-                        "metrics": ["Stability", "Efficacy", "Safety", "Bioavailability", "Manufacturability"],
-                        "values": [random.uniform(0.6, 1.0) for _ in range(5)],
-                        "ratings": []
-                    }
-                    # Add ratings based on values
-                    performance_metrics["ratings"] = [
-                        "Excellent" if v > 0.8 else "Good" if v > 0.6 else "Fair" 
-                        for v in performance_metrics["values"]
-                    ]
-                    
-                    # Generate evaluation criteria and scores
-                    evaluation_criteria = {
-                        "Injectability": random.randint(70,95),
-                        "Release Time": random.randint(80,100),
-                        "Encapsulation Rate": random.randint(85,98)
-                    }
-                    
-                    evaluation_scores = {
-                        k: random.randint(6,10) for k in evaluation_criteria.keys()
-                    }
-                    
-                    # Generate additional metrics
-                    additional_metrics = {
-                        "Cost Effectiveness": random.randint(7,10),
-                        "Production Scalability": random.randint(7,10),
-                        "Regulatory Compliance": random.randint(7,10),
-                        "Market Potential": random.randint(7,10)
-                    }
-                    
-                    # Generate performance trend data for all 3 formulations (NEW)
-                    # Get Release Time from target data
-                    if len(selected_target_data.columns) >= 4:
-                        release_time_value = selected_target_data.iloc[0, 3]
-                        # Convert to numeric if it's a string with units
-                        if isinstance(release_time_value, str):
-                            release_time_value = float(release_time_value.replace('%', '').replace('Day', '').strip())
-                        elif not isinstance(release_time_value, (int, float)):
-                            release_time_value = float(release_time_value)
+            # Submit button and Clear Results button
+            col_submit, col_clear = st.columns(2)
+            
+            with col_submit:
+                if st.button("Submit Job", key=f"{prefix}_run", disabled=not can_submit):
+                    if not can_submit:
+                        st.error("Please ensure API data, target data, and model are all selected before submitting.")
                     else:
-                        release_time_value = 10  # Default fallback
-                    
-                    # Generate fixed performance trend data for all 3 formulations
-                    performance_trends = {}
-                    x_points = 10
-                    x_values = np.linspace(0, release_time_value, x_points).tolist()
-                    
-                    # Set seed for reproducible results within this job
-                    np.random.seed(hash(current_job_name + selected_api_name + selected_target_name) % 2147483647)
-                    
-                    start_values = [0.1, 0.15, 0.08]
-                    end_values = [0.85, 0.92, 0.88]
-                    
-                    for i in range(3):
-                        formulation_name = f"Formulation {i+1}"
-                        base_trend = np.linspace(start_values[i], end_values[i], x_points)
-                        noise = np.random.normal(0, 0.02, x_points)
-                        y_values = base_trend + noise
+                        progress = st.progress(0)
+                        for i in range(101):
+                            time.sleep(0.02)
+                            progress.progress(i)
+                        st.success("Completed Calculation")
+
+                        # Create comprehensive result datasets during optimization
+                        import datetime
                         
-                        # Ensure values stay within 0-1 range and maintain upward trend
-                        y_values = np.clip(y_values, 0, 1)
-                        y_values = np.sort(y_values)  # Force upward trend
+                        # Generate composition results - 3 rows with 4 components, all percentages sum to 100%
+                        composition_results = []
+                        for i in range(3):  # Create 3 rows
+                            buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
+                            remaining_pct = 100 - buffer_pct
+                            
+                            # Distribute remaining percentage among other 3 components
+                            assembled_pct = random.randint(1, remaining_pct - 2)
+                            excipient_pct = random.randint(1, remaining_pct - assembled_pct - 1)
+                            stabilizer_pct = remaining_pct - assembled_pct - excipient_pct
+                            
+                            composition_results.append({
+                                "Row": f"Formulation {i+1}",
+                                "Assembled Polymer": f"{assembled_pct}%",
+                                "Excipient Polymer": f"{excipient_pct}%", 
+                                "Stabilizer": f"{stabilizer_pct}%",
+                                "Buffer": f"{buffer_pct}%"
+                            })
                         
-                        performance_trends[formulation_name] = {
-                            "x_values": x_values,
-                            "y_values": y_values.tolist(),
-                            "release_time": release_time_value
+                        # Generate performance metrics
+                        performance_metrics = {
+                            "metrics": ["Stability", "Efficacy", "Safety", "Bioavailability", "Manufacturability"],
+                            "values": [random.uniform(0.6, 1.0) for _ in range(5)],
+                            "ratings": []
                         }
-                    
-                    # Create comprehensive result data with all generated datasets
-                    result_data = {
-                        "type": prefix,
-                        "model_name": selected,
-                        "selected_api_data": selected_api_data,
-                        "selected_api_name": selected_api_name,
-                        "selected_api_row": selected_api_index if selected_api_index is not None else 0,
-                        "selected_target_data": selected_target_data,
-                        "selected_target_name": selected_target_name,
-                        "model_data": current_job.model_dataset[selected] if selected else None,
-                        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "status": "completed",
+                        # Add ratings based on values
+                        performance_metrics["ratings"] = [
+                            "Excellent" if v > 0.8 else "Good" if v > 0.6 else "Fair" 
+                            for v in performance_metrics["values"]
+                        ]
                         
-                        # Generated result datasets
-                        "composition_results": composition_results,
-                        "performance_metrics": performance_metrics,
-                        "evaluation_criteria": evaluation_criteria,
-                        "evaluation_scores": evaluation_scores,
-                        "additional_metrics": additional_metrics,
-                        "performance_trends": performance_trends  # NEW: Fixed performance trend data
-                    }
-                    
-                    current_job.result_dataset = result_data
-                    st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
-                    st.info(f"• API: {selected_api_name}")
-                    st.info(f"• Target: {selected_target_name}")
-                    st.info(f"• Model: {selected}")
-                    st.info("• All result datasets generated and stored")
-                    st.info("• Performance trends pre-calculated for consistent display")
+                        # Generate evaluation criteria and scores
+                        evaluation_criteria = {
+                            "Injectability": random.randint(70,95),
+                            "Release Time": random.randint(80,100),
+                            "Encapsulation Rate": random.randint(85,98)
+                        }
+                        
+                        evaluation_scores = {
+                            k: random.randint(6,10) for k in evaluation_criteria.keys()
+                        }
+                        
+                        # Generate additional metrics
+                        additional_metrics = {
+                            "Cost Effectiveness": random.randint(7,10),
+                            "Production Scalability": random.randint(7,10),
+                            "Regulatory Compliance": random.randint(7,10),
+                            "Market Potential": random.randint(7,10)
+                        }
+                        
+                        # Generate performance trend data for all 3 formulations (NEW)
+                        # Get Release Time from target data
+                        if len(selected_target_data.columns) >= 4:
+                            release_time_value = selected_target_data.iloc[0, 3]
+                            # Convert to numeric if it's a string with units
+                            if isinstance(release_time_value, str):
+                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').strip())
+                            elif not isinstance(release_time_value, (int, float)):
+                                release_time_value = float(release_time_value)
+                        else:
+                            release_time_value = 10  # Default fallback
+                        
+                        # Generate fixed performance trend data for all 3 formulations
+                        performance_trends = {}
+                        x_points = 10
+                        x_values = np.linspace(0, release_time_value, x_points).tolist()
+                        
+                        # Set seed for reproducible results within this job
+                        np.random.seed(hash(current_job_name + selected_api_name + selected_target_name) % 2147483647)
+                        
+                        start_values = [0.1, 0.15, 0.08]
+                        end_values = [0.85, 0.92, 0.88]
+                        
+                        for i in range(3):
+                            formulation_name = f"Formulation {i+1}"
+                            base_trend = np.linspace(start_values[i], end_values[i], x_points)
+                            noise = np.random.normal(0, 0.02, x_points)
+                            y_values = base_trend + noise
+                            
+                            # Ensure values stay within 0-1 range and maintain upward trend
+                            y_values = np.clip(y_values, 0, 1)
+                            y_values = np.sort(y_values)  # Force upward trend
+                            
+                            performance_trends[formulation_name] = {
+                                "x_values": x_values,
+                                "y_values": y_values.tolist(),
+                                "release_time": release_time_value
+                            }
+                        
+                        # Create comprehensive result data with all generated datasets
+                        result_data = {
+                            "type": prefix,
+                            "model_name": selected,
+                            "selected_api_data": selected_api_data,
+                            "selected_api_name": selected_api_name,
+                            "selected_api_row": selected_api_index if selected_api_index is not None else 0,
+                            "selected_target_data": selected_target_data,
+                            "selected_target_name": selected_target_name,
+                            "model_data": current_job.model_dataset[selected] if selected else None,
+                            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "status": "completed",
+                            
+                            # Generated result datasets
+                            "composition_results": composition_results,
+                            "performance_metrics": performance_metrics,
+                            "evaluation_criteria": evaluation_criteria,
+                            "evaluation_scores": evaluation_scores,
+                            "additional_metrics": additional_metrics,
+                            "performance_trends": performance_trends  # NEW: Fixed performance trend data
+                        }
+                        
+                        current_job.result_dataset = result_data
+                        st.session_state.jobs[current_job_name] = current_job
+                        st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
+                        st.info(f"• API: {selected_api_name}")
+                        st.info(f"• Target: {selected_target_name}")
+                        st.info(f"• Model: {selected}")
+                        st.info("• All result datasets generated and stored")
+                        st.info("• Performance trends pre-calculated for consistent display")
+            
+            with col_clear:
+                # Clear Results button - only enabled if results exist
+                has_results = current_job.has_result_data()
+                
+                if st.button("🗑️ Clear Results", key=f"{prefix}_clear_results", 
+                           disabled=not has_results, 
+                           help="Remove all optimization results from current job"):
+                    if has_results:
+                        # Clear optimization results
+                        current_job.result_dataset = None
+                        
+                        # Also clear evaluation results since they depend on optimization results
+                        if hasattr(current_job, 'evaluation_results_data'):
+                            current_job.evaluation_results_data = None
+                        
+                        st.session_state.jobs[current_job_name] = current_job
+                        st.success(f"All results cleared from job '{current_job_name}'")
+                        st.rerun()
+                
+                # Show results status
+                if has_results:
+                    st.info("✅ Results available")
+                else:
+                    st.info("ℹ️ No results to clear")
 
     # Render each tab
     render_model_tab("model#1", tab_encap)
