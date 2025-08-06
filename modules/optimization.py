@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import time
 import random
+import numpy as np
 
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
@@ -272,6 +273,45 @@ def show():
                         "Market Potential": random.randint(7,10)
                     }
                     
+                    # Generate performance trend data for all 3 formulations (NEW)
+                    # Get Release Time from target data
+                    if len(selected_target_data.columns) >= 4:
+                        release_time_value = selected_target_data.iloc[0, 3]
+                        # Convert to numeric if it's a string with units
+                        if isinstance(release_time_value, str):
+                            release_time_value = float(release_time_value.replace('%', '').replace('Day', '').strip())
+                        elif not isinstance(release_time_value, (int, float)):
+                            release_time_value = float(release_time_value)
+                    else:
+                        release_time_value = 10  # Default fallback
+                    
+                    # Generate fixed performance trend data for all 3 formulations
+                    performance_trends = {}
+                    x_points = 10
+                    x_values = np.linspace(0, release_time_value, x_points).tolist()
+                    
+                    # Set seed for reproducible results within this job
+                    np.random.seed(hash(current_job_name + selected_api_name + selected_target_name) % 2147483647)
+                    
+                    start_values = [0.1, 0.15, 0.08]
+                    end_values = [0.85, 0.92, 0.88]
+                    
+                    for i in range(3):
+                        formulation_name = f"Formulation {i+1}"
+                        base_trend = np.linspace(start_values[i], end_values[i], x_points)
+                        noise = np.random.normal(0, 0.02, x_points)
+                        y_values = base_trend + noise
+                        
+                        # Ensure values stay within 0-1 range and maintain upward trend
+                        y_values = np.clip(y_values, 0, 1)
+                        y_values = np.sort(y_values)  # Force upward trend
+                        
+                        performance_trends[formulation_name] = {
+                            "x_values": x_values,
+                            "y_values": y_values.tolist(),
+                            "release_time": release_time_value
+                        }
+                    
                     # Create comprehensive result data with all generated datasets
                     result_data = {
                         "type": prefix,
@@ -290,7 +330,8 @@ def show():
                         "performance_metrics": performance_metrics,
                         "evaluation_criteria": evaluation_criteria,
                         "evaluation_scores": evaluation_scores,
-                        "additional_metrics": additional_metrics
+                        "additional_metrics": additional_metrics,
+                        "performance_trends": performance_trends  # NEW: Fixed performance trend data
                     }
                     
                     current_job.result_dataset = result_data
@@ -300,6 +341,7 @@ def show():
                     st.info(f"• Target: {selected_target_name}")
                     st.info(f"• Model: {selected}")
                     st.info("• All result datasets generated and stored")
+                    st.info("• Performance trends pre-calculated for consistent display")
 
     # Render each tab
     render_model_tab("model#1", tab_encap)
