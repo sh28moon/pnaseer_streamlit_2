@@ -104,7 +104,6 @@ def show():
             uploaded_tp = st.file_uploader(
                 "Label",
                 label_visibility="hidden",
-                "Import Target Data (CSV only)",
                 type=["csv"],
                 key="target_profile_file"
             )
