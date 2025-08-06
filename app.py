@@ -38,6 +38,10 @@ class Job:
     def has_evaluation_criteria(self):
         """Check if evaluation criteria are imported"""
         return self.evaluation_criteria_data is not None
+        # Backward compatibility for existing jobs
+        if not hasattr(self, 'evaluation_criteria_data'):
+            self.evaluation_criteria_data = None
+        return self.evaluation_criteria_data is not None
     
     def has_evaluation_results(self):
         """Check if evaluation has been completed"""
@@ -177,3 +181,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
