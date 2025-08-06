@@ -255,148 +255,125 @@ def show():
         st.subheader("Evaluation")
         st.info(f"📁 Working on job: **{current_job_name}**")
         
-        # Initialize evaluation data storage in job if not exists
-        if not hasattr(current_job, 'evaluation_criteria_data'):
-            current_job.evaluation_criteria_data = None
-        if not hasattr(current_job, 'evaluation_results_data'):
-            current_job.evaluation_results_data = None
+        # Check if evaluation data exists from optimization
+        has_evaluation_data = (current_job.has_result_data() and 
+                             'evaluation_diagrams' in current_job.result_dataset)
         
-        # 1st Row: Evaluation Criteria Import, Clear, and Start Evaluation
-        st.markdown("**Evaluation Setup**")
-        col1, col2, col3 = st.columns(3)
+        # Initialize evaluation diagrams display state
+        if 'show_evaluation_diagrams' not in st.session_state:
+            st.session_state.show_evaluation_diagrams = False
+        
+        # Top Row: Control Buttons
+        col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**Import Evaluation Criteria**")
-            uploaded_criteria = st.file_uploader(
-                "Upload Evaluation Criteria (CSV)",
-                type=["csv"],
-                key="evaluation_criteria_file",
-                help="CSV file with evaluation criteria as column headers"
-            )
-            
-            if uploaded_criteria:
-                try:
-                    df_criteria = pd.read_csv(uploaded_criteria)
-                    if len(df_criteria.columns) > 0:
-                        current_job.evaluation_criteria_data = df_criteria
-                        st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"✅ {len(df_criteria.columns)} criteria loaded")
-                        
-                        # Show preview of criteria
-                        with st.expander("📋 Criteria Preview", expanded=False):
-                            st.write("**Evaluation Criteria:**")
-                            for col in df_criteria.columns:
-                                st.write(f"• {col}")
-                    else:
-                        st.error("❌ Empty file or no columns found")
-                except Exception as e:
-                    st.error(f"❌ Error reading file: {str(e)}")
-        
-        with col2:
-            st.markdown("**Clear Criteria**")
-            if current_job.evaluation_criteria_data is not None:
-                if st.button("🗑️ Clear Criteria", key="clear_criteria", help="Clear imported evaluation criteria"):
-                    current_job.evaluation_criteria_data = None
-                    current_job.evaluation_results_data = None  # Also clear results
-                    st.session_state.jobs[current_job_name] = current_job
-                    st.success("Evaluation criteria cleared")
-                    st.rerun()
-                    
-                # Show current criteria status
-                criteria_count = len(current_job.evaluation_criteria_data.columns)
-                st.info(f"📊 {criteria_count} criteria loaded")
-            else:
-                st.button("🗑️ Clear Criteria", key="clear_criteria_disabled", disabled=True)
-                st.info("No criteria imported")
-        
-        with col3:
-            st.markdown("**Start Evaluation**")
-            can_evaluate = (current_job.evaluation_criteria_data is not None and 
-                          current_job.has_result_data())
-            
-            if st.button("🚀 Start Evaluation", key="start_evaluation", disabled=not can_evaluate):
-                if can_evaluate:
-                    # Generate evaluation scores based on imported criteria
-                    criteria_columns = current_job.evaluation_criteria_data.columns.tolist()
-                    
-                    # Generate random scores (1-10) for each criterion
-                    import random
-                    evaluation_scores = {}
-                    for criterion in criteria_columns:
-                        evaluation_scores[criterion] = random.randint(1, 10)
-                    
-                    # Store evaluation results in job
-                    current_job.evaluation_results_data = {
-                        "scores": evaluation_scores,
-                        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                    st.session_state.jobs[current_job_name] = current_job
-                    
-                    st.success("✅ Evaluation completed!")
+            if st.button("📊 Show Evaluation Diagrams", key="show_evaluation_diagrams"):
+                if has_evaluation_data:
+                    st.session_state.show_evaluation_diagrams = True
+                    st.success("✅ Evaluation diagrams displayed!")
                     st.rerun()
                 else:
-                    if not current_job.has_result_data():
-                        st.error("❌ No optimization results found. Please run optimization first.")
-                    else:
-                        st.error("❌ No evaluation criteria imported. Please import criteria first.")
-            
-            # Show evaluation status
-            if not can_evaluate:
-                missing = []
-                if not current_job.has_result_data():
-                    missing.append("optimization results")
-                if current_job.evaluation_criteria_data is None:
-                    missing.append("evaluation criteria")
-                st.warning(f"Missing: {', '.join(missing)}")
-            else:
-                st.success("✅ Ready to evaluate")
+                    st.error("❌ No evaluation data found. Please run optimization first.")
+        
+        with col2:
+            if st.button("🗑️ Clear Diagrams", key="clear_evaluation_diagrams"):
+                st.session_state.show_evaluation_diagrams = False
+                st.success("Evaluation diagrams cleared from display")
+                st.rerun()
         
         st.divider()
         
-        # 2nd Row: Evaluation Results
-        st.markdown("**Evaluation Results**")
-        
-        if current_job.evaluation_results_data is not None:
-            evaluation_scores = current_job.evaluation_results_data["scores"]
-            eval_timestamp = current_job.evaluation_results_data["timestamp"]
+        # Second Row: Two Radar Diagrams
+        if st.session_state.show_evaluation_diagrams and has_evaluation_data:
+            # Get evaluation data from optimization results
+            eval_data = current_job.result_dataset['evaluation_diagrams']
+            eval_timestamp = eval_data["timestamp"]
             
-            # Top: Evaluation Scores Table
-            st.markdown(f"**Evaluation Scores (1-10)** - *Completed: {eval_timestamp}*")
-            df_eval_scores = pd.DataFrame([evaluation_scores])
-            st.table(df_eval_scores)
+            st.markdown(f"**Evaluation Diagrams** - *Generated during optimization: {eval_timestamp}*")
             
-            st.divider()
+            col_left, col_right = st.columns(2)
             
-            # Bottom: Radar Chart
-            st.markdown("**Evaluation Radar Chart**")
-            
-            labels = list(evaluation_scores.keys())
-            vals = list(evaluation_scores.values())
-            
-            if len(labels) > 0:
-                # Create radar chart
-                angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
-                vals_plot = vals + vals[:1]  # Complete the circle
+            # Left Column: Safety & Stability Score
+            with col_left:
+                st.markdown("**Safety & Stability Score**")
+                
+                safety_scores = eval_data["safety_stability"]
+                labels_safety = list(safety_scores.keys())
+                vals_safety = list(safety_scores.values())
+                
+                # Create radar chart for Safety & Stability
+                angles = np.linspace(0, 2*np.pi, len(labels_safety), endpoint=False).tolist()
+                vals_plot = vals_safety + vals_safety[:1]  # Complete the circle
                 angles_plot = angles + angles[:1]  # Complete the circle
                 
-                fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={'polar': True})
-                ax.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#ff7f0e')
-                ax.fill(angles_plot, vals_plot, alpha=0.25, color='#ff7f0e')
-                ax.set_thetagrids(np.degrees(angles), labels)
-                ax.set_ylim(0, 10)
-                ax.set_title(f"Evaluation Profile: {current_job_name}", y=1.08, fontsize=16, fontweight='bold')
-                ax.grid(True, alpha=0.3)
+                fig1, ax1 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                ax1.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#2E8B57')
+                ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
+                ax1.set_thetagrids(np.degrees(angles), labels_safety)
+                ax1.set_ylim(0, 10)
+                ax1.set_title("Safety & Stability Score", y=1.08, fontsize=14, fontweight='bold')
+                ax1.grid(True, alpha=0.3)
                 
                 # Add score labels on the chart
-                for angle, val, label in zip(angles, vals, labels):
-                    ax.text(angle, val + 0.5, str(val), ha='center', va='center', 
-                           fontsize=10, fontweight='bold', color='red')
+                for angle, val, label in zip(angles, vals_safety, labels_safety):
+                    ax1.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                           fontsize=11, fontweight='bold', color='darkgreen')
                 
-                st.pyplot(fig)
-            else:
-                st.warning("No evaluation scores to display in radar chart")
+                st.pyplot(fig1)
+                
+                # Show scores below chart
+                st.markdown("**Scores (0-10):**")
+                for key, value in safety_scores.items():
+                    st.write(f"• **{key}**: {value}")
+            
+            # Right Column: Formulation Score
+            with col_right:
+                st.markdown("**Formulation Score**")
+                
+                formulation_scores = eval_data["formulation"]
+                labels_formulation = list(formulation_scores.keys())
+                vals_formulation = list(formulation_scores.values())
+                
+                # Create radar chart for Formulation
+                angles = np.linspace(0, 2*np.pi, len(labels_formulation), endpoint=False).tolist()
+                vals_plot = vals_formulation + vals_formulation[:1]  # Complete the circle
+                angles_plot = angles + angles[:1]  # Complete the circle
+                
+                fig2, ax2 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                ax2.plot(angles_plot, vals_plot, marker="s", linewidth=3, markersize=8, color='#FF6347')
+                ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
+                ax2.set_thetagrids(np.degrees(angles), labels_formulation)
+                ax2.set_ylim(0, 10)
+                ax2.set_title("Formulation Score", y=1.08, fontsize=14, fontweight='bold')
+                ax2.grid(True, alpha=0.3)
+                
+                # Add score labels on the chart
+                for angle, val, label in zip(angles, vals_formulation, labels_formulation):
+                    ax2.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                           fontsize=11, fontweight='bold', color='darkred')
+                
+                st.pyplot(fig2)
+                
+                # Show scores below chart
+                st.markdown("**Scores (0-10):**")
+                for key, value in formulation_scores.items():
+                    st.write(f"• **{key}**: {value}")
                 
         else:
-            # Show blank state before evaluation
-            st.info("🔍 **No evaluation results yet.**")
-
+            # Show appropriate message based on state
+            if not has_evaluation_data:
+                st.info("🔍 **No evaluation data available.**")
+                st.markdown("**Instructions:**")
+                st.markdown("1. Complete optimization first to generate evaluation data")
+                st.markdown("2. Click 'Show Evaluation Diagrams' to display radar charts")
+                st.markdown("3. Two evaluation diagrams will appear:")
+                st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
+                st.markdown("   • **Formulation**: Durability, Injectability, Strength")
+            elif not st.session_state.show_evaluation_diagrams:
+                st.info("🔍 **Evaluation data ready.**")
+                st.markdown("**Instructions:**")
+                st.markdown("1. Click 'Show Evaluation Diagrams' to display radar charts")
+                st.markdown("2. Use 'Clear Diagrams' to hide the charts")
+                st.markdown("**Available diagrams:**")
+                st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
+                st.markdown("   • **Formulation**: Durability, Injectability, Strength")
