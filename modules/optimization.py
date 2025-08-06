@@ -20,14 +20,12 @@ def show():
     st.info(f"📁 Working on job: **{current_job_name}**")
 
     # Top-level tabs
-    tab_encap, tab_form = st.tabs(["Encapsulation", "Formulation"])
+    tab_encap = st.tabs(["Model#1"])
 
     def render_model_tab(prefix, tab):
         with tab:
-            st.markdown('<p class="font-medium"><b>Model Selection</b></p>', unsafe_allow_html=True)
-            
-            # Show Input Data Status
-            st.subheader("Input Data Status")
+            # Input Data Management
+            st.markdown('<p class="font-medium"><b>Input Data Selection</b></p>', unsafe_allow_html=True)
             
             # Initialize selection variables
             selected_api_data = None
@@ -68,13 +66,13 @@ def show():
                             selected_api_index = api_row_options.index(selected_api_row)
                             selected_api_data = api_data.iloc[[selected_api_index]]
                             selected_api_name = f"Row {selected_api_index + 1}"
-                            st.info(f"Selected: {selected_api_row}")
+                            # st.info(f"Selected: {selected_api_row}")
                     else:
                         # Single row or simple data
                         selected_api_data = api_data
                         selected_api_index = 0
                         selected_api_name = api_data['Name'].iloc[0] if 'Name' in api_data.columns else "Row 1"
-                        st.info(f"Using: {selected_api_name}")
+                        # st.info(f"Using: {selected_api_name}")
                 else:
                     st.error("❌ No API data in current job")
                     st.info("Please add API data in Input Conditions")
@@ -96,17 +94,12 @@ def show():
                     
                     if selected_target_name:
                         selected_target_data = target_data[selected_target_name]
-                        st.info(f"Selected: {selected_target_name}")
-                        
-                    st.write(f"📊 Available: {len(target_data)} dataset(s)")
-                    for i, name in enumerate(target_names[:2]):
-                        symbol = "👉" if name == selected_target_name else "•"
-                        st.write(f"{symbol} {name}")
-                    if len(target_names) > 2:
-                        st.write(f"• ... and {len(target_names) - 2} more")
+                        # st.info(f"Selected: {selected_target_name}")                        
+
                 else:
                     st.error("❌ No target data in current job")
                     st.info("Please add target data in Input Conditions")
+                    selected_target_name = None
             
             st.divider()
  
@@ -157,15 +150,8 @@ def show():
 
             # Show current model in job
             if current_job.has_model_data():
-                st.subheader("Available Models in Job")
                 model_data = current_job.model_dataset
-                model_names = list(model_data.keys())
-                
-                st.write(f"**{len(model_names)} model(s) available:**")
-                for name in model_names[:5]:  # Show first 5 model names
-                    st.write(f"• {name}")
-                if len(model_names) > 5:
-                    st.write(f"• ... and {len(model_names) - 5} more")
+                model_names = list(model_data.keys())           
                 
                 selected = st.selectbox(
                     "Select Model for Optimization",
@@ -173,8 +159,8 @@ def show():
                     key=f"{prefix}_select"
                 )
                 
-                if selected:
-                    st.info(f"Selected model: {selected}")
+                # if selected:
+                #     st.info(f"Selected model: {selected}")
                 
                 # Clear model data button
                 if st.button(f"🗑️ Clear All Model Data", key=f"clear_model_{prefix}", help="Remove all model data from current job"):
@@ -187,7 +173,7 @@ def show():
                 selected = None
 
             # Calculate section
-            st.subheader("Calculate")
+            st.subheader("Input Review and Submit Job")
             
             # Check if all required data is available
             has_api_data = current_job.has_api_data() and selected_api_data is not None and selected_api_name is not None
@@ -204,10 +190,7 @@ def show():
                 st.write(f"{status_target} Target Data Selected") 
             with col3:
                 status_model = "✅" if has_model_data else "❌"
-                st.write(f"{status_model} Model Selected")
-            
-            # Summary table of selections
-            st.markdown("**Optimization Summary - Selected Data**")
+                st.write(f"{status_model} Model Selected")       
             
             # Show three separate tables with full values
             col1, col2, col3 = st.columns(3)
@@ -333,5 +316,5 @@ def show():
                     st.info("• All result datasets generated and stored")
 
     # Render each tab
-    render_model_tab("encapsulation", tab_encap)
-    render_model_tab("formulation", tab_form)
+    render_model_tab("Model#1", tab_encap)
+
