@@ -79,74 +79,71 @@ def show():
         if 'performance_trends' in result_data:
             performance_trends = result_data['performance_trends']
             
-            # Composition selector
-            col_selector, col_graph = st.columns([1, 3])
+            # Single column layout
+            # Top: Formulation selector
+            formulation_options = list(performance_trends.keys())
+            selected_formulation = st.selectbox(
+                "Select Formulation to Analyze:",
+                formulation_options,
+                key="formulation_selector"
+            )
             
-            with col_selector:
-                st.markdown("**Select Formulation**")
-                formulation_options = list(performance_trends.keys())
-                selected_formulation = st.selectbox(
-                    "Choose formulation to analyze:",
-                    formulation_options,
-                    key="formulation_selector"
-                )
+            # Show composition data for selected formulation in expander
+            if 'composition_results' in result_data:
+                comp_data_list = result_data['composition_results']
+                # Find the composition data for selected formulation
+                selected_comp = None
+                for comp in comp_data_list:
+                    if comp.get("Row") == selected_formulation:
+                        selected_comp = comp
+                        break
                 
-                # Show composition data for selected formulation
-                if 'composition_results' in result_data:
-                    comp_data_list = result_data['composition_results']
-                    # Find the composition data for selected formulation
-                    selected_comp = None
-                    for comp in comp_data_list:
-                        if comp.get("Row") == selected_formulation:
-                            selected_comp = comp
-                            break
-                    
-                    if selected_comp:
-                        st.markdown(f"**{selected_formulation} Composition:**")
+                if selected_comp:
+                    with st.expander(f"📋 {selected_formulation} Composition Details", expanded=False):
                         for key, value in selected_comp.items():
                             if key != "Row":  # Skip the row identifier
-                                st.write(f"• {key}: {value}")
+                                st.write(f"• **{key}**: {value}")
             
-            with col_graph:
-                st.markdown(f"**Performance Trend - {selected_formulation}**")
+            # Bottom: Performance graph
+            st.markdown(f"**Performance Trend - {selected_formulation}**")
+            
+            # Get pre-generated performance trend data for selected formulation
+            if selected_formulation in performance_trends:
+                trend_data = performance_trends[selected_formulation]
+                x_values = trend_data["x_values"]
+                y_values = trend_data["y_values"]
+                release_time_value = trend_data["release_time"]
                 
-                # Get pre-generated performance trend data for selected formulation
-                if selected_formulation in performance_trends:
-                    trend_data = performance_trends[selected_formulation]
-                    x_values = trend_data["x_values"]
-                    y_values = trend_data["y_values"]
-                    release_time_value = trend_data["release_time"]
-                    
-                    # Create graph using pre-generated data
-                    fig, ax = plt.subplots(figsize=(8, 5))
-                    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each formulation
-                    
-                    # Get color index based on formulation number
-                    formulation_index = formulation_options.index(selected_formulation)
-                    color = colors[formulation_index % len(colors)]
-                    
-                    ax.plot(x_values, y_values, marker="o", linewidth=3, markersize=6, color=color)
-                    ax.fill_between(x_values, y_values, alpha=0.3, color=color)
-                    
-                    # Set axis limits and labels
-                    ax.set_xlim(0, release_time_value)
-                    ax.set_ylim(0, 1)
-                    ax.set_xlabel("Time (Days)", fontsize=12)
-                    ax.set_ylabel("Performance", fontsize=12)
-                    ax.set_title(f"Performance Trend - {selected_formulation}", fontsize=14, fontweight='bold')
-                    
-                    # Add grid for better readability
-                    ax.grid(True, alpha=0.3)
-                    ax.set_axisbelow(True)
-                    
-                    # Add performance milestones
-                    ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.7, label='Target Threshold')
-                    ax.axhline(y=0.8, color='green', linestyle='--', alpha=0.7, label='Optimal Performance')
-                    ax.legend()
-                    
-                    st.pyplot(fig)
-                else:
-                    st.error(f"No performance trend data found for {selected_formulation}")
+                # Create graph using pre-generated data - larger size for single column
+                fig, ax = plt.subplots(figsize=(10, 6))
+                colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each formulation
+                
+                # Get color index based on formulation number
+                formulation_index = formulation_options.index(selected_formulation)
+                color = colors[formulation_index % len(colors)]
+                
+                ax.plot(x_values, y_values, marker="o", linewidth=3, markersize=6, color=color)
+                ax.fill_between(x_values, y_values, alpha=0.3, color=color)
+                
+                # Set axis limits and labels
+                ax.set_xlim(0, release_time_value)
+                ax.set_ylim(0, 1)
+                ax.set_xlabel("Time (Days)", fontsize=14)
+                ax.set_ylabel("Performance", fontsize=14)
+                ax.set_title(f"Performance Trend - {selected_formulation}", fontsize=16, fontweight='bold')
+                
+                # Add grid for better readability
+                ax.grid(True, alpha=0.3)
+                ax.set_axisbelow(True)
+                
+                # Add performance milestones
+                ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.7, label='Target Threshold')
+                ax.axhline(y=0.8, color='green', linestyle='--', alpha=0.7, label='Optimal Performance')
+                ax.legend()
+                
+                st.pyplot(fig)
+            else:
+                st.error(f"No performance trend data found for {selected_formulation}")
         else:
             st.warning("No performance trend data found. Please re-run optimization to generate performance trends.")
 
