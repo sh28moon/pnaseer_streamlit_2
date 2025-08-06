@@ -1,10 +1,10 @@
-# pages/optimization.py
+# modules/optimization.py
 import streamlit as st
 import pandas as pd
 import time
 import random
 
-from pages.global_css import GLOBAL_CSS
+from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
 def show():
