@@ -267,19 +267,19 @@ def show():
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("📊 Show Evaluation Diagrams", key="show_evaluation_diagrams"):
+            show_clicked = st.button("📊 Show Evaluation Diagrams", key="show_evaluation_diagrams_btn")
+            if show_clicked:
                 if has_evaluation_data:
                     st.session_state.show_evaluation_diagrams = True
                     st.success("✅ Evaluation diagrams displayed!")
-                    st.rerun()
                 else:
                     st.error("❌ No evaluation data found. Please run optimization first.")
         
         with col2:
-            if st.button("🗑️ Clear Diagrams", key="clear_evaluation_diagrams"):
+            clear_clicked = st.button("🗑️ Clear Diagrams", key="clear_evaluation_diagrams_btn")
+            if clear_clicked:
                 st.session_state.show_evaluation_diagrams = False
                 st.success("Evaluation diagrams cleared from display")
-                st.rerun()
         
         st.divider()
         
