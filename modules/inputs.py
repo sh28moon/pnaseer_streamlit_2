@@ -102,8 +102,7 @@ def show():
         with col_import:
             st.markdown("**Import Data**")
             uploaded_tp = st.file_uploader(
-                "Label",
-                label_visibility="hidden",
+                "Import Target Data (CSV only)",
                 type=["csv"],
                 key="target_profile_file"
             )
@@ -163,7 +162,7 @@ def show():
             release_time = st.number_input("Release Time (Day)", min_value=0.0, format="%.2f", key="tp_release_time")
 
             # Single button to add and save directly to job
-            if st.button("💾 Add to Job", key="add_manual_to_job"):
+            if st.button("Add to Job", key="add_manual_to_job"):
                 if not dataset_name.strip():
                     st.error("Please enter a dataset name.")
                 else:
@@ -261,4 +260,3 @@ def show():
                     st.warning("Dataset needs at least 4 columns for radar chart")
             else:
                 st.info("Select a dataset from job to view radar diagram")
-
