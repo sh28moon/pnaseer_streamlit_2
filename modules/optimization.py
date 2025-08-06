@@ -313,6 +313,30 @@ def show():
                                 "release_time": release_time_value
                             }
                         
+                        # Generate evaluation diagrams data (NEW)
+                        # Set seed for consistent evaluation results per job
+                        np.random.seed(hash(current_job_name + selected_api_name + selected_target_name + "evaluation") % 2147483647)
+                        
+                        # Safety & Stability Score (0-10)
+                        safety_stability_scores = {
+                            "Degradability": random.randint(1, 10),
+                            "Cytotoxicity": random.randint(1, 10),
+                            "Immunogenicity": random.randint(1, 10)
+                        }
+                        
+                        # Formulation Score (0-10)
+                        formulation_scores = {
+                            "Durability": random.randint(1, 10),
+                            "Injectability": random.randint(1, 10),
+                            "Strength": random.randint(1, 10)
+                        }
+                        
+                        evaluation_diagrams_data = {
+                            "safety_stability": safety_stability_scores,
+                            "formulation": formulation_scores,
+                            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        
                         # Create comprehensive result data with all generated datasets
                         result_data = {
                             "type": prefix,
@@ -332,7 +356,8 @@ def show():
                             "evaluation_criteria": evaluation_criteria,
                             "evaluation_scores": evaluation_scores,
                             "additional_metrics": additional_metrics,
-                            "performance_trends": performance_trends  # NEW: Fixed performance trend data
+                            "performance_trends": performance_trends,  # Fixed performance trend data
+                            "evaluation_diagrams": evaluation_diagrams_data  # NEW: Evaluation diagrams data
                         }
                         
                         current_job.result_dataset = result_data
@@ -343,6 +368,7 @@ def show():
                         st.info(f"• Model: {selected}")
                         st.info("• All result datasets generated and stored")
                         st.info("• Performance trends pre-calculated for consistent display")
+                        st.info("• Evaluation diagrams data pre-generated for display")
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
@@ -355,9 +381,9 @@ def show():
                         # Clear optimization results
                         current_job.result_dataset = None
                         
-                        # Also clear evaluation results since they depend on optimization results
-                        if hasattr(current_job, 'evaluation_results_data'):
-                            current_job.evaluation_results_data = None
+                        # Also clear evaluation diagrams display state
+                        if 'show_evaluation_diagrams' in st.session_state:
+                            st.session_state.show_evaluation_diagrams = False
                         
                         st.session_state.jobs[current_job_name] = current_job
                         st.success(f"All results cleared from job '{current_job_name}'")
