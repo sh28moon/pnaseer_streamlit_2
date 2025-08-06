@@ -185,12 +185,12 @@ def show():
                     st.rerun()
 
             # Global clear button
-            if current_job.has_target_data():
-                if st.button("🗑️ Clear All Target Data", key="clear_all_target_data"):
-                    current_job.target_profile_dataset = None
-                    st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"All target data cleared from job")
-                    st.rerun()
+            # if current_job.has_target_data():
+            #     if st.button("🗑️ Clear All Target Data", key="clear_all_target_data"):
+            #         current_job.target_profile_dataset = None
+            #         st.session_state.jobs[current_job_name] = current_job
+            #         st.success(f"All target data cleared from job")
+            #         st.rerun()
 
         st.divider()
 
@@ -260,4 +260,5 @@ def show():
                     st.warning("Dataset needs at least 4 columns for radar chart")
             else:
                 st.info("Select a dataset from job to view radar diagram")
+
 
