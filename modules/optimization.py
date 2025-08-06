@@ -41,7 +41,6 @@ def show():
             with col1:
                 st.markdown("**API Data**")
                 if current_job.has_api_data():
-                    st.success("✅ API data loaded from job")
                     api_data = current_job.api_dataset
                     
                     # API Data Selection
@@ -56,7 +55,6 @@ def show():
                             )
                             selected_api_index = api_name_options.index(selected_api_name)
                             selected_api_data = api_data.iloc[[selected_api_index]]
-                            st.info(f"Selected: {selected_api_name}")
                         else:
                             # Fallback to row numbers if no Name column
                             api_row_options = [f"Row {i+1}" for i in range(len(api_data))]
@@ -75,14 +73,12 @@ def show():
                         selected_api_name = api_data['Name'].iloc[0] if 'Name' in api_data.columns else "Row 1"
                 else:
                     st.error("❌ No API data in current job")
-                    st.info("Please add API data in Input Conditions")
                     selected_api_name = None
             
             # Column 2: Target Profile Data (Input Data Selection - Part 2)
             with col2:
                 st.markdown("**Target Profile Data**")
                 if current_job.has_target_data():
-                    st.success("✅ Target data loaded from job")
                     target_data = current_job.target_profile_dataset
                     
                     # Target Profile Data Selection
@@ -97,77 +93,68 @@ def show():
                         selected_target_data = target_data[selected_target_name]
                 else:
                     st.error("❌ No target data in current job")
-                    st.info("Please add target data in Input Conditions")
                     selected_target_name = None
             
             # Column 3: Model Selection
             with col3:
                 st.markdown("**Model Selection**")
                 
-                # Import model CSV
-                uploaded = st.file_uploader(
-                    "Import a Model (CSV only)",
-                    type=["csv"],
-                    key=f"{prefix}_import"
-                )
-                if uploaded:
-                    try:
-                        df = pd.read_csv(uploaded)
-                        
-                        # Validate that CSV has Name column
-                        if 'Name' not in df.columns:
-                            st.error("❌ Model CSV must have a 'Name' column for model identification.")
-                            st.error("Expected structure: [Name, Parameter1, Parameter2, ...]")
-                        elif len(df) == 0:
-                            st.error("❌ Model CSV file is empty.")
-                        else:
-                            # Create separate model datasets for each row
-                            model_datasets = {}
-                            for index, row in df.iterrows():
-                                model_name = str(row['Name']).strip()
-                                if model_name:  # Only add if name is not empty
-                                    # Create single-row dataframe for this model
-                                    model_df = pd.DataFrame([row])
-                                    model_datasets[model_name] = model_df
+                # Compact model import
+                if not current_job.has_model_data():
+                    uploaded = st.file_uploader(
+                        "Import Model (CSV)",
+                        type=["csv"],
+                        key=f"{prefix}_import",
+                        label_visibility="collapsed"
+                    )
+                    if uploaded:
+                        try:
+                            df = pd.read_csv(uploaded)
                             
-                            # Save all model datasets to job
-                            if model_datasets:
-                                if current_job.has_model_data():
-                                    current_job.model_dataset.update(model_datasets)
-                                else:
-                                    current_job.model_dataset = model_datasets
-                                
-                                st.session_state.jobs[current_job_name] = current_job
-                                st.success(f"✅ {len(model_datasets)} models imported")
-                                st.info(f"📊 {', '.join(list(model_datasets.keys())[:2])}" + 
-                                       (f" +{len(model_datasets)-2} more" if len(model_datasets) > 2 else ""))
+                            if 'Name' not in df.columns or len(df) == 0:
+                                st.error("❌ Invalid model file")
                             else:
-                                st.error("❌ No valid models found. Check that Name column contains values.")
-                            
-                    except Exception as e:
-                        st.error(f"❌ Error reading model file: {str(e)}")
-                        st.error("Please ensure the file is a valid CSV format.")
+                                # Create separate model datasets for each row
+                                model_datasets = {}
+                                for index, row in df.iterrows():
+                                    model_name = str(row['Name']).strip()
+                                    if model_name:
+                                        model_df = pd.DataFrame([row])
+                                        model_datasets[model_name] = model_df
+                                
+                                if model_datasets:
+                                    current_job.model_dataset = model_datasets
+                                    st.session_state.jobs[current_job_name] = current_job
+                                    st.rerun()
+                                
+                        except Exception as e:
+                            st.error("❌ Error reading file")
 
-                # Show current model in job
+                # Model selection at same level as other selectboxes
                 if current_job.has_model_data():
                     model_data = current_job.model_dataset
                     model_names = list(model_data.keys())           
                     
                     selected = st.selectbox(
-                        "Select Model for Optimization",
+                        "Select Model",
                         model_names,
                         key=f"{prefix}_select"
                     )
                     
-                    # Clear model data button
-                    if st.button(f"🗑️ Clear Models", key=f"clear_model_{prefix}", help="Remove all model data from current job"):
+                    # Compact clear button
+                    if st.button(f"🗑️ Clear", key=f"clear_model_{prefix}"):
                         current_job.model_dataset = None
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"All model data cleared from job '{current_job_name}'")
                         st.rerun()
                 else:
-                    st.info("No models in current job yet.")
                     selected = None
+                    # Placeholder to maintain height
+                    st.selectbox(
+                        "Select Model",
+                        ["No models available"],
+                        disabled=True,
+                        key=f"{prefix}_select_placeholder"
+                    )
 
             st.divider()
 
