@@ -342,13 +342,13 @@ def show():
                         
                         current_job.result_dataset = result_data
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
-                        st.info(f"• API: {selected_api_name}")
-                        st.info(f"• Target: {selected_target_name}")
-                        st.info(f"• Model: {selected}")
-                        st.info("• Composition results generated")
-                        st.info("• Performance trends pre-calculated")
-                        st.info("• Evaluation diagrams data pre-generated")
+                        # st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
+                        # st.info(f"• API: {selected_api_name}")
+                        # st.info(f"• Target: {selected_target_name}")
+                        # st.info(f"• Model: {selected}")
+                        # st.info("• Composition results generated")
+                        # st.info("• Performance trends pre-calculated")
+                        # st.info("• Evaluation diagrams data pre-generated")
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
