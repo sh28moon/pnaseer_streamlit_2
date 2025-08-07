@@ -284,7 +284,7 @@ def show():
                 
                 # Left Column: Safety & Stability Score
                 with col_left:
-                    st.markdown("**Safety & Stability Score**")
+                    # st.markdown("**Safety & Stability Score**")
                     
                     safety_scores = selected_eval_data["safety_stability"]
                     labels_safety = list(safety_scores.keys())
@@ -300,7 +300,7 @@ def show():
                     ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
                     ax1.set_thetagrids(np.degrees(angles), labels_safety)
                     ax1.set_ylim(0, 10)
-                    ax1.set_title(f"Safety & Stability - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
+                    ax1.set_title(f"Safety & Stability Score", y=1.08, fontsize=12, fontweight='bold')
                     ax1.grid(True, alpha=0.3)
                     
                     # Add score labels on the chart
@@ -317,7 +317,7 @@ def show():
                 
                 # Right Column: Formulation Score
                 with col_right:
-                    st.markdown("**Formulation Score**")
+                    # st.markdown("**Formulation Score**")
                     
                     formulation_scores = selected_eval_data["formulation"]
                     labels_formulation = list(formulation_scores.keys())
@@ -333,7 +333,7 @@ def show():
                     ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
                     ax2.set_thetagrids(np.degrees(angles), labels_formulation)
                     ax2.set_ylim(0, 10)
-                    ax2.set_title(f"Formulation - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
+                    ax2.set_title(f"Formulation Score", y=1.08, fontsize=12, fontweight='bold')
                     ax2.grid(True, alpha=0.3)
                     
                     # Add score labels on the chart
