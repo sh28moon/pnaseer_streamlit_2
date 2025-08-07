@@ -31,7 +31,7 @@ class Job:
     
     def get_model_status(self):
     """Check if model data is present"""
-    return self.has_model_data()
+        return self.has_model_data()
     
 # app.py
 import streamlit as st
@@ -398,4 +398,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
