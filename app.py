@@ -29,7 +29,11 @@ class Job:
         """Check if both API and target data are present"""
         return self.has_api_data() and self.has_target_data()
     
-    def get_model# app.py
+    def get_model_status(self):
+    """Check if model data is present"""
+    return self.has_model_data()
+    
+# app.py
 import streamlit as st
 import pandas as pd
 import json
@@ -394,3 +398,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
