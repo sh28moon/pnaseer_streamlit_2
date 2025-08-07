@@ -206,11 +206,10 @@ def show():
                     st.dataframe(model_df, use_container_width=True)
                 else:
                     st.warning("No model selected")
-
+            
             # Submit button and Clear Results button
             can_submit = has_api_data and has_target_data and has_model_data
             
-            # Submit button and Clear Results button
             col_submit, col_clear = st.columns(2)
             
             with col_submit:
@@ -257,25 +256,6 @@ def show():
                             "Excellent" if v > 0.8 else "Good" if v > 0.6 else "Fair" 
                             for v in performance_metrics["values"]
                         ]
-                        
-                        # Generate evaluation criteria and scores
-                        evaluation_criteria = {
-                            "Injectability": random.randint(70,95),
-                            "Release Time": random.randint(80,100),
-                            "Encapsulation Rate": random.randint(85,98)
-                        }
-                        
-                        evaluation_scores = {
-                            k: random.randint(6,10) for k in evaluation_criteria.keys()
-                        }
-                        
-                        # Generate additional metrics
-                        additional_metrics = {
-                            "Cost Effectiveness": random.randint(7,10),
-                            "Production Scalability": random.randint(7,10),
-                            "Regulatory Compliance": random.randint(7,10),
-                            "Market Potential": random.randint(7,10)
-                        }
                         
                         # Generate performance trend data for all 3 formulations (NEW)
                         # Get Release Time from target data
@@ -356,11 +336,8 @@ def show():
                             # Generated result datasets
                             "composition_results": composition_results,
                             "performance_metrics": performance_metrics,
-                            "evaluation_criteria": evaluation_criteria,
-                            "evaluation_scores": evaluation_scores,
-                            "additional_metrics": additional_metrics,
                             "performance_trends": performance_trends,  # Fixed performance trend data
-                            "evaluation_diagrams": evaluation_diagrams_data  # NEW: Evaluation diagrams data
+                            "evaluation_diagrams": evaluation_diagrams_data  # Evaluation diagrams data
                         }
                         
                         current_job.result_dataset = result_data
@@ -369,9 +346,9 @@ def show():
                         st.info(f"• API: {selected_api_name}")
                         st.info(f"• Target: {selected_target_name}")
                         st.info(f"• Model: {selected}")
-                        st.info("• All result datasets generated and stored")
-                        st.info("• Performance trends pre-calculated for consistent display")
-                        st.info("• Evaluation diagrams data pre-generated for display")
+                        st.info("• Composition results generated")
+                        st.info("• Performance trends pre-calculated")
+                        st.info("• Evaluation diagrams data pre-generated")
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
