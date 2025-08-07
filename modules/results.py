@@ -287,9 +287,20 @@ def show():
         if st.session_state.show_evaluation_diagrams and has_evaluation_data:
             # Get evaluation data from optimization results
             eval_data = current_job.result_dataset['evaluation_diagrams']
-            eval_timestamp = eval_data["timestamp"]
             
-            st.markdown(f"**Evaluation Diagrams** - *Generated during optimization: {eval_timestamp}*")
+            # Formulation selector
+            formulation_options = list(eval_data.keys())
+            selected_formulation = st.selectbox(
+                "Select Formulation for Evaluation:",
+                formulation_options,
+                key="evaluation_formulation_selector"
+            )
+            
+            # Get data for selected formulation
+            selected_eval_data = eval_data[selected_formulation]
+            eval_timestamp = selected_eval_data["timestamp"]
+            
+            st.markdown(f"**Evaluation Diagrams - {selected_formulation}** - *Generated during optimization: {eval_timestamp}*")
             
             col_left, col_right = st.columns(2)
             
@@ -297,7 +308,7 @@ def show():
             with col_left:
                 st.markdown("**Safety & Stability Score**")
                 
-                safety_scores = eval_data["safety_stability"]
+                safety_scores = selected_eval_data["safety_stability"]
                 labels_safety = list(safety_scores.keys())
                 vals_safety = list(safety_scores.values())
                 
@@ -311,7 +322,7 @@ def show():
                 ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
                 ax1.set_thetagrids(np.degrees(angles), labels_safety)
                 ax1.set_ylim(0, 10)
-                ax1.set_title("Safety & Stability Score", y=1.08, fontsize=14, fontweight='bold')
+                ax1.set_title(f"Safety & Stability - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
                 ax1.grid(True, alpha=0.3)
                 
                 # Add score labels on the chart
@@ -330,7 +341,7 @@ def show():
             with col_right:
                 st.markdown("**Formulation Score**")
                 
-                formulation_scores = eval_data["formulation"]
+                formulation_scores = selected_eval_data["formulation"]
                 labels_formulation = list(formulation_scores.keys())
                 vals_formulation = list(formulation_scores.values())
                 
@@ -344,7 +355,7 @@ def show():
                 ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
                 ax2.set_thetagrids(np.degrees(angles), labels_formulation)
                 ax2.set_ylim(0, 10)
-                ax2.set_title("Formulation Score", y=1.08, fontsize=14, fontweight='bold')
+                ax2.set_title(f"Formulation - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
                 ax2.grid(True, alpha=0.3)
                 
                 # Add score labels on the chart
@@ -363,17 +374,20 @@ def show():
             # Show appropriate message based on state
             if not has_evaluation_data:
                 st.info("🔍 **No evaluation data available.**")
-                st.markdown("**Instructions:**")
-                st.markdown("1. Complete optimization first to generate evaluation data")
-                st.markdown("2. Click 'Show Evaluation Diagrams' to display radar charts")
-                st.markdown("3. Two evaluation diagrams will appear:")
-                st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
-                st.markdown("   • **Formulation**: Durability, Injectability, Strength")
+                # st.markdown("**Instructions:**")
+                # st.markdown("1. Complete optimization first to generate evaluation data")
+                # st.markdown("2. Click 'Show Evaluation Diagrams' to display radar charts")
+                # st.markdown("3. Select a formulation to view its evaluation diagrams:")
+                # st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
+                # st.markdown("   • **Formulation**: Durability, Injectability, Strength")
             elif not st.session_state.show_evaluation_diagrams:
                 st.info("🔍 **Evaluation data ready.**")
-                st.markdown("**Instructions:**")
-                st.markdown("1. Click 'Show Evaluation Diagrams' to display radar charts")
-                st.markdown("2. Use 'Clear Diagrams' to hide the charts")
-                st.markdown("**Available diagrams:**")
-                st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
-                st.markdown("   • **Formulation**: Durability, Injectability, Strength")
+                # st.markdown("**Instructions:**")
+                # st.markdown("1. Click 'Show Evaluation Diagrams' to display radar charts")
+                # st.markdown("2. Select a formulation to view specific evaluation results")
+                # st.markdown("3. Use 'Clear Diagrams' to hide the charts")
+                # st.markdown("**Available formulations:**")
+                if has_evaluation_data:
+                    eval_data = current_job.result_dataset['evaluation_diagrams']
+                    for formulation in eval_data.keys():
+                        st.markdown(f"   • **{formulation}**: Safety & Stability + Formulation scores")
