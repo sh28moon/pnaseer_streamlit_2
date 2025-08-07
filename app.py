@@ -30,7 +30,7 @@ class Job:
         return self.has_api_data() and self.has_target_data()
     
     def get_model_status(self):
-    """Check if model data is present"""
+        """Check if model data is present"""
         return self.has_model_data()
     
 # app.py
@@ -398,5 +398,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
