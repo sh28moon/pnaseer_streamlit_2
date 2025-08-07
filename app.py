@@ -149,9 +149,9 @@ def main():
         st.sidebar.markdown(f"**Job Status: {st.session_state.current_job}**")
         
         _show_status("Input data ready", current_job.get_input_status())
-        _show_status("Model selected", current_job.get_model_status())
+        _show_status("Model parameters ready", current_job.get_model_status())
         _show_status("Optimization completed", current_job.get_result_status())
-        _show_status("Evaluation completed", current_job.has_evaluation_diagrams())  # Updated for new evaluation system
+        # _show_status("Evaluation completed", current_job.has_evaluation_diagrams())  # Updated for new evaluation system
     else:
         st.sidebar.markdown("**Job Status: No job selected**")
         _show_status("Input data ready", False)
@@ -173,3 +173,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
