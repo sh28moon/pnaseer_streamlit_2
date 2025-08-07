@@ -259,36 +259,11 @@ def show():
         has_evaluation_data = (current_job.has_result_data() and 
                              'evaluation_diagrams' in current_job.result_dataset)
         
-        # Initialize evaluation diagrams display state
-        if 'show_evaluation_diagrams' not in st.session_state:
-            st.session_state.show_evaluation_diagrams = False
-        
-        # Top Row: Control Buttons
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            show_clicked = st.button("📊 Show Evaluation Diagrams", key="show_evaluation_diagrams_btn")
-            if show_clicked:
-                if has_evaluation_data:
-                    st.session_state.show_evaluation_diagrams = True
-                    st.success("✅ Evaluation diagrams displayed!")
-                else:
-                    st.error("❌ No evaluation data found. Please run optimization first.")
-        
-        with col2:
-            clear_clicked = st.button("🗑️ Clear Diagrams", key="clear_evaluation_diagrams_btn")
-            if clear_clicked:
-                st.session_state.show_evaluation_diagrams = False
-                st.success("Evaluation diagrams cleared from display")
-        
-        st.divider()
-        
-        # Second Row: Two Radar Diagrams
-        if st.session_state.show_evaluation_diagrams and has_evaluation_data:
+        if has_evaluation_data:
             # Get evaluation data from optimization results
             eval_data = current_job.result_dataset['evaluation_diagrams']
             
-            # Formulation selector
+            # Formulation selector - always show if evaluation data exists
             formulation_options = list(eval_data.keys())
             selected_formulation = st.selectbox(
                 "Select Formulation for Evaluation:",
@@ -296,98 +271,88 @@ def show():
                 key="evaluation_formulation_selector"
             )
             
-            # Get data for selected formulation
-            selected_eval_data = eval_data[selected_formulation]
-            eval_timestamp = selected_eval_data["timestamp"]
-            
-            st.markdown(f"**Evaluation Diagrams - {selected_formulation}** - *Generated during optimization: {eval_timestamp}*")
-            
-            col_left, col_right = st.columns(2)
-            
-            # Left Column: Safety & Stability Score
-            with col_left:
-                st.markdown("**Safety & Stability Score**")
+            # Show diagrams automatically when formulation is selected
+            if selected_formulation:
+                # Get data for selected formulation
+                selected_eval_data = eval_data[selected_formulation]
+                eval_timestamp = selected_eval_data["timestamp"]
                 
-                safety_scores = selected_eval_data["safety_stability"]
-                labels_safety = list(safety_scores.keys())
-                vals_safety = list(safety_scores.values())
+                st.divider()
+                st.markdown(f"**Evaluation Diagrams - {selected_formulation}** - *Generated during optimization: {eval_timestamp}*")
                 
-                # Create radar chart for Safety & Stability
-                angles = np.linspace(0, 2*np.pi, len(labels_safety), endpoint=False).tolist()
-                vals_plot = vals_safety + vals_safety[:1]  # Complete the circle
-                angles_plot = angles + angles[:1]  # Complete the circle
+                col_left, col_right = st.columns(2)
                 
-                fig1, ax1 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
-                ax1.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#2E8B57')
-                ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
-                ax1.set_thetagrids(np.degrees(angles), labels_safety)
-                ax1.set_ylim(0, 10)
-                ax1.set_title(f"Safety & Stability - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
-                ax1.grid(True, alpha=0.3)
+                # Left Column: Safety & Stability Score
+                with col_left:
+                    st.markdown("**Safety & Stability Score**")
+                    
+                    safety_scores = selected_eval_data["safety_stability"]
+                    labels_safety = list(safety_scores.keys())
+                    vals_safety = list(safety_scores.values())
+                    
+                    # Create radar chart for Safety & Stability
+                    angles = np.linspace(0, 2*np.pi, len(labels_safety), endpoint=False).tolist()
+                    vals_plot = vals_safety + vals_safety[:1]  # Complete the circle
+                    angles_plot = angles + angles[:1]  # Complete the circle
+                    
+                    fig1, ax1 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                    ax1.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#2E8B57')
+                    ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
+                    ax1.set_thetagrids(np.degrees(angles), labels_safety)
+                    ax1.set_ylim(0, 10)
+                    ax1.set_title(f"Safety & Stability - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
+                    ax1.grid(True, alpha=0.3)
+                    
+                    # Add score labels on the chart
+                    for angle, val, label in zip(angles, vals_safety, labels_safety):
+                        ax1.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                               fontsize=11, fontweight='bold', color='darkgreen')
+                    
+                    st.pyplot(fig1)
+                    
+                    # Show scores below chart
+                    st.markdown("**Scores (0-10):**")
+                    for key, value in safety_scores.items():
+                        st.write(f"• **{key}**: {value}")
                 
-                # Add score labels on the chart
-                for angle, val, label in zip(angles, vals_safety, labels_safety):
-                    ax1.text(angle, val + 0.5, str(val), ha='center', va='center', 
-                           fontsize=11, fontweight='bold', color='darkgreen')
-                
-                st.pyplot(fig1)
-                
-                # Show scores below chart
-                st.markdown("**Scores (0-10):**")
-                for key, value in safety_scores.items():
-                    st.write(f"• **{key}**: {value}")
-            
-            # Right Column: Formulation Score
-            with col_right:
-                st.markdown("**Formulation Score**")
-                
-                formulation_scores = selected_eval_data["formulation"]
-                labels_formulation = list(formulation_scores.keys())
-                vals_formulation = list(formulation_scores.values())
-                
-                # Create radar chart for Formulation
-                angles = np.linspace(0, 2*np.pi, len(labels_formulation), endpoint=False).tolist()
-                vals_plot = vals_formulation + vals_formulation[:1]  # Complete the circle
-                angles_plot = angles + angles[:1]  # Complete the circle
-                
-                fig2, ax2 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
-                ax2.plot(angles_plot, vals_plot, marker="s", linewidth=3, markersize=8, color='#FF6347')
-                ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
-                ax2.set_thetagrids(np.degrees(angles), labels_formulation)
-                ax2.set_ylim(0, 10)
-                ax2.set_title(f"Formulation - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
-                ax2.grid(True, alpha=0.3)
-                
-                # Add score labels on the chart
-                for angle, val, label in zip(angles, vals_formulation, labels_formulation):
-                    ax2.text(angle, val + 0.5, str(val), ha='center', va='center', 
-                           fontsize=11, fontweight='bold', color='darkred')
-                
-                st.pyplot(fig2)
-                
-                # Show scores below chart
-                st.markdown("**Scores (0-10):**")
-                for key, value in formulation_scores.items():
-                    st.write(f"• **{key}**: {value}")
-                
+                # Right Column: Formulation Score
+                with col_right:
+                    st.markdown("**Formulation Score**")
+                    
+                    formulation_scores = selected_eval_data["formulation"]
+                    labels_formulation = list(formulation_scores.keys())
+                    vals_formulation = list(formulation_scores.values())
+                    
+                    # Create radar chart for Formulation
+                    angles = np.linspace(0, 2*np.pi, len(labels_formulation), endpoint=False).tolist()
+                    vals_plot = vals_formulation + vals_formulation[:1]  # Complete the circle
+                    angles_plot = angles + angles[:1]  # Complete the circle
+                    
+                    fig2, ax2 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                    ax2.plot(angles_plot, vals_plot, marker="s", linewidth=3, markersize=8, color='#FF6347')
+                    ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
+                    ax2.set_thetagrids(np.degrees(angles), labels_formulation)
+                    ax2.set_ylim(0, 10)
+                    ax2.set_title(f"Formulation - {selected_formulation}", y=1.08, fontsize=14, fontweight='bold')
+                    ax2.grid(True, alpha=0.3)
+                    
+                    # Add score labels on the chart
+                    for angle, val, label in zip(angles, vals_formulation, labels_formulation):
+                        ax2.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                               fontsize=11, fontweight='bold', color='darkred')
+                    
+                    st.pyplot(fig2)
+                    
+                    # Show scores below chart
+                    st.markdown("**Scores (0-10):**")
+                    for key, value in formulation_scores.items():
+                        st.write(f"• **{key}**: {value}")
         else:
-            # Show appropriate message based on state
-            if not has_evaluation_data:
-                st.info("🔍 **No evaluation data available.**")
-                # st.markdown("**Instructions:**")
-                # st.markdown("1. Complete optimization first to generate evaluation data")
-                # st.markdown("2. Click 'Show Evaluation Diagrams' to display radar charts")
-                # st.markdown("3. Select a formulation to view its evaluation diagrams:")
-                # st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
-                # st.markdown("   • **Formulation**: Durability, Injectability, Strength")
-            elif not st.session_state.show_evaluation_diagrams:
-                st.info("🔍 **Evaluation data ready.**")
-                # st.markdown("**Instructions:**")
-                # st.markdown("1. Click 'Show Evaluation Diagrams' to display radar charts")
-                # st.markdown("2. Select a formulation to view specific evaluation results")
-                # st.markdown("3. Use 'Clear Diagrams' to hide the charts")
-                # st.markdown("**Available formulations:**")
-                if has_evaluation_data:
-                    eval_data = current_job.result_dataset['evaluation_diagrams']
-                    for formulation in eval_data.keys():
-                        st.markdown(f"   • **{formulation}**: Safety & Stability + Formulation scores")
+            # Show message when no evaluation data is available
+            st.info("🔍 **No evaluation data available.**")
+            # st.markdown("**Instructions:**")
+            # st.markdown("1. Complete optimization first to generate evaluation data")
+            # st.markdown("2. Return to this tab to select a formulation and view evaluation diagrams")
+            # st.markdown("**Available evaluation diagrams after optimization:**")
+            # st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
+            # st.markdown("   • **Formulation**: Durability, Injectability, Strength")
