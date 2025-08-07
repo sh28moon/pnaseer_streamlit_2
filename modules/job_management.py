@@ -139,13 +139,16 @@ def _show_status_large(label: str, flag: bool):
 
 def show():
     st.header("Job Management")
-    st.info("Create, manage, and organize your analysis jobs")
+    # st.info("Create, manage, and organize your analysis jobs")
+
+    st.divider()
 
     # Top section: Current Job Overview
     if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[st.session_state.current_job]
         
-        st.markdown(f"## 📊 Current Job: **{st.session_state.current_job}**")
+        st.markdown(f"## Current Job Status")
+        st.markdown(f"**Name:** {st.session_state.current_job}")
         st.markdown(f"**Created:** {current_job.created_at}")
         
         # Job status with large indicators
@@ -159,17 +162,15 @@ def show():
         
         # Save current job section
         st.markdown("### 💾 Save Current Job")
-        col_save, col_info = st.columns([1, 2])
-        with col_save:
-            if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
-                success, result = save_job_to_file(current_job, st.session_state.current_job)
-                if success:
-                    st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
-                    st.info(f"📁 Saved to: {result}")
-                else:
-                    st.error(f"❌ Failed to save job: {result}")
-        with col_info:
-            st.info("💡 **Tip:** Save your job to preserve all work including data, models, and results across browser sessions.")
+
+
+        if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
+            success, result = save_job_to_file(current_job, st.session_state.current_job)
+            if success:
+                st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
+                st.info(f"📁 Saved to: {result}")
+            else:
+                st.error(f"❌ Failed to save job: {result}")
     else:
         st.warning("⚠️ No job currently selected. Create or select a job below.")
 
@@ -233,13 +234,6 @@ def show():
                     st.rerun()
                 else:
                     st.info("💡 This job is already active")
-            
-            # Show current jobs list
-            st.markdown("### 📋 Current Session Jobs")
-            for job_name in job_names:
-                is_current = job_name == st.session_state.get("current_job")
-                status_icon = "🔸" if is_current else "🔹"
-                st.write(f"{status_icon} **{job_name}**" + (" *(Active)*" if is_current else ""))
         else:
             st.info("💡 No jobs in current session. Create your first job above!")
 
@@ -269,10 +263,10 @@ def show():
                         selected_job_file = job
                         break
                 
-                if selected_job_file:
-                    # Show job details
-                    st.markdown(f"**Selected:** {selected_job_name}")
-                    st.markdown(f"**Last Modified:** {selected_job_file['modified']}")
+                # if selected_job_file:
+                #     # Show job details
+                #     st.markdown(f"**Selected:** {selected_job_name}")
+                #     st.markdown(f"**Last Modified:** {selected_job_file['modified']}")
                     
                     col_load, col_delete = st.columns(2)
                     
