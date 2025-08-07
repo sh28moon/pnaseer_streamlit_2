@@ -296,29 +296,35 @@ def show():
                                 "release_time": release_time_value
                             }
                         
-                        # Generate evaluation diagrams data (NEW)
+                        # Generate evaluation diagrams data for each formulation (NEW)
                         # Set seed for consistent evaluation results per job
                         np.random.seed(hash(current_job_name + selected_api_name + selected_target_name + "evaluation") % 2147483647)
                         
-                        # Safety & Stability Score (0-10)
-                        safety_stability_scores = {
-                            "Degradability": random.randint(1, 10),
-                            "Cytotoxicity": random.randint(1, 10),
-                            "Immunogenicity": random.randint(1, 10)
-                        }
+                        evaluation_diagrams_data = {}
                         
-                        # Formulation Score (0-10)
-                        formulation_scores = {
-                            "Durability": random.randint(1, 10),
-                            "Injectability": random.randint(1, 10),
-                            "Strength": random.randint(1, 10)
-                        }
-                        
-                        evaluation_diagrams_data = {
-                            "safety_stability": safety_stability_scores,
-                            "formulation": formulation_scores,
-                            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
+                        # Generate evaluation data for each of the 3 formulations
+                        for i in range(3):
+                            formulation_name = f"Formulation {i+1}"
+                            
+                            # Safety & Stability Score (0-10) - different for each formulation
+                            safety_stability_scores = {
+                                "Degradability": random.randint(1, 10),
+                                "Cytotoxicity": random.randint(1, 10),
+                                "Immunogenicity": random.randint(1, 10)
+                            }
+                            
+                            # Formulation Score (0-10) - different for each formulation
+                            formulation_scores = {
+                                "Durability": random.randint(1, 10),
+                                "Injectability": random.randint(1, 10),
+                                "Strength": random.randint(1, 10)
+                            }
+                            
+                            evaluation_diagrams_data[formulation_name] = {
+                                "safety_stability": safety_stability_scores,
+                                "formulation": formulation_scores,
+                                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
                         
                         # Create comprehensive result data with all generated datasets
                         result_data = {
@@ -342,7 +348,7 @@ def show():
                         
                         current_job.result_dataset = result_data
                         st.session_state.jobs[current_job_name] = current_job
-                        # st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
+                        st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
                         # st.info(f"• API: {selected_api_name}")
                         # st.info(f"• Target: {selected_target_name}")
                         # st.info(f"• Model: {selected}")
