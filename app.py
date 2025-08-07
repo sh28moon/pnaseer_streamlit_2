@@ -118,10 +118,10 @@ def main():
         status_text = " | ".join([f"{name}: {'✅' if status else '❌'}" for name, status in status_items])
         st.sidebar.markdown(f"<small>{status_text}</small>", unsafe_allow_html=True)
 
-    # App info
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**ℹ️ About**")
-    st.sidebar.markdown("<small>Pharmaceutical formulation optimization toolkit</small>", unsafe_allow_html=True)
+    # # App info
+    # st.sidebar.markdown("---")
+    # st.sidebar.markdown("**ℹ️ About**")
+    # st.sidebar.markdown("<small>Pharmaceutical formulation optimization toolkit</small>", unsafe_allow_html=True)
 
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
     tab = st.session_state.current_tab
@@ -138,3 +138,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
