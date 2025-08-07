@@ -278,7 +278,7 @@ def show():
                 eval_timestamp = selected_eval_data["timestamp"]
                 
                 st.divider()
-                st.markdown(f"**Evaluation Diagrams - {selected_formulation}** - *Generated during optimization: {eval_timestamp}*")
+                # st.markdown(f"**Evaluation Diagrams - {selected_formulation}** - *Generated during optimization: {eval_timestamp}*")
                 
                 col_left, col_right = st.columns(2)
                 
@@ -295,7 +295,7 @@ def show():
                     vals_plot = vals_safety + vals_safety[:1]  # Complete the circle
                     angles_plot = angles + angles[:1]  # Complete the circle
                     
-                    fig1, ax1 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                    fig1, ax1 = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
                     ax1.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#2E8B57')
                     ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
                     ax1.set_thetagrids(np.degrees(angles), labels_safety)
@@ -311,9 +311,9 @@ def show():
                     st.pyplot(fig1)
                     
                     # Show scores below chart
-                    st.markdown("**Scores (0-10):**")
-                    for key, value in safety_scores.items():
-                        st.write(f"• **{key}**: {value}")
+                    # st.markdown("**Scores (0-10):**")
+                    # for key, value in safety_scores.items():
+                    #     st.write(f"• **{key}**: {value}")
                 
                 # Right Column: Formulation Score
                 with col_right:
@@ -328,7 +328,7 @@ def show():
                     vals_plot = vals_formulation + vals_formulation[:1]  # Complete the circle
                     angles_plot = angles + angles[:1]  # Complete the circle
                     
-                    fig2, ax2 = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                    fig2, ax2 = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
                     ax2.plot(angles_plot, vals_plot, marker="s", linewidth=3, markersize=8, color='#FF6347')
                     ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
                     ax2.set_thetagrids(np.degrees(angles), labels_formulation)
@@ -344,9 +344,9 @@ def show():
                     st.pyplot(fig2)
                     
                     # Show scores below chart
-                    st.markdown("**Scores (0-10):**")
-                    for key, value in formulation_scores.items():
-                        st.write(f"• **{key}**: {value}")
+                    # st.markdown("**Scores (0-10):**")
+                    # for key, value in formulation_scores.items():
+                    #     st.write(f"• **{key}**: {value}")
         else:
             # Show message when no evaluation data is available
             st.info("🔍 **No evaluation data available.**")
