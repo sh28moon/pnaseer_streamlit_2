@@ -107,7 +107,7 @@ def show():
             col_radar, col_performance = st.columns(2)
             
             with col_radar:
-                st.markdown(f"**Target vs Result Comparison - {selected_formulation}**")
+                # st.markdown(f"**Target vs Result Comparison - {selected_formulation}**")
                 
                 # Get target profile data
                 if 'selected_target_data' in result_data:
@@ -150,7 +150,7 @@ def show():
                         ]
                         
                         # Create radar chart
-                        labels = ['Modulus', 'Encapsulation Rate', 'Release Time (Day)']
+                        labels = ['Modulus', 'Encapsulation Rate', 'Release Time (Week)']
                         angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
                         
                         # Close the radar chart
@@ -158,7 +158,7 @@ def show():
                         result_norm += result_norm[:1]
                         angles += angles[:1]
                         
-                        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
+                        fig, ax = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
                         
                         # Plot target profile line
                         ax.plot(angles, target_norm, marker="o", linewidth=2, markersize=6, 
@@ -208,7 +208,7 @@ def show():
                     st.warning("No target data found for comparison")
             
             with col_performance:
-                st.markdown(f"**Performance Trend - {selected_formulation}**")
+                # st.markdown(f"**Performance Trend - {selected_formulation}**")
                 
                 # Get pre-generated performance trend data for selected formulation
                 if selected_formulation in performance_trends:
@@ -231,18 +231,18 @@ def show():
                     # Set axis limits and labels
                     ax.set_xlim(0, release_time_value)
                     ax.set_ylim(0, 1)
-                    ax.set_xlabel("Time (Days)", fontsize=12)
+                    ax.set_xlabel("Time (Weeks)", fontsize=12)
                     ax.set_ylabel("Performance", fontsize=12)
-                    ax.set_title(f"Performance Over Time", fontsize=12, fontweight='bold')
+                    ax.set_title(f"Drug Release", fontsize=12, fontweight='bold')
                     
                     # Add grid for better readability
                     ax.grid(True, alpha=0.3)
                     ax.set_axisbelow(True)
                     
                     # Add performance milestones
-                    ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.7, label='Target Threshold')
-                    ax.axhline(y=0.8, color='green', linestyle='--', alpha=0.7, label='Optimal Performance')
-                    ax.legend()
+                    # ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.7, label='Target Threshold')
+                    # ax.axhline(y=0.8, color='green', linestyle='--', alpha=0.7, label='Optimal Performance')
+                    # ax.legend()
                     
                     st.pyplot(fig)
                 else:
