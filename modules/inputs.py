@@ -65,7 +65,7 @@ def show():
         if not temp_df.empty or current_job.has_api_data():
             col1, col2 = st.columns(2)
             with col1:
-                button_text = "Update API Data in Job" if current_job.has_api_data() else "Save API Data to Job"
+                button_text = "Update API Data" if current_job.has_api_data() else "Save API Data"
                 if st.button(button_text, key="save_api_data"):
                     if not temp_df.empty:
                         current_job.api_dataset = temp_df
@@ -87,7 +87,7 @@ def show():
 
     # ── Target Profile Tab ───────────────────────────────────────────────────
     with tab_target:
-        st.markdown('<p class="font-medium"><b>Target Profile</b></p>', unsafe_allow_html=True)
+        # st.markdown('<p class="font-medium"><b>Target Profile</b></p>', unsafe_allow_html=True)
 
         # Ensure data stores exist
         if "input_target_datasets" not in st.session_state:
@@ -95,14 +95,15 @@ def show():
             st.session_state["input_target_manual_count"] = 0
 
         # Row 1: Target Profile Input - 2 columns with same height
-        st.markdown("**Target Profile Input**")
+        # st.markdown("**Target Profile Input**")
         col_import, col_manual = st.columns(2)
 
         # Left Column: Import Data
         with col_import:
-            st.markdown("**Import Data**")
+            st.markdown('<p class="font-medium"><b>Import Target Profile Data</b></p>', unsafe_allow_html=True)          
+
             uploaded_tp = st.file_uploader(
-                "Import Target Data (CSV only)",
+                "Import Data (CSV file only)",
                 type=["csv"],
                 key="target_profile_file"
             )
@@ -139,7 +140,7 @@ def show():
                     
             # Save imported data to job button
             if st.session_state.get("temp_target_data"):
-                if st.button("💾 Save Imported Data to Job", key="save_imported_to_job"):
+                if st.button("Save Data", key="save_imported_to_job"):
                     temp_data = st.session_state["temp_target_data"]
                     if current_job.has_target_data():
                         current_job.target_profile_dataset.update(temp_data)
@@ -157,12 +158,12 @@ def show():
             dataset_name = st.text_input("Dataset Name", placeholder="Enter dataset name", key="manual_dataset_name")
             
             # Parameter inputs
-            modulus = st.number_input("Modulus", min_value=0.0, format="%.2f", key="tp_modulus")
-            encapsulation_rate = st.number_input("Encapsulation Rate", min_value=0.0, format="%.2f", key="tp_encapsulation_rate")
-            release_time = st.number_input("Release Time (Day)", min_value=0.0, format="%.2f", key="tp_release_time")
+            modulus = st.number_input("Modulus[MPa]", min_value=0.0, format="%.2f", key="tp_modulus")
+            encapsulation_rate = st.number_input("Encapsulation Rate(0 ~ 1)", min_value=0.0, format="%.2f", key="tp_encapsulation_rate")
+            release_time = st.number_input("Release Time[Week]", min_value=0.0, format="%.2f", key="tp_release_time")
 
             # Single button to add and save directly to job
-            if st.button("Add to Job", key="add_manual_to_job"):
+            if st.button("Save Data", key="add_manual_to_job"):
                 if not dataset_name.strip():
                     st.error("Please enter a dataset name.")
                 else:
@@ -211,7 +212,7 @@ def show():
                 )
                 
                 # Remove dataset button
-                if st.button(f"🗑️ Remove '{selected}'", key="remove_selected_dataset"):
+                if st.button(f"Remove '{selected}' profile", key="remove_selected_dataset"):
                     # Remove the selected dataset from job
                     if selected in current_job.target_profile_dataset:
                         del current_job.target_profile_dataset[selected]
@@ -247,7 +248,7 @@ def show():
                         vals += vals[:1]
                         angles += angles[:1]
 
-                        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+                        fig, ax = plt.subplots(figsize=(4, 4), subplot_kw=dict(polar=True))
                         ax.plot(angles, vals, marker="o", linewidth=2)
                         ax.fill(angles, vals, alpha=0.25)
                         ax.set_thetagrids(np.degrees(angles), labels + [labels[0]])
@@ -260,5 +261,6 @@ def show():
                     st.warning("Dataset needs at least 4 columns for radar chart")
             else:
                 st.info("Select a dataset from job to view radar diagram")
+
 
 
