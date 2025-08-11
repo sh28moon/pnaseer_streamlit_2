@@ -143,14 +143,6 @@ def show():
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"❌ Failed to remove: {str(e)}")
-                
-                # Show available saved databases
-                with st.expander(f"📋 Available Saved Databases ({len(saved_datasets)})", expanded=False):
-                    for ds in saved_datasets[:5]:  # Show first 5
-                        st.write(f"• **{ds['save_name']}**")
-                        st.write(f"  📅 {ds['modified']}")
-                    if len(saved_datasets) > 5:
-                        st.write(f"... and {len(saved_datasets) - 5} more")
             else:
                 st.info(f"No saved {tab_name} databases found")
             
@@ -159,24 +151,24 @@ def show():
             # ── New Database Section ─────────────────────────────────────────
             st.subheader("New Database")
             
-            col_upload, col_summary, col_save = st.columns(3)
+            # Upload CSV row
+            st.markdown("**Upload CSV**")
+            uploaded = st.file_uploader(
+                "Select CSV file",
+                type=["csv"],
+                key=f"{session_key}_new_upload"
+            )
+            if uploaded:
+                df = pd.read_csv(uploaded)
+                # Store temporarily for preview and saving
+                st.session_state[f"{session_key}_temp_dataset"] = df
+                st.session_state[f"{session_key}_temp_filename"] = uploaded.name
+                st.success(f"Loaded: {uploaded.name}")
             
-            # Column 1: Upload CSV
-            with col_upload:
-                st.markdown("**Upload CSV**")
-                uploaded = st.file_uploader(
-                    "Select CSV file",
-                    type=["csv"],
-                    key=f"{session_key}_new_upload"
-                )
-                if uploaded:
-                    df = pd.read_csv(uploaded)
-                    # Store temporarily for preview and saving
-                    st.session_state[f"{session_key}_temp_dataset"] = df
-                    st.session_state[f"{session_key}_temp_filename"] = uploaded.name
-                    st.success(f"Loaded: {uploaded.name}")
+            # Dataset Summary and Save Dataset row
+            col_summary, col_save = st.columns(2)
             
-            # Column 2: Dataset Summary (Table)
+            # Column 1: Dataset Summary (Table)
             with col_summary:
                 st.markdown("**Dataset Summary**")
                 if f"{session_key}_temp_dataset" in st.session_state:
@@ -186,7 +178,7 @@ def show():
                 else:
                     st.info("Upload CSV to see summary")
             
-            # Column 3: Save Dataset
+            # Column 2: Save Dataset
             with col_save:
                 st.markdown("**Save Dataset**")
                 
