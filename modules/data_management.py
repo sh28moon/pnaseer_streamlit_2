@@ -79,126 +79,22 @@ def get_saved_datasets(dataset_type):
         return []
 
 def show():
-    st.header("Data Management")
+    st.header("Database Management")
 
     # Top‐level subtabs
-    tab_common, tab_polymer = st.tabs(["Common API", "Polymers"])
+    tab_api, tab_polymer = st.tabs(["API", "Polymers"])
 
     # Ensure both dataset stores exist
     for key in ("common_api_datasets", "polymer_datasets"):
         if key not in st.session_state:
             st.session_state[key] = {}
 
-    def render_subpage(tab, session_key):
+    def render_subpage(tab, session_key, tab_name):
         with tab:
             # Dataset type for saving (extract from session key)
             dataset_type = session_key.replace("_datasets", "")
             
-            # ── Persistent Storage Section ──────────────────────────
-            st.markdown("**💾 Persistent Storage**")
-            
-            col_save, col_load = st.columns(2)
-            
-            with col_save:
-                st.markdown("**Save Current Datasets**")
-                
-                current_datasets = st.session_state[session_key]
-                dataset_count = len(current_datasets)
-                
-                if dataset_count > 0:
-                    save_name = st.text_input(
-                        "Save Name:", 
-                        placeholder="Enter name for this dataset collection",
-                        key=f"{session_key}_save_name"
-                    )
-                    
-                    if st.button(f"💾 Save {dataset_count} Dataset(s)", key=f"{session_key}_save_btn"):
-                        if save_name.strip():
-                            success, result = save_datasets_to_file(
-                                current_datasets, 
-                                dataset_type, 
-                                save_name.strip()
-                            )
-                            
-                            if success:
-                                st.success(f"✅ Saved '{save_name}' with {dataset_count} dataset(s)!")
-                                st.info(f"📁 Saved to: {result}")
-                            else:
-                                st.error(f"❌ Failed to save: {result}")
-                        else:
-                            st.error("Please enter a save name")
-                    
-                    # Show current datasets info
-                    with st.expander(f"📋 Current Datasets ({dataset_count})", expanded=False):
-                        for name in current_datasets.keys():
-                            rows = len(current_datasets[name])
-                            st.write(f"• **{name}**: {rows} rows")
-                else:
-                    st.info("No datasets to save. Import some datasets first.")
-            
-            with col_load:
-                st.markdown("**Load Saved Datasets**")
-                
-                saved_datasets = get_saved_datasets(dataset_type)
-                if saved_datasets:
-                    # Create options for selectbox
-                    dataset_options = [""] + [f"{ds['save_name']} ({ds['modified']})" for ds in saved_datasets]
-                    selected_saved = st.selectbox(
-                        "Select saved datasets:",
-                        dataset_options,
-                        key=f"{session_key}_load_select"
-                    )
-                    
-                    if selected_saved and selected_saved != "":
-                        # Extract save name from selection
-                        selected_save_name = selected_saved.split(" (")[0]
-                        
-                        # Find the corresponding file
-                        selected_file = None
-                        for ds in saved_datasets:
-                            if ds["save_name"] == selected_save_name:
-                                selected_file = ds
-                                break
-                        
-                        if selected_file:
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                if st.button("📂 Load", key=f"{session_key}_load_btn"):
-                                    loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])
-                                    
-                                    if loaded_datasets is not None:
-                                        # Replace current datasets
-                                        st.session_state[session_key] = loaded_datasets
-                                        st.success(f"✅ Loaded '{selected_save_name}' with {count} dataset(s)!")
-                                        st.info(f"📅 Originally saved: {saved_time}")
-                                        st.rerun()
-                                    else:
-                                        st.error(f"❌ Failed to load: {saved_time}")
-                            
-                            with col2:
-                                if st.button("🗑️ Delete", key=f"{session_key}_delete_btn"):
-                                    try:
-                                        os.remove(selected_file["filepath"])
-                                        st.success(f"✅ Deleted '{selected_save_name}'")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"❌ Failed to delete: {str(e)}")
-                    
-                    # Show saved datasets info
-                    with st.expander(f"📋 Saved Collections ({len(saved_datasets)})", expanded=False):
-                        for ds in saved_datasets[:5]:  # Show first 5
-                            st.write(f"• **{ds['save_name']}**")
-                            st.write(f"  📅 {ds['modified']}")
-                        if len(saved_datasets) > 5:
-                            st.write(f"... and {len(saved_datasets) - 5} more")
-                else:
-                    st.info("No saved dataset collections found")
-            
-            st.divider()
-            
-            # ── Original Import & Management Section ─────────────────
-            # 1st row: Import & Select ─────────────────────────────
+            # ── Import & Select Section ──────────────────────────────────────
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("Import Dataset")
@@ -225,7 +121,7 @@ def show():
                     st.info("No datasets imported yet.")
                     return  # nothing more to show
 
-            # ── 2nd row: Summary & Edit/Save ────────────────────────
+            # ── Dataset Summary & Operations Section ────────────────────────
             col3, col4 = st.columns([2, 2])
             with col3:
                 st.subheader("Dataset Summary")
@@ -234,6 +130,7 @@ def show():
 
             with col4:
                 st.subheader("Edit & Save")
+                
                 # a) Add External Data
                 ext = st.file_uploader(
                     "Add External Data (CSV)",
@@ -247,16 +144,98 @@ def show():
                     st.session_state[session_key][selected] = df_new
                     st.success("External data appended.")
 
-                # b) Save Data
-                if st.button("Save Dataset", key=f"{session_key}_save"):
-                    # Persist logic goes here
-                    st.success(f"Dataset '{selected}' saved.")
+                # b) Persistent Save Data
+                save_name = st.text_input(
+                    "Save Name:", 
+                    placeholder=f"Enter name to save {tab_name} dataset",
+                    key=f"{session_key}_save_name"
+                )
+                
+                if st.button("💾 Save Dataset Permanently", key=f"{session_key}_save"):
+                    if save_name.strip():
+                        # Create single dataset collection for persistent save
+                        datasets_to_save = {selected: st.session_state[session_key][selected]}
+                        success, result = save_datasets_to_file(
+                            datasets_to_save, 
+                            dataset_type, 
+                            save_name.strip()
+                        )
+                        
+                        if success:
+                            st.success(f"✅ Saved '{save_name}' with dataset '{selected}'!")
+                            st.info(f"📁 Saved to: {result}")
+                        else:
+                            st.error(f"❌ Failed to save: {result}")
+                    else:
+                        st.error("Please enter a save name")
 
                 # c) Remove dataset
-                if st.button("Remove Dataset", key=f"{session_key}_remove"):
+                if st.button("🗑️ Remove Dataset", key=f"{session_key}_remove"):
                     st.session_state[session_key].pop(selected, None)
                     st.success(f"Removed Dataset: {selected}")
+                    st.rerun()
+            
+            st.divider()
+            
+            # ── Load Saved Datasets Section ─────────────────────────────────
+            st.subheader("Load Saved Datasets")
+            
+            saved_datasets = get_saved_datasets(dataset_type)
+            if saved_datasets:
+                col_load_select, col_load_actions = st.columns([2, 1])
+                
+                with col_load_select:
+                    # Create options for selectbox
+                    dataset_options = [""] + [f"{ds['save_name']} ({ds['modified']})" for ds in saved_datasets]
+                    selected_saved = st.selectbox(
+                        "Select saved dataset:",
+                        dataset_options,
+                        key=f"{session_key}_load_select"
+                    )
+                
+                with col_load_actions:
+                    if selected_saved and selected_saved != "":
+                        # Extract save name from selection
+                        selected_save_name = selected_saved.split(" (")[0]
+                        
+                        # Find the corresponding file
+                        selected_file = None
+                        for ds in saved_datasets:
+                            if ds["save_name"] == selected_save_name:
+                                selected_file = ds
+                                break
+                        
+                        if selected_file:
+                            if st.button("📂 Load", key=f"{session_key}_load_btn"):
+                                loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])
+                                
+                                if loaded_datasets is not None:
+                                    # Merge loaded datasets into current session
+                                    st.session_state[session_key].update(loaded_datasets)
+                                    st.success(f"✅ Loaded '{selected_save_name}' with {count} dataset(s)!")
+                                    st.info(f"📅 Originally saved: {saved_time}")
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Failed to load: {saved_time}")
+                            
+                            if st.button("🗑️ Delete", key=f"{session_key}_delete_btn"):
+                                try:
+                                    os.remove(selected_file["filepath"])
+                                    st.success(f"✅ Deleted '{selected_save_name}'")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Failed to delete: {str(e)}")
+                
+                # Show saved datasets info
+                with st.expander(f"📋 Saved Collections ({len(saved_datasets)})", expanded=False):
+                    for ds in saved_datasets[:5]:  # Show first 5
+                        st.write(f"• **{ds['save_name']}**")
+                        st.write(f"  📅 {ds['modified']}")
+                    if len(saved_datasets) > 5:
+                        st.write(f"... and {len(saved_datasets) - 5} more")
+            else:
+                st.info("No saved dataset collections found")
 
     # Render each subpage
-    render_subpage(tab_common, "common_api_datasets")
-    render_subpage(tab_polymer, "polymer_datasets")
+    render_subpage(tab_api, "common_api_datasets", "API")
+    render_subpage(tab_polymer, "polymer_datasets", "Polymers")
