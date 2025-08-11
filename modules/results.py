@@ -13,14 +13,12 @@ def show():
     # Get current job from sidebar selection
     current_job_name = st.session_state.get("current_job")
     if not current_job_name or current_job_name not in st.session_state.get("jobs", {}):
-        st.warning("⚠️ No job selected. Please create and select a job from the sidebar to continue.")
         return
     
     current_job = st.session_state.jobs[current_job_name]
     
     # Check if current job has results
     if not current_job.has_result_data():
-        st.warning("⚠️ No completed jobs with results available. Please run optimization first.")
         return
 
     # Top-level tabs
@@ -88,28 +86,46 @@ def show():
         # Use pre-generated composition results and update column names
         if 'composition_results' in result_data:
             comp_data_list = result_data['composition_results']
-            # Create updated composition data with new column names
-            updated_comp_data = []
-            for comp in comp_data_list:
-                updated_comp = {
-                    "Row": comp["Row"],
-                    "Gel Polymer w/w": comp.get("Assembled Polymer", "0%"),  # Map from old name
-                    "Co-polymer w/w": comp.get("Excipient Polymer", "0%"),  # Map from old name  
-                    "Buffer w/w": comp.get("Buffer", "0%")  # Keep Buffer name
-                }
-                updated_comp_data.append(updated_comp)
-            
-            df_comp = pd.DataFrame(updated_comp_data)
+            df_comp = pd.DataFrame(comp_data_list)
             st.dataframe(df_comp, use_container_width=True)
-        else:
-            st.warning("No composition results found. Please re-run calculation.")
+        
+        st.divider()
+        
+        # Performance Trend Analysis with Radar Comparison
+        st.markdown("**Performance Trend Analysis**")
+        
+        # Use pre-generated performance trend data from calculation
+        if 'performance_trends' in result_data:
+            performance_trends = result_data['performance_trends']
+            
+            # Formulation selector (full width)
+            formulation_options = list(performance_trends.keys())
+            selected_formulation = st.selectbox(
+                "Select Formulation to Analyze:",
+                formulation_options,
+                key="formulation_selector"
+            )
+            
+            # Show composition data for selected formulation in expander
+            if 'composition_results' in result_data:
+                comp_data_list = result_data['composition_results']
+                # Find the composition data for selected formulation
+                selected_comp = None
+                for comp in comp_data_list:
+                    if comp.get("Row") == selected_formulation:
+                        selected_comp = comp
+                        break
+                
+                if selected_comp:
+                    with st.expander(f"📋 {selected_formulation} Composition Details", expanded=False):
+                        for key, value in selected_comp.items():
+                            if key != "Row":  # Skip the row identifier
+                                st.write(f"• **{key}**: {value}")
             
             # Two column layout for radar and performance trend
             col_radar, col_performance = st.columns(2)
             
             with col_radar:
-                # st.markdown(f"**Target vs Result Comparison - {selected_formulation}**")
-                
                 # Get target profile data
                 if 'selected_target_data' in result_data:
                     target_data = result_data['selected_target_data']
@@ -120,7 +136,7 @@ def show():
                         target_encap_rate = float(str(target_data.iloc[0, 2]).replace('%', '').replace('Day', '').strip())
                         target_release_time = float(str(target_data.iloc[0, 3]).replace('%', '').replace('Day', '').strip())
                         
-                        # Generate result values based on formulation (simulate optimization results)
+                        # Generate result values based on formulation (simulate calculation results)
                         import random
                         formulation_index = formulation_options.index(selected_formulation)
                         
@@ -203,14 +219,8 @@ def show():
                             st.write(f"• Modulus: {result_modulus:.2f}")
                             st.write(f"• Encap Rate: {result_encap_rate:.2f}")
                             st.write(f"• Release Time: {result_release_time:.2f}")
-                    else:
-                        st.warning("Insufficient target data columns for radar comparison")
-                else:
-                    st.warning("No target data found for comparison")
             
             with col_performance:
-                # st.markdown(f"**Performance Trend - {selected_formulation}**")
-                
                 # Get pre-generated performance trend data for selected formulation
                 if selected_formulation in performance_trends:
                     trend_data = performance_trends[selected_formulation]
@@ -240,28 +250,19 @@ def show():
                     ax.grid(True, alpha=0.3)
                     ax.set_axisbelow(True)
                     
-                    # Add performance milestones
-                    # ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.7, label='Target Threshold')
-                    # ax.axhline(y=0.8, color='green', linestyle='--', alpha=0.7, label='Optimal Performance')
-                    # ax.legend()
-                    
                     st.pyplot(fig)
-                else:
-                    st.error(f"No performance trend data found for {selected_formulation}")
-        else:
-            st.warning("No performance trend data found. Please re-run optimization to generate performance trends.")
 
     # ── Evaluation Tab ───────────────────────────────────────────────────────
     with tab_evaluation:
         st.subheader("Evaluation")
         st.info(f"📁 Working on job: **{current_job_name}**")
         
-        # Check if evaluation data exists from optimization
+        # Check if evaluation data exists from calculation
         has_evaluation_data = (current_job.has_result_data() and 
                              'evaluation_diagrams' in current_job.result_dataset)
         
         if has_evaluation_data:
-            # Get evaluation data from optimization results
+            # Get evaluation data from calculation results
             eval_data = current_job.result_dataset['evaluation_diagrams']
             
             # Formulation selector - always show if evaluation data exists
@@ -279,14 +280,11 @@ def show():
                 eval_timestamp = selected_eval_data["timestamp"]
                 
                 st.divider()
-                # st.markdown(f"**Evaluation Diagrams - {selected_formulation}** - *Generated during optimization: {eval_timestamp}*")
                 
                 col_left, col_right = st.columns(2)
                 
                 # Left Column: Safety & Stability Score
                 with col_left:
-                    # st.markdown("**Safety & Stability Score**")
-                    
                     safety_scores = selected_eval_data["safety_stability"]
                     labels_safety = list(safety_scores.keys())
                     vals_safety = list(safety_scores.values())
@@ -310,16 +308,9 @@ def show():
                                fontsize=11, fontweight='bold', color='darkgreen')
                     
                     st.pyplot(fig1)
-                    
-                    # Show scores below chart
-                    # st.markdown("**Scores (0-10):**")
-                    # for key, value in safety_scores.items():
-                    #     st.write(f"• **{key}**: {value}")
                 
                 # Right Column: Formulation Score
                 with col_right:
-                    # st.markdown("**Formulation Score**")
-                    
                     formulation_scores = selected_eval_data["formulation"]
                     labels_formulation = list(formulation_scores.keys())
                     vals_formulation = list(formulation_scores.values())
@@ -343,17 +334,3 @@ def show():
                                fontsize=11, fontweight='bold', color='darkred')
                     
                     st.pyplot(fig2)
-                    
-                    # Show scores below chart
-                    # st.markdown("**Scores (0-10):**")
-                    # for key, value in formulation_scores.items():
-                    #     st.write(f"• **{key}**: {value}")
-        else:
-            # Show message when no evaluation data is available
-            st.info("🔍 **No evaluation data available.**")
-            # st.markdown("**Instructions:**")
-            # st.markdown("1. Complete optimization first to generate evaluation data")
-            # st.markdown("2. Return to this tab to select a formulation and view evaluation diagrams")
-            # st.markdown("**Available evaluation diagrams after optimization:**")
-            # st.markdown("   • **Safety & Stability**: Degradability, Cytotoxicity, Immunogenicity")
-            # st.markdown("   • **Formulation**: Durability, Injectability, Strength")
