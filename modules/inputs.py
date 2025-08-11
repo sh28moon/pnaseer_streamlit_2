@@ -141,7 +141,7 @@ def show():
                         st.rerun()
 
     # ── API Properties Tab ──────────────────────────────────────────────────
-    render_database_tab(tab_api, "Common API", "common_api_datasets", "API Dataset")
+    render_database_tab(tab_api, "API", "common_api_datasets", "API Dataset")
 
     # ── Polymer Properties Tab ──────────────────────────────────────────────
     render_database_tab(tab_polymer, "Polymers", "polymer_datasets", "Polymer Dataset")
