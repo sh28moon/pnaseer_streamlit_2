@@ -108,12 +108,6 @@ def show():
             else:
                 st.info(f"No {tab_title.lower()} selected from database yet.")
             
-            # Show current job data if exists (check for API data for both tabs)
-            if current_job.has_api_data():
-                with st.expander(f"📋 Current Job {tab_title}", expanded=False):
-                    st.dataframe(current_job.api_dataset, use_container_width=True)
-                    st.success(f"✅ {tab_title} saved to current job")
-            
             # Save and Clear buttons
             col1, col2 = st.columns(2)
             with col1:
@@ -155,13 +149,13 @@ def show():
             st.session_state["input_target_datasets"] = {}
             st.session_state["input_target_manual_count"] = 0
 
-        # Row 1: Target Profile Input - 2 columns with same height
-        # st.markdown("**Target Profile Input**")
+        # Row 1: New target profile - 2 columns with same height
+        st.markdown("**New target profile**")
         col_import, col_manual = st.columns(2)
 
         # Left Column: Import Data
         with col_import:
-            st.markdown('<p class="font-medium"><b>Import Target Profile Data</b></p>', unsafe_allow_html=True)          
+            st.markdown('<p class="font-medium"><b>Import Data</b></p>', unsafe_allow_html=True)          
 
             uploaded_tp = st.file_uploader(
                 "Import Data (CSV file with Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type columns)",
@@ -178,7 +172,7 @@ def show():
                     elif 'Type' not in df_tp.columns:
                         st.error("❌ Target CSV must have a 'Type' column for categorization.")
                     elif len(df_tp.columns) < 6:
-                        st.error(f"❌ Invalid file structure. Expected at least 6 columns (Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type), got {len(df_tp.columns)}.")
+                        st.error(f"❌ Invalid file structure. Expected at least 6 columns (Name, Modulus, Encapsulation Ratio, Release Time, Gel Polymer, Type), got {len(df_tp.columns)}.")
                     elif len(df_tp) == 0:
                         st.error("❌ File is empty. Please upload a file with data.")
                     else:
@@ -217,30 +211,57 @@ def show():
         with col_manual:
             st.markdown("**Manual Input**")
             
-            # Dataset name input
-            dataset_name = st.text_input("Dataset Name", placeholder="Enter dataset name", key="manual_dataset_name")
+            # Profile name input
+            dataset_name = st.text_input("Profile Name", placeholder="Enter profile name", key="manual_dataset_name")
             
             # Type input
-            dataset_type = st.text_input("Type", placeholder="Enter dataset type (e.g., Standard, High-Performance)", key="manual_dataset_type")
+            dataset_type = st.text_input("Type", placeholder="Enter desired product types (e.g., Gel, Powder)", key="manual_dataset_type")
             
             # Parameter inputs
             modulus = st.number_input("Modulus[MPa]", min_value=0.0, format="%.2f", key="tp_modulus")
-            encapsulation_rate = st.number_input("Encapsulation Rate(0 ~ 1)", min_value=0.0, format="%.2f", key="tp_encapsulation_rate")
+            encapsulation_ratio = st.number_input("Encapsulation Ratio(0 ~ 1)", min_value=0.0, format="%.2f", key="tp_encapsulation_ratio")
             release_time = st.number_input("Release Time[Week]", min_value=0.0, format="%.2f", key="tp_release_time")
-            gel_polymer = st.number_input("Gel Polymer", min_value=0.0, format="%.2f", key="tp_gel_polymer")
+            
+            # Gel Polymer selection from database
+            st.markdown("**Gel Polymer**")
+            if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
+                # Collect all polymer names from all datasets
+                available_polymers = []
+                for dataset_name_db, dataset_df in st.session_state["polymer_datasets"].items():
+                    if 'Name' in dataset_df.columns:
+                        polymer_names = dataset_df['Name'].tolist()
+                        available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
+                
+                # Remove duplicates and sort
+                unique_polymers = sorted(list(set(available_polymers)))
+                
+                if unique_polymers:
+                    gel_polymer = st.selectbox(
+                        "Select Gel Polymer:",
+                        [""] + unique_polymers,
+                        key="tp_gel_polymer_select"
+                    )
+                else:
+                    st.info("No polymers available. Import polymers in Database Management first.")
+                    gel_polymer = ""
+            else:
+                st.info("No polymer database found. Import polymers in Database Management first.")
+                gel_polymer = ""
 
             # Single button to add and save directly to job
             if st.button("Save Data", key="add_manual_to_job"):
                 if not dataset_name.strip():
-                    st.error("Please enter a dataset name.")
+                    st.error("Please enter a profile name.")
                 elif not dataset_type.strip():
-                    st.error("Please enter a dataset type.")
+                    st.error("Please enter a product type.")
+                elif not gel_polymer:
+                    st.error("Please select a gel polymer.")
                 else:
                     # Create manual input dataset with 6 columns including name, gel polymer, and type
                     df_manual = pd.DataFrame([{
                         "Name": dataset_name.strip(),
                         "Modulus": modulus,
-                        "Encapsulation Rate": encapsulation_rate,
+                        "Encapsulation Ratio": encapsulation_ratio,
                         "Release Time (Day)": release_time,
                         "Gel Polymer": gel_polymer,
                         "Type": dataset_type.strip()
@@ -253,7 +274,7 @@ def show():
                         current_job.target_profile_dataset = {dataset_name.strip(): df_manual}
                     
                     st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"Dataset '{dataset_name.strip()}' added to job")
+                    st.success(f"Profile '{dataset_name.strip()}' added to job")
                     st.rerun()
 
             # Global clear button
@@ -394,16 +415,16 @@ def show():
                         for i, val in enumerate(profile):
                             param_range = param_maxs[i] - param_mins[i]
                             if param_range > 0:
-                                # Normalize to 20-100 range to avoid too acute shapes
-                                norm_val = 20 + ((val - param_mins[i]) / param_range) * 80
+                                # Normalize to 25-100 range to reduce difference between min and max
+                                norm_val = 25 + ((val - param_mins[i]) / param_range) * 75
                             else:
                                 # If all values are the same, set to middle value
-                                norm_val = 60
+                                norm_val = 62.5
                             normalized.append(norm_val)
                         normalized_profiles.append(normalized)
                     
                     # Create radar chart
-                    labels = ["Modulus", "Encapsulation\nRate", "Release Time\n(Week)"]
+                    labels = ["Modulus", "Encapsulation\nRatio", "Release Time\n(Week)"]
                     angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
                     
                     # Create figure with better sizing
@@ -436,7 +457,7 @@ def show():
                     ax.set_ylim(0, 100)
                     
                     # Set radial ticks and labels
-                    ax.set_yticks([20, 40, 60, 80, 100])
+                    ax.set_yticks([25, 40, 60, 80, 100])
                     ax.set_yticklabels(['Min', '25%', '50%', '75%', 'Max'], 
                                      fontsize=8, alpha=0.7)
                     
@@ -487,9 +508,9 @@ def show():
                             st.write("• **Comparison:** Normalized 20-100 scale")
                 else:
                     if selected_type_filter != "All":
-                        st.warning(f"No valid target profiles found for type '{selected_type_filter}' with sufficient data columns (Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type required)")
+                        st.warning(f"No valid target profiles found for type '{selected_type_filter}' with sufficient data columns (Name, Modulus, Encapsulation Ratio, Release Time, Gel Polymer, Type required)")
                     else:
-                        st.warning("No valid target profiles found with sufficient data columns (Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type required)")
+                        st.warning("No valid target profiles found with sufficient data columns (Name, Modulus, Encapsulation Ratio, Release Time, Gel Polymer, Type required)")
             else:
                 if current_job.has_target_data() and selected_type_filter != "All":
                     st.info(f"No target datasets of type '{selected_type_filter}' found. Try selecting 'All' or a different type.")
