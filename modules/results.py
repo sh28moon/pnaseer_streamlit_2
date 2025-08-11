@@ -34,25 +34,48 @@ def show():
         result_data = current_job.result_dataset
         st.divider()
         
-        # 1st Row: Summary Table
-        st.markdown("**Job Summary**")
+        # Extract Gel Polymer name from target profile
+        gel_polymer_name = "Not specified"
+        if 'selected_target_data' in result_data:
+            target_data = result_data['selected_target_data']
+            if 'Gel Polymer' in target_data.columns:
+                gel_polymer_value = target_data.iloc[0]['Gel Polymer']
+                if pd.notna(gel_polymer_value):
+                    gel_polymer_name = str(gel_polymer_value)
         
-        # Create summary data
-        summary_data = {
-            "Job Name": [current_job_name],
-            "Model Used": [result_data.get('model_name', 'Unknown')],
-            "API Data": [result_data.get('selected_api_name', 'Unknown')],
-            "Target Profile": [result_data.get('selected_target_name', 'Unknown')],
-            "Completion Time": [result_data.get('timestamp', 'Unknown')],
-            "Status": [result_data.get('status', 'Unknown').capitalize()]
-        }
+        # Get Co-polymer name randomly from Polymer database, excluding Gel Polymer
+        co_polymer_name = "Not specified"
+        if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
+            import random
+            # Set seed for consistent results per job
+            random.seed(hash(current_job_name) % 2147483647)
+            
+            # Collect all polymer names from all datasets
+            available_polymers = []
+            for dataset_name, dataset_df in st.session_state["polymer_datasets"].items():
+                if 'Name' in dataset_df.columns:
+                    polymer_names = dataset_df['Name'].tolist()
+                    available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
+            
+            # Remove duplicates and exclude Gel Polymer
+            unique_polymers = list(set(available_polymers))
+            if gel_polymer_name in unique_polymers:
+                unique_polymers.remove(gel_polymer_name)
+            
+            # Select random co-polymer
+            if unique_polymers:
+                co_polymer_name = random.choice(unique_polymers)
         
-        df_summary = pd.DataFrame(summary_data)
-        st.table(df_summary)
+        # Display Gel Polymer and Co-polymer names
+        col_gel, col_co = st.columns(2)
+        with col_gel:
+            st.markdown(f"**Gel Polymer:** {gel_polymer_name}")
+        with col_co:
+            st.markdown(f"**Co-polymer:** {co_polymer_name}")
         
         st.divider()
         
-        # 2nd Row: Composition Results with Clear Button
+        # Composition Results with Clear Button
         col_comp, col_clear = st.columns([4, 1])
         with col_comp:
             st.markdown("**Composition Results**")
@@ -62,46 +85,24 @@ def show():
                 st.success(f"Results cleared from job '{current_job_name}'")
                 st.rerun()
         
-        # Use pre-generated composition results from optimization
+        # Use pre-generated composition results and update column names
         if 'composition_results' in result_data:
             comp_data_list = result_data['composition_results']
-            df_comp = pd.DataFrame(comp_data_list)
+            # Create updated composition data with new column names
+            updated_comp_data = []
+            for comp in comp_data_list:
+                updated_comp = {
+                    "Row": comp["Row"],
+                    "Gel Polymer w/w": comp.get("Assembled Polymer", "0%"),  # Map from old name
+                    "Co-polymer w/w": comp.get("Excipient Polymer", "0%"),  # Map from old name  
+                    "Buffer w/w": comp.get("Buffer", "0%")  # Keep Buffer name
+                }
+                updated_comp_data.append(updated_comp)
+            
+            df_comp = pd.DataFrame(updated_comp_data)
             st.dataframe(df_comp, use_container_width=True)
         else:
-            st.warning("No composition results found. Please re-run optimization.")
-        
-        st.divider()
-        
-        # 3rd Row: Performance Trend Analysis with Radar Comparison
-        st.markdown("**Performance Trend Analysis**")
-        
-        # Use pre-generated performance trend data from optimization
-        if 'performance_trends' in result_data:
-            performance_trends = result_data['performance_trends']
-            
-            # Formulation selector (full width)
-            formulation_options = list(performance_trends.keys())
-            selected_formulation = st.selectbox(
-                "Select Formulation to Analyze:",
-                formulation_options,
-                key="formulation_selector"
-            )
-            
-            # Show composition data for selected formulation in expander
-            if 'composition_results' in result_data:
-                comp_data_list = result_data['composition_results']
-                # Find the composition data for selected formulation
-                selected_comp = None
-                for comp in comp_data_list:
-                    if comp.get("Row") == selected_formulation:
-                        selected_comp = comp
-                        break
-                
-                if selected_comp:
-                    with st.expander(f"📋 {selected_formulation} Composition Details", expanded=False):
-                        for key, value in selected_comp.items():
-                            if key != "Row":  # Skip the row identifier
-                                st.write(f"• **{key}**: {value}")
+            st.warning("No composition results found. Please re-run calculation.")
             
             # Two column layout for radar and performance trend
             col_radar, col_performance = st.columns(2)
