@@ -9,7 +9,7 @@ from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
 def show():
-    st.header("Optimization")
+    st.header("Calculation")
 
     # Check if a job is selected
     current_job_name = st.session_state.get("current_job")
@@ -21,7 +21,7 @@ def show():
     st.info(f"📁 Working on job: **{current_job_name}**")
 
     # Top-level tabs
-    tab_encap = st.tabs(["Model #1"])[0]
+    tab_atps = st.tabs(["ATPS Partition"])[0]
 
     def render_model_tab(prefix, tab):
         with tab:
@@ -38,9 +38,9 @@ def show():
             # Three-column layout: Input Data Selection (2 cols) + Model Selection (1 col)
             col1, col2, col3 = st.columns(3)
             
-            # Column 1: API Data (Input Data Selection - Part 1)
+            # Column 1: API/Polymer Data (Input Data Selection - Part 1)
             with col1:
-                st.markdown("**API Data**")
+                st.markdown("**API/Polymer Data**")
                 if current_job.has_api_data():
                     api_data = current_job.api_dataset
                     
@@ -50,7 +50,7 @@ def show():
                         if 'Name' in api_data.columns:
                             api_name_options = api_data['Name'].tolist()
                             selected_api_name = st.selectbox(
-                                "Select API Data",
+                                "Select API/Polymer Data",
                                 api_name_options,
                                 key=f"{prefix}_api_select"
                             )
@@ -60,7 +60,7 @@ def show():
                             # Fallback to row numbers if no Name column
                             api_row_options = [f"Row {i+1}" for i in range(len(api_data))]
                             selected_api_row = st.selectbox(
-                                "Select API Data Row",
+                                "Select API/Polymer Data Row",
                                 api_row_options,
                                 key=f"{prefix}_api_select"
                             )
@@ -73,7 +73,8 @@ def show():
                         selected_api_index = 0
                         selected_api_name = api_data['Name'].iloc[0] if 'Name' in api_data.columns else "Row 1"
                 else:
-                    st.error("❌ No API data in current job")
+                    st.error("❌ No API/Polymer data in current job")
+                    st.info("💡 Import API or Polymer data from Database Management → Input Target")
                     selected_api_name = None
             
             # Column 2: Target Profile Data (Input Data Selection - Part 2)
@@ -82,18 +83,60 @@ def show():
                 if current_job.has_target_data():
                     target_data = current_job.target_profile_dataset
                     
-                    # Target Profile Data Selection
-                    target_names = list(target_data.keys())
-                    selected_target_name = st.selectbox(
-                        "Select Target Dataset",
-                        target_names,
-                        key=f"{prefix}_target_select"
-                    )
+                    # Add Type filter for target selection
+                    # Extract all unique types from target profiles
+                    available_types = set()
+                    for profile_name, profile_df in target_data.items():
+                        if 'Type' in profile_df.columns:
+                            profile_type = profile_df.iloc[0]['Type']
+                            if pd.notna(profile_type) and str(profile_type).strip():
+                                available_types.add(str(profile_type).strip())
+                        else:
+                            available_types.add("Not specified")
                     
-                    if selected_target_name:
-                        selected_target_data = target_data[selected_target_name]
+                    # Type filter for calculation
+                    if available_types:
+                        filter_options = ["All"] + sorted(list(available_types))
+                        selected_type_filter = st.selectbox(
+                            "Filter by Type:",
+                            filter_options,
+                            key=f"{prefix}_target_type_filter"
+                        )
+                        
+                        # Filter targets based on type
+                        if selected_type_filter == "All":
+                            filtered_targets = target_data
+                        else:
+                            filtered_targets = {}
+                            for profile_name, profile_df in target_data.items():
+                                if 'Type' in profile_df.columns:
+                                    profile_type = str(profile_df.iloc[0]['Type']).strip()
+                                else:
+                                    profile_type = "Not specified"
+                                
+                                if profile_type == selected_type_filter:
+                                    filtered_targets[profile_name] = profile_df
+                    else:
+                        filtered_targets = target_data
+                        selected_type_filter = "All"
+                    
+                    # Target Profile Data Selection
+                    if filtered_targets:
+                        target_names = list(filtered_targets.keys())
+                        selected_target_name = st.selectbox(
+                            "Select Target Dataset",
+                            target_names,
+                            key=f"{prefix}_target_select"
+                        )
+                        
+                        if selected_target_name:
+                            selected_target_data = filtered_targets[selected_target_name]
+                    else:
+                        st.warning(f"❌ No targets of type '{selected_type_filter}' found")
+                        selected_target_name = None
                 else:
                     st.error("❌ No target data in current job")
+                    st.info("💡 Add target profiles in Input Target → Target Profile")
                     selected_target_name = None
             
             # Column 3: Model Selection
@@ -171,10 +214,12 @@ def show():
             col1, col2, col3 = st.columns(3)
             with col1:
                 status_api = "✅" if has_api_data else "❌"
-                st.write(f"{status_api} API Data Selected")
+                st.write(f"{status_api} API/Polymer Data Selected")
             with col2:
                 status_target = "✅" if has_target_data else "❌"
                 st.write(f"{status_target} Target Data Selected") 
+                if has_target_data and 'selected_type_filter' in locals() and selected_type_filter != "All":
+                    st.write(f"📋 Type: {selected_type_filter}")
             with col3:
                 status_model = "✅" if has_model_data else "❌"
                 st.write(f"{status_model} Model Selected")       
@@ -183,17 +228,22 @@ def show():
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.markdown("**Selected API Data**")
+                st.markdown("**Selected API/Polymer Data**")
                 if has_api_data and selected_api_data is not None:
                     st.markdown(f"*{selected_api_name}*")
                     st.dataframe(selected_api_data, use_container_width=True)
                 else:
-                    st.warning("No API data selected")
+                    st.warning("No API/Polymer data selected")
             
             with col2:
                 st.markdown("**Selected Target Profile**")
                 if has_target_data and selected_target_data is not None:
-                    st.markdown(f"*{selected_target_name}*")
+                    # Show type information if available
+                    if 'Type' in selected_target_data.columns:
+                        target_type = selected_target_data.iloc[0]['Type']
+                        st.markdown(f"*{selected_target_name}* (Type: {target_type})")
+                    else:
+                        st.markdown(f"*{selected_target_name}*")
                     st.dataframe(selected_target_data, use_container_width=True)
                 else:
                     st.warning("No target data selected")
@@ -215,7 +265,7 @@ def show():
             with col_submit:
                 if st.button("Submit Job", key=f"{prefix}_run", disabled=not can_submit):
                     if not can_submit:
-                        st.error("Please ensure API data, target data, and model are all selected before submitting.")
+                        st.error("Please ensure API/Polymer data, target data, and model are all selected before submitting.")
                     else:
                         progress = st.progress(0)
                         for i in range(101):
@@ -257,13 +307,24 @@ def show():
                             for v in performance_metrics["values"]
                         ]
                         
-                        # Generate performance trend data for all 3 formulations (NEW)
-                        # Get Release Time from target data
+                        # Generate performance trend data for all 3 formulations
+                        # Get Release Time from target data (handle Type column)
                         if len(selected_target_data.columns) >= 4:
-                            release_time_value = selected_target_data.iloc[0, 3]
+                            # Find release time column (should be 3rd data column, considering Type might be last)
+                            if 'Type' in selected_target_data.columns:
+                                # Type column exists, find release time in data columns
+                                data_columns = [col for col in selected_target_data.columns if col not in ['Name', 'Type']]
+                                if len(data_columns) >= 3:
+                                    release_time_value = selected_target_data.iloc[0][data_columns[2]]  # Third data column
+                                else:
+                                    release_time_value = 10  # fallback
+                            else:
+                                # No Type column, use 4th column (index 3)
+                                release_time_value = selected_target_data.iloc[0, 3]
+                            
                             # Convert to numeric if it's a string with units
                             if isinstance(release_time_value, str):
-                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').strip())
+                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
                             elif not isinstance(release_time_value, (int, float)):
                                 release_time_value = float(release_time_value)
                         else:
@@ -296,7 +357,7 @@ def show():
                                 "release_time": release_time_value
                             }
                         
-                        # Generate evaluation diagrams data for each formulation (NEW)
+                        # Generate evaluation diagrams data for each formulation
                         # Set seed for consistent evaluation results per job
                         np.random.seed(hash(current_job_name + selected_api_name + selected_target_name + "evaluation") % 2147483647)
                         
@@ -335,6 +396,8 @@ def show():
                             "selected_api_row": selected_api_index if selected_api_index is not None else 0,
                             "selected_target_data": selected_target_data,
                             "selected_target_name": selected_target_name,
+                            "selected_target_type": selected_target_data.iloc[0]['Type'] if 'Type' in selected_target_data.columns else "Not specified",
+                            "target_type_filter": selected_type_filter if 'selected_type_filter' in locals() else "All",
                             "model_data": current_job.model_dataset[selected] if selected else None,
                             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "status": "completed",
@@ -348,13 +411,7 @@ def show():
                         
                         current_job.result_dataset = result_data
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Results with datasets generated and saved to job '{current_job_name}' using:")
-                        # st.info(f"• API: {selected_api_name}")
-                        # st.info(f"• Target: {selected_target_name}")
-                        # st.info(f"• Model: {selected}")
-                        # st.info("• Composition results generated")
-                        # st.info("• Performance trends pre-calculated")
-                        # st.info("• Evaluation diagrams data pre-generated")
+                        st.success(f"Results with datasets generated and saved to job '{current_job_name}'")
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
@@ -362,7 +419,7 @@ def show():
                 
                 if st.button("🗑️ Clear Results", key=f"{prefix}_clear_results", 
                            disabled=not has_results, 
-                           help="Remove all optimization results from current job"):
+                           help="Remove all calculation results from current job"):
                     if has_results:
                         # Clear optimization results
                         current_job.result_dataset = None
@@ -382,4 +439,4 @@ def show():
                     st.info("ℹ️ No results to clear")
 
     # Render each tab
-    render_model_tab("model#1", tab_encap)
+    render_model_tab("atps", tab_atps)
