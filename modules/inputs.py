@@ -103,7 +103,6 @@ def show():
             
             # Show current selection
             if selected_data is not None:
-                st.markdown(f"**Selected:** {db_type} → {selected_dataset} → Row {selected_row + 1}")
                 st.dataframe(selected_data, use_container_width=True)
             else:
                 st.info(f"No {tab_title.lower()} selected from database yet.")
