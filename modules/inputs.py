@@ -19,71 +19,132 @@ def show():
     current_job = st.session_state.jobs[current_job_name]
     st.info(f"📁 Working on job: **{current_job_name}**")
 
-    # Top-level tabs
-    tab_api, tab_target = st.tabs(["API Properties", "Target Profile"])
+    # Top-level tabs - now three tabs
+    tab_api, tab_polymer, tab_target = st.tabs(["API Properties", "Polymer Properties", "Target Profile"])
 
-    # ── API Tab ──────────────────────────────────────────────────────────────
-    with tab_api:
-        st.markdown('<p class="font-medium"><b>Import API dataset</b></p>', unsafe_allow_html=True)
+    # ── Common function for database import tabs ────────────────────────────
+    def render_database_tab(tab, db_type, db_key, tab_title):
+        with tab:
+            st.markdown(f'<p class="font-medium"><b>Import {tab_title} from Database</b></p>', unsafe_allow_html=True)
 
-        # Import data row
-        uploaded = st.file_uploader(
-            "Label",
-            label_visibility="hidden",
-            type=["csv"],
-            key="input_api_file"
-        )
-        if uploaded:
-            try:
-                df = pd.read_csv(uploaded)
-            except Exception:
-                df = pd.DataFrame()
-            st.session_state["input_api_df"] = df
-            st.success(f"Loaded {uploaded.name}")
+            # Ensure database stores exist
+            if db_key not in st.session_state:
+                st.session_state[db_key] = {}
 
-        # Imported data container with toggle
-        if st.session_state.get("input_api_df") is not None and not st.session_state.get("input_api_df").empty:
-            with st.expander("📄 Imported API Data", expanded=False):
-                df = st.session_state["input_api_df"]
-                st.dataframe(df, use_container_width=True)
-                st.write(f"Shape: {df.shape[0]} rows × {df.shape[1]} columns")
+            # Dataset selection section
+            available_datasets = list(st.session_state[db_key].keys())
+            
+            if available_datasets:
+                selected_dataset = st.selectbox(
+                    "Select Dataset:",
+                    available_datasets,
+                    key=f"{db_key}_dataset_select"
+                )
+            else:
+                st.warning(f"⚠️ No datasets available in {db_type} database. Please import datasets in Database Management first.")
+                selected_dataset = None
 
-        st.divider() 
+            # Row selection section
+            selected_row = None
+            selected_data = None
+            
+            if selected_dataset and available_datasets:
+                dataset_df = st.session_state[db_key][selected_dataset]
+                
+                # Display dataset preview
+                with st.expander(f"📄 Dataset Preview: {selected_dataset}", expanded=False):
+                    st.dataframe(dataset_df, use_container_width=True)
+                    st.write(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
+                
+                # Row selection
+                st.markdown("**Select Row from Dataset:**")
+                
+                if len(dataset_df) > 1:
+                    # Multiple rows - create options for selection
+                    if 'Name' in dataset_df.columns:
+                        # Use Name column values if available
+                        row_options = []
+                        for idx, row in dataset_df.iterrows():
+                            name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
+                            row_options.append(f"{name} (Row {idx + 1})")
+                        
+                        selected_row_option = st.selectbox(
+                            "Choose row:",
+                            row_options,
+                            key=f"{db_key}_row_select"
+                        )
+                        
+                        # Extract row index from selection
+                        selected_row_index = int(selected_row_option.split("(Row ")[1].split(")")[0]) - 1
+                        selected_data = dataset_df.iloc[[selected_row_index]].copy()
+                        selected_row = selected_row_index
+                    else:
+                        # Use row numbers if no Name column
+                        row_numbers = [f"Row {i+1}" for i in range(len(dataset_df))]
+                        selected_row_display = st.selectbox(
+                            "Choose row:",
+                            row_numbers,
+                            key=f"{db_key}_row_select"
+                        )
+                        selected_row_index = row_numbers.index(selected_row_display)
+                        selected_data = dataset_df.iloc[[selected_row_index]].copy()
+                        selected_row = selected_row_index
+                else:
+                    # Single row
+                    st.info("Dataset contains only one row - automatically selected")
+                    selected_data = dataset_df.copy()
+                    selected_row_index = 0
+                    selected_row = 0
 
-        # Data summary and save section
-        st.markdown("**Data Summary**")
-        
-        # Show current job API data if exists
-        if current_job.has_api_data():
-            st.dataframe(current_job.api_dataset, use_container_width=True)
-            st.success("✅ API data saved to current job")
-        else:
-            st.info("No API data saved to current job yet.")
-        
-        # Save button - always show if there's temp data or existing job data
-        temp_df = st.session_state.get("input_api_df", pd.DataFrame())
-        if not temp_df.empty or current_job.has_api_data():
+            st.divider() 
+
+            # Data summary and save section
+            st.markdown("**Data Summary**")
+            
+            # Show current selection
+            if selected_data is not None:
+                st.markdown(f"**Selected:** {db_type} → {selected_dataset} → Row {selected_row + 1}")
+                st.dataframe(selected_data, use_container_width=True)
+            else:
+                st.info(f"No {tab_title.lower()} selected from database yet.")
+            
+            # Show current job data if exists (check for API data for both tabs)
+            if current_job.has_api_data():
+                with st.expander(f"📋 Current Job {tab_title}", expanded=False):
+                    st.dataframe(current_job.api_dataset, use_container_width=True)
+                    st.success(f"✅ {tab_title} saved to current job")
+            
+            # Save and Clear buttons
             col1, col2 = st.columns(2)
             with col1:
-                button_text = "Update API Data" if current_job.has_api_data() else "Save API Data"
-                if st.button(button_text, key="save_api_data"):
-                    if not temp_df.empty:
-                        current_job.api_dataset = temp_df
+                # Save button - enabled if data is selected
+                button_text = f"Update {tab_title}" if current_job.has_api_data() else f"Save {tab_title}"
+                save_disabled = selected_data is None
+                
+                if st.button(button_text, key=f"save_{db_key}_data", disabled=save_disabled):
+                    if selected_data is not None:
+                        current_job.api_dataset = selected_data
                         st.session_state.jobs[current_job_name] = current_job
                         action = "updated" if current_job.has_api_data() else "saved"
-                        st.success(f"API data {action} in job '{current_job_name}'")
+                        st.success(f"{tab_title} {action} in job '{current_job_name}' from {db_type} → {selected_dataset}")
                         st.rerun()
                     else:
-                        st.error("No API data to save. Please import data first.")
+                        st.error(f"No {tab_title.lower()} selected. Please select data from database first.")
             
             with col2:
-                # Clear API data from job
+                # Clear data from job
                 if current_job.has_api_data():
-                    if st.button("🗑️ Clear API Data", key="clear_api_data", help="Remove API data from current job"):
+                    if st.button(f"🗑️ Clear {tab_title}", key=f"clear_{db_key}_data", help=f"Remove {tab_title.lower()} from current job"):
                         current_job.api_dataset = None
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"API data cleared from job '{current_job_name}'")
+                        st.success(f"{tab_title} cleared from job '{current_job_name}'")
                         st.rerun()
+
+    # ── API Properties Tab ──────────────────────────────────────────────────
+    render_database_tab(tab_api, "Common API", "common_api_datasets", "API Dataset")
+
+    # ── Polymer Properties Tab ──────────────────────────────────────────────
+    render_database_tab(tab_polymer, "Polymers", "polymer_datasets", "Polymer Dataset")
 
     # ── Target Profile Tab ───────────────────────────────────────────────────
     with tab_target:
@@ -261,6 +322,3 @@ def show():
                     st.warning("Dataset needs at least 4 columns for radar chart")
             else:
                 st.info("Select a dataset from job to view radar diagram")
-
-
-
