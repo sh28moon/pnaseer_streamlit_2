@@ -57,21 +57,26 @@ def show():
                             selected_api_index = api_name_options.index(selected_api_name)
                             selected_api_data = api_data.iloc[[selected_api_index]]
                         else:
-                            # Fallback to row numbers if no Name column
-                            api_row_options = [f"Row {i+1}" for i in range(len(api_data))]
+                            # Use values from first column
+                            first_column_values = api_data.iloc[:, 0].tolist()
+                            first_column_display = [str(val) if pd.notna(val) else f"Row {i+1}" for i, val in enumerate(first_column_values)]
+                            
                             selected_api_row = st.selectbox(
-                                "Select API/Polymer Data Row",
-                                api_row_options,
+                                "Select API/Polymer Data",
+                                first_column_display,
                                 key=f"{prefix}_api_select"
                             )
-                            selected_api_index = api_row_options.index(selected_api_row)
+                            selected_api_index = first_column_display.index(selected_api_row)
                             selected_api_data = api_data.iloc[[selected_api_index]]
-                            selected_api_name = f"Row {selected_api_index + 1}"
+                            selected_api_name = selected_api_row
                     else:
                         # Single row or simple data
                         selected_api_data = api_data
                         selected_api_index = 0
-                        selected_api_name = api_data['Name'].iloc[0] if 'Name' in api_data.columns else "Row 1"
+                        if 'Name' in api_data.columns:
+                            selected_api_name = api_data['Name'].iloc[0] if pd.notna(api_data['Name'].iloc[0]) else str(api_data.iloc[0, 0])
+                        else:
+                            selected_api_name = str(api_data.iloc[0, 0]) if pd.notna(api_data.iloc[0, 0]) else "Row 1"
                 else:
                     st.error("❌ No API/Polymer data in current job")
                     st.info("💡 Import API or Polymer data from Database Management → Input Target")
@@ -276,23 +281,21 @@ def show():
                         # Create comprehensive result datasets during optimization
                         import datetime
                         
-                        # Generate composition results - 3 rows with 4 components, all percentages sum to 100%
+                        # Generate composition results - 3 rows with 3 components, all percentages sum to 100%
                         composition_results = []
                         for i in range(3):  # Create 3 rows
                             buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
                             remaining_pct = 100 - buffer_pct
                             
-                            # Distribute remaining percentage among other 3 components
-                            assembled_pct = random.randint(1, remaining_pct - 2)
-                            excipient_pct = random.randint(1, remaining_pct - assembled_pct - 1)
-                            stabilizer_pct = remaining_pct - assembled_pct - excipient_pct
+                            # Distribute remaining percentage between Gel Polymer and Co-polymer
+                            gel_polymer_pct = random.randint(1, remaining_pct - 1)
+                            co_polymer_pct = remaining_pct - gel_polymer_pct
                             
                             composition_results.append({
                                 "Row": f"Formulation {i+1}",
-                                "Assembled Polymer": f"{assembled_pct}%",
-                                "Excipient Polymer": f"{excipient_pct}%", 
-                                "Stabilizer": f"{stabilizer_pct}%",
-                                "Buffer": f"{buffer_pct}%"
+                                "Gel Polymer w/w": f"{gel_polymer_pct}%",
+                                "Co-polymer w/w": f"{co_polymer_pct}%", 
+                                "Buffer w/w": f"{buffer_pct}%"
                             })
                         
                         # Generate performance metrics
