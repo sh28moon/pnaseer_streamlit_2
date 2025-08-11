@@ -84,14 +84,14 @@ def main():
     st.sidebar.markdown("### 📋 Main Menu")
     if st.sidebar.button("💼 Job Management"):
         st.session_state.current_tab = "Job Management"
-    if st.sidebar.button("📥 Input Conditions"):
-        st.session_state.current_tab = "Input Conditions"
-    if st.sidebar.button("⚙️ Optimization"):
-        st.session_state.current_tab = "Optimization"
+    if st.sidebar.button("🗂️ Database management"):
+        st.session_state.current_tab = "Database management"
+    if st.sidebar.button("📥 Input Target"):
+        st.session_state.current_tab = "Input Target"
+    if st.sidebar.button("⚙️ Calculation"):
+        st.session_state.current_tab = "Calculation"
     if st.sidebar.button("📊 Results"):
         st.session_state.current_tab = "Results"
-    if st.sidebar.button("🗂️ Data Management"):
-        st.session_state.current_tab = "Data Management"
 
     # Current job indicator (minimal)
     st.sidebar.markdown("---")
@@ -111,7 +111,7 @@ def main():
         status_items = [
             ("Input", current_job.get_input_status()),
             ("Model", current_job.get_model_status()),
-            ("Optimization", current_job.get_result_status()),
+            ("Calculation", current_job.get_result_status()),
             ("Evaluation", current_job.has_evaluation_diagrams())
         ]
         
@@ -127,15 +127,14 @@ def main():
     tab = st.session_state.current_tab
     if tab == "Job Management":
         show_job_management()
-    elif tab == "Input Conditions":
+    elif tab == "Database management":
+        show_data_management()
+    elif tab == "Input Target":
         show_input()
-    elif tab == "Optimization":
+    elif tab == "Calculation":
         show_optimization()
     elif tab == "Results":
         show_results()
-    else:  # Data Management
-        show_data_management()
 
 if __name__ == "__main__":
     main()
-
