@@ -28,63 +28,127 @@ def show():
             # All selections in one row with three columns
             st.markdown('<p class="font-medium"><b>Input Data Selection & Model Selection</b></p>', unsafe_allow_html=True)
             
-            # Initialize selection variables
-            selected_api_data = None
-            selected_api_index = None
-            selected_api_name = None
-            selected_target_data = None
-            selected_target_name = None
-            
-            # Three-column layout: Input Data Selection (2 cols) + Model Selection (1 col)
+            # Three-column layout: Input Data Selection (1 col) + Target Selection (1 col) + Model Selection (1 col)
             col1, col2, col3 = st.columns(3)
             
-            # Column 1: API/Polymer Data (Input Data Selection - Part 1)
+            # Column 1: API and Polymer Data Selection (Input Data Selection - Part 1)
             with col1:
                 st.markdown("**API/Polymer Data**")
-                if current_job.has_api_data():
-                    api_data = current_job.api_dataset
+                
+                # Initialize selection variables for both API and Polymer
+                selected_api_data = None
+                selected_api_index = None
+                selected_api_name = None
+                selected_polymer_data = None
+                selected_polymer_index = None
+                selected_polymer_name = None
+                
+                # Upper togglebox: API Data
+                st.markdown("*API Data:*")
+                if "common_api_datasets" in st.session_state and st.session_state["common_api_datasets"]:
+                    api_datasets = st.session_state["common_api_datasets"]
+                    api_dataset_options = [""] + list(api_datasets.keys())
                     
-                    # API Data Selection
-                    if hasattr(api_data, 'shape') and len(api_data) > 1:
-                        # Multiple rows available for selection - use Name column values
-                        if 'Name' in api_data.columns:
-                            api_name_options = api_data['Name'].tolist()
-                            selected_api_name = st.selectbox(
-                                "Select API/Polymer Data",
-                                api_name_options,
-                                key=f"{prefix}_api_select"
-                            )
-                            selected_api_index = api_name_options.index(selected_api_name)
-                            selected_api_data = api_data.iloc[[selected_api_index]]
+                    selected_api_dataset = st.selectbox(
+                        "",
+                        api_dataset_options,
+                        key=f"{prefix}_api_dataset_select"
+                    )
+                    
+                    if selected_api_dataset:
+                        api_data = api_datasets[selected_api_dataset]
+                        
+                        # API row selection
+                        if len(api_data) > 1:
+                            if 'Name' in api_data.columns:
+                                api_name_options = api_data['Name'].tolist()
+                                selected_api_name = st.selectbox(
+                                    "",
+                                    api_name_options,
+                                    key=f"{prefix}_api_row_select"
+                                )
+                                selected_api_index = api_name_options.index(selected_api_name)
+                                selected_api_data = api_data.iloc[[selected_api_index]]
+                            else:
+                                first_column_values = api_data.iloc[:, 0].tolist()
+                                first_column_display = [str(val) if pd.notna(val) else f"Row {i+1}" for i, val in enumerate(first_column_values)]
+                                
+                                selected_api_row = st.selectbox(
+                                    "",
+                                    first_column_display,
+                                    key=f"{prefix}_api_row_select"
+                                )
+                                selected_api_index = first_column_display.index(selected_api_row)
+                                selected_api_data = api_data.iloc[[selected_api_index]]
+                                selected_api_name = selected_api_row
                         else:
-                            # Use values from first column
-                            first_column_values = api_data.iloc[:, 0].tolist()
-                            first_column_display = [str(val) if pd.notna(val) else f"Row {i+1}" for i, val in enumerate(first_column_values)]
-                            
-                            selected_api_row = st.selectbox(
-                                "Select API/Polymer Data",
-                                first_column_display,
-                                key=f"{prefix}_api_select"
-                            )
-                            selected_api_index = first_column_display.index(selected_api_row)
-                            selected_api_data = api_data.iloc[[selected_api_index]]
-                            selected_api_name = selected_api_row
-                    else:
-                        # Single row or simple data
-                        selected_api_data = api_data
-                        selected_api_index = 0
-                        if 'Name' in api_data.columns:
-                            selected_api_name = api_data['Name'].iloc[0] if pd.notna(api_data['Name'].iloc[0]) else str(api_data.iloc[0, 0])
-                        else:
-                            selected_api_name = str(api_data.iloc[0, 0]) if pd.notna(api_data.iloc[0, 0]) else "Row 1"
+                            # Single row
+                            selected_api_data = api_data
+                            selected_api_index = 0
+                            if 'Name' in api_data.columns:
+                                selected_api_name = api_data['Name'].iloc[0] if pd.notna(api_data['Name'].iloc[0]) else str(api_data.iloc[0, 0])
+                            else:
+                                selected_api_name = str(api_data.iloc[0, 0]) if pd.notna(api_data.iloc[0, 0]) else "Row 1"
                 else:
-                    st.error("❌ No API/Polymer data in current job")
-                    st.info("💡 Import API or Polymer data from Database Management → Input Target")
-                    selected_api_name = None
+                    st.selectbox("", ["No API datasets available"], disabled=True, key=f"{prefix}_api_placeholder")
+                
+                # Lower togglebox: Polymer Data
+                st.markdown("*Polymer Data:*")
+                if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
+                    polymer_datasets = st.session_state["polymer_datasets"]
+                    polymer_dataset_options = [""] + list(polymer_datasets.keys())
+                    
+                    selected_polymer_dataset = st.selectbox(
+                        "",
+                        polymer_dataset_options,
+                        key=f"{prefix}_polymer_dataset_select"
+                    )
+                    
+                    if selected_polymer_dataset:
+                        polymer_data = polymer_datasets[selected_polymer_dataset]
+                        
+                        # Polymer row selection
+                        if len(polymer_data) > 1:
+                            if 'Name' in polymer_data.columns:
+                                polymer_name_options = polymer_data['Name'].tolist()
+                                selected_polymer_name = st.selectbox(
+                                    "",
+                                    polymer_name_options,
+                                    key=f"{prefix}_polymer_row_select"
+                                )
+                                selected_polymer_index = polymer_name_options.index(selected_polymer_name)
+                                selected_polymer_data = polymer_data.iloc[[selected_polymer_index]]
+                            else:
+                                first_column_values = polymer_data.iloc[:, 0].tolist()
+                                first_column_display = [str(val) if pd.notna(val) else f"Row {i+1}" for i, val in enumerate(first_column_values)]
+                                
+                                selected_polymer_row = st.selectbox(
+                                    "",
+                                    first_column_display,
+                                    key=f"{prefix}_polymer_row_select"
+                                )
+                                selected_polymer_index = first_column_display.index(selected_polymer_row)
+                                selected_polymer_data = polymer_data.iloc[[selected_polymer_index]]
+                                selected_polymer_name = selected_polymer_row
+                        else:
+                            # Single row
+                            selected_polymer_data = polymer_data
+                            selected_polymer_index = 0
+                            if 'Name' in polymer_data.columns:
+                                selected_polymer_name = polymer_data['Name'].iloc[0] if pd.notna(polymer_data['Name'].iloc[0]) else str(polymer_data.iloc[0, 0])
+                            else:
+                                selected_polymer_name = str(polymer_data.iloc[0, 0]) if pd.notna(polymer_data.iloc[0, 0]) else "Row 1"
+                else:
+                    st.selectbox("", ["No Polymer datasets available"], disabled=True, key=f"{prefix}_polymer_placeholder")
             
             # Column 2: Target Profile Data (Input Data Selection - Part 2)
             with col2:
                 st.markdown("**Target Profile Data**")
+                
+                # Initialize target selection variables
+                selected_target_data = None
+                selected_target_name = None
+                
                 if current_job.has_target_data():
                     target_data = current_job.target_profile_dataset
                     
@@ -210,37 +274,26 @@ def show():
             # Calculate section
             st.subheader("Input Review and Submit Job")
             
-            # Check if all required data is available
-            has_api_data = current_job.has_api_data() and selected_api_data is not None and selected_api_name is not None
-            has_target_data = current_job.has_target_data() and selected_target_data is not None
-            has_model_data = current_job.get_model_status() and selected
-            
-            # Status indicators
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                status_api = "✅" if has_api_data else "❌"
-                st.write(f"{status_api} API/Polymer Data Selected")
-            with col2:
-                status_target = "✅" if has_target_data else "❌"
-                st.write(f"{status_target} Target Data Selected") 
-                if has_target_data and 'selected_type_filter' in locals() and selected_type_filter != "All":
-                    st.write(f"📋 Type: {selected_type_filter}")
-            with col3:
-                status_model = "✅" if has_model_data else "❌"
-                st.write(f"{status_model} Model Selected")       
-            
-            # Show three separate tables with full values
-            col1, col2, col3 = st.columns(3)
+            # Show four separate tables with full values
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.markdown("**Selected API/Polymer Data**")
+                st.markdown("**Selected API Data**")
                 if has_api_data and selected_api_data is not None:
                     st.markdown(f"*{selected_api_name}*")
                     st.dataframe(selected_api_data, use_container_width=True)
                 else:
-                    st.warning("No API/Polymer data selected")
+                    st.info("No API data selected")
             
             with col2:
+                st.markdown("**Selected Polymer Data**")
+                if has_polymer_data and selected_polymer_data is not None:
+                    st.markdown(f"*{selected_polymer_name}*")
+                    st.dataframe(selected_polymer_data, use_container_width=True)
+                else:
+                    st.info("No Polymer data selected")
+            
+            with col3:
                 st.markdown("**Selected Target Profile**")
                 if has_target_data and selected_target_data is not None:
                     # Show type information if available
@@ -251,26 +304,30 @@ def show():
                         st.markdown(f"*{selected_target_name}*")
                     st.dataframe(selected_target_data, use_container_width=True)
                 else:
-                    st.warning("No target data selected")
+                    st.info("No target data selected")
             
-            with col3:
+            with col4:
                 st.markdown("**Selected Model**")
                 if has_model_data and selected:
                     st.markdown(f"*{selected}*")
                     model_df = current_job.model_dataset[selected]
                     st.dataframe(model_df, use_container_width=True)
                 else:
-                    st.warning("No model selected")
+                    st.info("No model selected")
             
             # Submit button and Clear Results button
-            can_submit = has_api_data and has_target_data and has_model_data
+            has_api_data = selected_api_data is not None and selected_api_name is not None
+            has_polymer_data = selected_polymer_data is not None and selected_polymer_name is not None
+            has_target_data = current_job.has_target_data() and selected_target_data is not None
+            has_model_data = current_job.get_model_status() and selected
+            can_submit = has_api_data and has_polymer_data and has_target_data and has_model_data
             
             col_submit, col_clear = st.columns(2)
             
             with col_submit:
                 if st.button("Submit Job", key=f"{prefix}_run", disabled=not can_submit):
                     if not can_submit:
-                        st.error("Please ensure API/Polymer data, target data, and model are all selected before submitting.")
+                        st.error("Please ensure API data, Polymer data, target data, and model are all selected before submitting.")
                     else:
                         progress = st.progress(0)
                         for i in range(101):
@@ -397,6 +454,9 @@ def show():
                             "selected_api_data": selected_api_data,
                             "selected_api_name": selected_api_name,
                             "selected_api_row": selected_api_index if selected_api_index is not None else 0,
+                            "selected_polymer_data": selected_polymer_data,
+                            "selected_polymer_name": selected_polymer_name,
+                            "selected_polymer_row": selected_polymer_index if selected_polymer_index is not None else 0,
                             "selected_target_data": selected_target_data,
                             "selected_target_name": selected_target_name,
                             "selected_target_type": selected_target_data.iloc[0]['Type'] if 'Type' in selected_target_data.columns else "Not specified",
