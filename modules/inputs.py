@@ -164,7 +164,7 @@ def show():
             st.markdown('<p class="font-medium"><b>Import Target Profile Data</b></p>', unsafe_allow_html=True)          
 
             uploaded_tp = st.file_uploader(
-                "Import Data (CSV file with Name, Modulus, Encapsulation Rate, Release Time, Type columns)",
+                "Import Data (CSV file with Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type columns)",
                 type=["csv"],
                 key="target_profile_file"
             )
@@ -177,8 +177,8 @@ def show():
                         st.error("❌ Target CSV must have a 'Name' column for dataset identification.")
                     elif 'Type' not in df_tp.columns:
                         st.error("❌ Target CSV must have a 'Type' column for categorization.")
-                    elif len(df_tp.columns) < 5:
-                        st.error(f"❌ Invalid file structure. Expected at least 5 columns (Name, Modulus, Encapsulation Rate, Release Time, Type), got {len(df_tp.columns)}.")
+                    elif len(df_tp.columns) < 6:
+                        st.error(f"❌ Invalid file structure. Expected at least 6 columns (Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type), got {len(df_tp.columns)}.")
                     elif len(df_tp) == 0:
                         st.error("❌ File is empty. Please upload a file with data.")
                     else:
@@ -227,6 +227,7 @@ def show():
             modulus = st.number_input("Modulus[MPa]", min_value=0.0, format="%.2f", key="tp_modulus")
             encapsulation_rate = st.number_input("Encapsulation Rate(0 ~ 1)", min_value=0.0, format="%.2f", key="tp_encapsulation_rate")
             release_time = st.number_input("Release Time[Week]", min_value=0.0, format="%.2f", key="tp_release_time")
+            gel_polymer = st.number_input("Gel Polymer", min_value=0.0, format="%.2f", key="tp_gel_polymer")
 
             # Single button to add and save directly to job
             if st.button("Save Data", key="add_manual_to_job"):
@@ -235,12 +236,13 @@ def show():
                 elif not dataset_type.strip():
                     st.error("Please enter a dataset type.")
                 else:
-                    # Create manual input dataset with 5 columns including name and type
+                    # Create manual input dataset with 6 columns including name, gel polymer, and type
                     df_manual = pd.DataFrame([{
                         "Name": dataset_name.strip(),
                         "Modulus": modulus,
                         "Encapsulation Rate": encapsulation_rate,
                         "Release Time (Day)": release_time,
+                        "Gel Polymer": gel_polymer,
                         "Type": dataset_type.strip()
                     }])
                     
@@ -361,9 +363,9 @@ def show():
                 profile_names = []
                 
                 for profile_name, profile_df in filtered_job_data.items():
-                    if len(profile_df.columns) >= 5:  # Check if we have enough columns (Name + 3 data + Type)
-                        # Extract values from columns 1, 2, 3 (skip Name column, before Type column)
-                        data_columns = profile_df.columns[1:4]
+                    if len(profile_df.columns) >= 6:  # Check if we have enough columns (Name + 4 data + Type)
+                        # Extract values from columns 1, 2, 3 (skip Name, exclude Gel Polymer and Type)
+                        data_columns = profile_df.columns[1:4]  # Modulus, Encapsulation Rate, Release Time
                         vals = profile_df.iloc[0][data_columns].tolist()
                         # Convert to numeric values, handling any string formatting
                         numeric_vals = []
@@ -485,9 +487,9 @@ def show():
                             st.write("• **Comparison:** Normalized 20-100 scale")
                 else:
                     if selected_type_filter != "All":
-                        st.warning(f"No valid target profiles found for type '{selected_type_filter}' with sufficient data columns (Name, Modulus, Encapsulation Rate, Release Time, Type required)")
+                        st.warning(f"No valid target profiles found for type '{selected_type_filter}' with sufficient data columns (Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type required)")
                     else:
-                        st.warning("No valid target profiles found with sufficient data columns (Name, Modulus, Encapsulation Rate, Release Time, Type required)")
+                        st.warning("No valid target profiles found with sufficient data columns (Name, Modulus, Encapsulation Rate, Release Time, Gel Polymer, Type required)")
             else:
                 if current_job.has_target_data() and selected_type_filter != "All":
                     st.info(f"No target datasets of type '{selected_type_filter}' found. Try selecting 'All' or a different type.")
