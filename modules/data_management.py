@@ -94,12 +94,12 @@ def show():
             # Dataset type for saving (extract from session key)
             dataset_type = session_key.replace("_datasets", "")
             
-            # ── Import Previously Saved Database Section ─────────────────────
-            st.subheader("Import Previously Saved Database")
+            # ── Load Database Section ─────────────────────────────────────────
+            st.subheader("Load Database")
             
             saved_datasets = get_saved_datasets(dataset_type)
             if saved_datasets:
-                col_select, col_actions = st.columns([3, 1])
+                col_select, col_import, col_remove = st.columns([3, 1, 1])
                 
                 with col_select:
                     # Create options for selectbox
@@ -107,10 +107,10 @@ def show():
                     selected_saved = st.selectbox(
                         f"Select saved {tab_name} database:",
                         dataset_options,
-                        key=f"{session_key}_import_saved_select"
+                        key=f"{session_key}_load_database_select"
                     )
                 
-                with col_actions:
+                with col_import:
                     if selected_saved and selected_saved != "":
                         # Extract save name from selection
                         selected_save_name = selected_saved.split(" (")[0]
@@ -123,15 +123,26 @@ def show():
                                 break
                         
                         if selected_file:
-                            if st.button("📂 Import Database", key=f"{session_key}_import_saved_btn"):
+                            if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
                                 loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])
                                 
                                 if loaded_datasets is not None:
                                     # Replace current datasets with loaded ones
                                     st.session_state[session_key] = loaded_datasets
-                                    st.success(f"✅ Imported '{selected_save_name}' database with {count} dataset(s)!")
+                                    st.success(f"✅ Loaded '{selected_save_name}' database with {count} dataset(s)!")
                                     st.info(f"📅 Originally saved: {saved_time}")
                                     st.rerun()
+                
+                with col_remove:
+                    if selected_saved and selected_saved != "":
+                        if st.button("🗑️ Remove", key=f"{session_key}_remove_database_btn"):
+                            if selected_file:
+                                try:
+                                    os.remove(selected_file["filepath"])
+                                    st.success(f"✅ Removed '{selected_save_name}' database")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Failed to remove: {str(e)}")
                 
                 # Show available saved databases
                 with st.expander(f"📋 Available Saved Databases ({len(saved_datasets)})", expanded=False):
@@ -145,86 +156,81 @@ def show():
             
             st.divider()
             
-            # ── Import & Select Section ──────────────────────────────────────
-            col1, col2 = st.columns(2)
-            with col1:
-                st.subheader("Import Dataset")
+            # ── New Database Section ─────────────────────────────────────────
+            st.subheader("New Database")
+            
+            col_upload, col_summary, col_save = st.columns(3)
+            
+            # Column 1: Upload CSV
+            with col_upload:
+                st.markdown("**Upload CSV**")
                 uploaded = st.file_uploader(
-                    "Upload CSV",
+                    "Select CSV file",
                     type=["csv"],
-                    key=f"{session_key}_import"
+                    key=f"{session_key}_new_upload"
                 )
                 if uploaded:
                     df = pd.read_csv(uploaded)
-                    st.session_state[session_key][uploaded.name] = df
-                    st.success(f"Loaded dataset: {uploaded.name}")
-
-            with col2:
-                st.subheader("Select Dataset")
-                names = list(st.session_state[session_key].keys())
-                if names:
-                    selected = st.selectbox(
-                        "Choose dataset",
-                        names,
-                        key=f"{session_key}_select"
-                    )
+                    # Store temporarily for preview and saving
+                    st.session_state[f"{session_key}_temp_dataset"] = df
+                    st.session_state[f"{session_key}_temp_filename"] = uploaded.name
+                    st.success(f"Loaded: {uploaded.name}")
+            
+            # Column 2: Dataset Summary (Table)
+            with col_summary:
+                st.markdown("**Dataset Summary**")
+                if f"{session_key}_temp_dataset" in st.session_state:
+                    temp_df = st.session_state[f"{session_key}_temp_dataset"]
+                    st.dataframe(temp_df, use_container_width=True)
+                    st.write(f"Shape: {temp_df.shape[0]} rows × {temp_df.shape[1]} columns")
                 else:
-                    st.info("No datasets imported yet.")
-                    return  # nothing more to show
-
-            # ── Dataset Summary & Operations Section ────────────────────────
-            col3, col4 = st.columns([2, 2])
-            with col3:
-                st.subheader("Dataset Summary")
-                df_sel = st.session_state[session_key][selected]
-                st.dataframe(df_sel, use_container_width=True)
-
-            with col4:
-                st.subheader("Edit & Save")
+                    st.info("Upload CSV to see summary")
+            
+            # Column 3: Save Dataset
+            with col_save:
+                st.markdown("**Save Dataset**")
                 
-                # a) Add External Data
-                ext = st.file_uploader(
-                    "Add External Data (CSV)",
-                    type=["csv"],
-                    key=f"{session_key}_ext"
-                )
-                if ext:
-                    df_ext = pd.read_csv(ext)
-                    df_cur = st.session_state[session_key][selected]
-                    df_new = pd.concat([df_cur, df_ext], ignore_index=True)
-                    st.session_state[session_key][selected] = df_new
-                    st.success("External data appended.")
-
-                # b) Persistent Save Data
+                # Save name input
                 save_name = st.text_input(
-                    "Save Name:", 
-                    placeholder=f"Enter name to save {tab_name} dataset",
-                    key=f"{session_key}_save_name"
+                    "Dataset Name:", 
+                    placeholder=f"Enter name for {tab_name} dataset",
+                    key=f"{session_key}_new_save_name"
                 )
                 
-                if st.button("💾 Save Dataset Permanently", key=f"{session_key}_save"):
-                    if save_name.strip():
-                        # Create single dataset collection for persistent save
-                        datasets_to_save = {selected: st.session_state[session_key][selected]}
+                # Save button
+                save_disabled = f"{session_key}_temp_dataset" not in st.session_state
+                if st.button("💾 Save Dataset", key=f"{session_key}_new_save_btn", disabled=save_disabled):
+                    if save_name.strip() and f"{session_key}_temp_dataset" in st.session_state:
+                        temp_df = st.session_state[f"{session_key}_temp_dataset"]
+                        
+                        # Add to current session datasets
+                        dataset_name = save_name.strip()
+                        st.session_state[session_key][dataset_name] = temp_df
+                        
+                        # Also save permanently
+                        datasets_to_save = {dataset_name: temp_df}
                         success, result = save_datasets_to_file(
                             datasets_to_save, 
                             dataset_type, 
-                            save_name.strip()
+                            dataset_name
                         )
                         
                         if success:
-                            st.success(f"✅ Saved '{save_name}' with dataset '{selected}'!")
+                            st.success(f"✅ Saved '{dataset_name}' permanently!")
                             st.info(f"📁 Saved to: {result}")
+                            
+                            # Clear temporary data
+                            if f"{session_key}_temp_dataset" in st.session_state:
+                                del st.session_state[f"{session_key}_temp_dataset"]
+                            if f"{session_key}_temp_filename" in st.session_state:
+                                del st.session_state[f"{session_key}_temp_filename"]
+                            st.rerun()
                         else:
                             st.error(f"❌ Failed to save: {result}")
+                    elif not save_name.strip():
+                        st.error("Please enter a dataset name")
                     else:
-                        st.error("Please enter a save name")
-
-                # c) Remove dataset
-                if st.button("🗑️ Remove Dataset", key=f"{session_key}_remove"):
-                    st.session_state[session_key].pop(selected, None)
-                    st.success(f"Removed Dataset: {selected}")
-                    st.rerun()
+                        st.error("Please upload a CSV file first")
 
     # Render each subpage
     render_subpage(tab_api, "common_api_datasets", "API")
