@@ -279,7 +279,7 @@ def show():
             
             with col1:
                 st.markdown("**Selected API Data**")
-                if has_api_data and selected_api_data is not None:
+                if selected_api_data is not None and selected_api_name is not None:
                     st.markdown(f"*{selected_api_name}*")
                     st.dataframe(selected_api_data, use_container_width=True)
                 else:
@@ -287,15 +287,14 @@ def show():
             
             with col2:
                 st.markdown("**Selected Polymer Data**")
-                if has_polymer_data and selected_polymer_data is not None:
-                    st.markdown(f"*{selected_polymer_name}*")
+                if selected_polymer_data is not None and selected_polymer_name is not None:
                     st.dataframe(selected_polymer_data, use_container_width=True)
                 else:
                     st.info("No Polymer data selected")
             
             with col3:
                 st.markdown("**Selected Target Profile**")
-                if has_target_data and selected_target_data is not None:
+                if selected_target_data is not None:
                     # Show type information if available
                     if 'Type' in selected_target_data.columns:
                         target_type = selected_target_data.iloc[0]['Type']
@@ -308,7 +307,7 @@ def show():
             
             with col4:
                 st.markdown("**Selected Model**")
-                if has_model_data and selected:
+                if selected and current_job.get_model_status():
                     st.markdown(f"*{selected}*")
                     model_df = current_job.model_dataset[selected]
                     st.dataframe(model_df, use_container_width=True)
