@@ -6,7 +6,8 @@ import random
 import numpy as np
 import json
 import os
-from datetime import datetime
+import datetime
+from datetime import datetime as dt
 
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
@@ -24,7 +25,7 @@ def save_progress_to_file(job, job_name, target_profile, target_profile_name, at
             "atps_model": atps_model,
             "drug_release_model": drug_release_model,
             "target_profile": target_profile,
-            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "saved_timestamp": dt.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
         # Convert DataFrames to serializable format
@@ -86,7 +87,7 @@ def show():
                     profile_names = list(target_profiles.keys())
                     selected_target_profile_name = st.selectbox(
                         "Select Target Profile:",
-                        profile_names,
+                        [""] + profile_names,
                         key=f"{prefix}_target_profile_select"
                     )
                     
@@ -209,18 +210,22 @@ def show():
                         profile_type = selected_target_profile['formulation_data'].iloc[0]['Type']
                         st.markdown(f"• **Type:** {profile_type}")
                 else:
+                    st.info("No target profile selected")
                     selected_target_profile_name = None
             
             with col_model_summary:
                 st.markdown("**Selected Models**")
                 if selected_atps_model:
                     st.markdown(f"*ATPS: {selected_atps_model}*")
+                else:
+                    st.info("No ATPS model selected")
+                    
                 if selected_drug_release_model:
                     st.markdown(f"*Drug Release: {selected_drug_release_model}*")
-                
-                if selected_atps_model and selected_drug_release_model:
-                    pass  # Both models selected
                 else:
+                    st.info("No Drug Release model selected")
+                
+                if not (selected_atps_model and selected_drug_release_model):
                     selected_atps_model = None
                     selected_drug_release_model = None
             
@@ -262,7 +267,6 @@ def show():
                         st.success("Completed Calculation")
 
                         # Create comprehensive result datasets during optimization
-                        import datetime
                         
                         # Generate composition results - 3 rows with 3 components, all percentages sum to 100%
                         composition_results = []
@@ -366,7 +370,7 @@ def show():
                             evaluation_diagrams_data[formulation_name] = {
                                 "safety_stability": safety_stability_scores,
                                 "formulation": formulation_scores,
-                                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             }
                         
                         # Create comprehensive result data with all generated datasets
@@ -376,7 +380,7 @@ def show():
                             "drug_release_model_name": selected_drug_release_model,
                             "selected_target_profile": selected_target_profile,
                             "selected_target_profile_name": selected_target_profile_name,
-                            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "status": "completed",
                             
                             # Generated result datasets
@@ -392,13 +396,20 @@ def show():
             
             with col_save:
                 # Save Progress button - saves the current optimization setup
-                if st.button("Save Progress", key=f"{prefix}_save_progress", help="Save current optimization setup permanently"):
-                    # Save databases to job before saving progress
-                    current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
-                    current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
-                    st.session_state.jobs[current_job_name] = current_job
-                    
-                    save_progress_to_file(current_job, current_job_name, selected_target_profile, selected_target_profile_name, selected_atps_model, selected_drug_release_model)
+                save_disabled = not (selected_target_profile and selected_atps_model and selected_drug_release_model)
+                
+                if st.button("Save Progress", key=f"{prefix}_save_progress", 
+                           disabled=save_disabled,
+                           help="Save current optimization setup permanently"):
+                    if not save_disabled:
+                        # Save databases to job before saving progress
+                        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                        st.session_state.jobs[current_job_name] = current_job
+                        
+                        save_progress_to_file(current_job, current_job_name, selected_target_profile, selected_target_profile_name, selected_atps_model, selected_drug_release_model)
+                    else:
+                        st.error("Please select target profile and both models before saving progress.")
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
