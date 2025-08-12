@@ -37,6 +37,10 @@ def show():
         # Formulation-specific results selection
         col_profile_sel, col_form_sel, col_clear = st.columns([2, 2, 1])
         
+        # Initialize variables at the beginning
+        selected_profile_for_results = None
+        selected_formulation_for_results = None
+        
         with col_profile_sel:
             # Get available profiles with results
             profiles_with_results = []
@@ -76,6 +80,7 @@ def show():
         with col_clear:
             # Clear specific formulation results
             if (selected_profile_for_results and selected_formulation_for_results and
+                hasattr(current_job, 'formulation_results') and
                 current_job.has_formulation_results(selected_profile_for_results, selected_formulation_for_results)):
                 if st.button("🗑️ Clear Results", key="clear_specific_results", help="Remove results for this formulation"):
                     del current_job.formulation_results[selected_profile_for_results][selected_formulation_for_results]
@@ -89,6 +94,7 @@ def show():
         
         # Display results if formulation is selected
         if (selected_profile_for_results and selected_formulation_for_results and
+            hasattr(current_job, 'formulation_results') and
             current_job.has_formulation_results(selected_profile_for_results, selected_formulation_for_results)):
             
             result_data = current_job.get_formulation_result(selected_profile_for_results, selected_formulation_for_results)
@@ -111,7 +117,7 @@ def show():
                     form_props = result_data['formulation_properties']
                     props_df = pd.DataFrame([form_props])
                     st.dataframe(props_df, use_container_width=True)
-        
+
             # Get Gel Polymer name from target profile
             gel_polymer_name = "Not specified"
             if 'selected_target_profile' in result_data and result_data['selected_target_profile']:
@@ -185,7 +191,7 @@ def show():
             else:
                 st.warning("No candidates available")
                 selected_candidate = None
-        
+
             if selected_candidate:
                 # Get release time from the formulation properties
                 release_time_value = 10  # Default fallback
@@ -341,7 +347,7 @@ def show():
                     ax.tick_params(labelsize=8)
                     
                     st.pyplot(fig)
-        
+
                 with col_radar:
                     st.markdown("**Target vs Result**")
                     
@@ -418,6 +424,7 @@ def show():
         
         # Use the same formulation selection as in Summary tab
         if (selected_profile_for_results and selected_formulation_for_results and
+            hasattr(current_job, 'formulation_results') and
             current_job.has_formulation_results(selected_profile_for_results, selected_formulation_for_results)):
             
             result_data = current_job.get_formulation_result(selected_profile_for_results, selected_formulation_for_results)
