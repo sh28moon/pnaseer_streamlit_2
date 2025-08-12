@@ -42,7 +42,8 @@ def save_progress_to_file(job, job_name, target_profile, target_profile_name, at
         with open(filename, 'w') as f:
             json.dump(progress_data, f, indent=2)
         
-        st.success(f"✅ Optimization progress savedy!")
+        st.success(f"✅ Optimization progress saved permanently!")
+        st.info(f"📁 Saved to: {filename}")
         return True, filename
     except Exception as e:
         st.error(f"❌ Failed to save progress: {str(e)}")
@@ -81,84 +82,43 @@ def show():
                 if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
                     target_profiles = current_job.complete_target_profiles
                     
-                    # Type filter for target profiles
-                    available_types = set()
-                    for profile_name, profile_data in target_profiles.items():
-                        if 'formulation_data' in profile_data and 'Type' in profile_data['formulation_data'].columns:
-                            profile_type = profile_data['formulation_data'].iloc[0]['Type']
-                            if pd.notna(profile_type) and str(profile_type).strip():
-                                available_types.add(str(profile_type).strip())
-                        else:
-                            available_types.add("Not specified")
+                    # Target Profile Selection (no type filter)
+                    profile_names = list(target_profiles.keys())
+                    selected_target_profile_name = st.selectbox(
+                        "Select Target Profile:",
+                        profile_names,
+                        key=f"{prefix}_target_profile_select"
+                    )
                     
-                    # Type filter
-                    if available_types:
-                        filter_options = ["All"] + sorted(list(available_types))
-                        # selected_type_filter = st.selectbox(
-                        #     "Filter by Type:",
-                        #     filter_options,
-                        #     key=f"{prefix}_target_profile_type_filter"
-                        # )
+                    if selected_target_profile_name:
+                        selected_target_profile = target_profiles[selected_target_profile_name]
                         
-                        # Filter target profiles based on type
-                        if selected_type_filter == "All":
-                            filtered_profiles = target_profiles
-                        else:
-                            filtered_profiles = {}
-                            for profile_name, profile_data in target_profiles.items():
-                                if 'formulation_data' in profile_data and 'Type' in profile_data['formulation_data'].columns:
-                                    profile_type = str(profile_data['formulation_data'].iloc[0]['Type']).strip()
-                                else:
-                                    profile_type = "Not specified"
-                                
-                                if profile_type == selected_type_filter:
-                                    filtered_profiles[profile_name] = profile_data
-                    else:
-                        filtered_profiles = target_profiles
-                        selected_type_filter = "All"
-                    
-                    # Target Profile Selection
-                    if filtered_profiles:
-                        profile_names = list(filtered_profiles.keys())
-                        selected_target_profile_name = st.selectbox(
-                            "Select Target Profile:",
-                            profile_names,
-                            key=f"{prefix}_target_profile_select"
-                        )
-                        
-                        if selected_target_profile_name:
-                            selected_target_profile = filtered_profiles[selected_target_profile_name]
+                        # Show profile components summary
+                        with st.expander(f"📄 Target Profile Details: {selected_target_profile_name}", expanded=False):
+                            # API Data
+                            if 'api_data' in selected_target_profile and selected_target_profile['api_data'] is not None:
+                                st.markdown("**API Data:**")
+                                st.dataframe(selected_target_profile['api_data'], use_container_width=True)
+                            else:
+                                st.warning("⚠️ No API data in this profile")
                             
-                            # Show profile components summary
-                            # with st.expander(f"📄 Target Profile Details: {selected_target_profile_name}", expanded=False):
-                            #     # API Data
-                            #     if 'api_data' in selected_target_profile and selected_target_profile['api_data'] is not None:
-                            #         st.markdown("**API Data:**")
-                            #         st.dataframe(selected_target_profile['api_data'], use_container_width=True)
-                            #     else:
-                            #         st.warning("⚠️ No API data in this profile")
-                                
-                            #     # Polymer Data
-                            #     if 'polymer_data' in selected_target_profile and selected_target_profile['polymer_data'] is not None:
-                            #         st.markdown("**Hydrogel Polymer Data:**")
-                            #         st.dataframe(selected_target_profile['polymer_data'], use_container_width=True)
-                            #     else:
-                            #         st.warning("⚠️ No Polymer data in this profile")
-                                
-                            #     # Formulation Data
-                            #     if 'formulation_data' in selected_target_profile and selected_target_profile['formulation_data'] is not None:
-                            #         st.markdown("**Formulation Data:**")
-                            #         formulation_data = selected_target_profile['formulation_data']
-                            #         st.dataframe(formulation_data, use_container_width=True)
-                                    
-                            #         # Show Type
-                            #         if 'Type' in formulation_data.columns:
-                            #             formulation_type = formulation_data.iloc[0]['Type']
-                            #             st.markdown(f"**Type:** {formulation_type}")
-                            #     else:
-                            #         st.warning("⚠️ No Formulation data in this profile")
+                            # Polymer Data
+                            if 'polymer_data' in selected_target_profile and selected_target_profile['polymer_data'] is not None:
+                                st.markdown("**Hydrogel Polymer Data:**")
+                                st.dataframe(selected_target_profile['polymer_data'], use_container_width=True)
+                            else:
+                                st.warning("⚠️ No Polymer data in this profile")
+                            
+                            # Formulation Data
+                            if 'formulation_data' in selected_target_profile and selected_target_profile['formulation_data'] is not None:
+                                st.markdown("**Formulation Data:**")
+                                formulation_data = selected_target_profile['formulation_data']
+                                st.dataframe(formulation_data, use_container_width=True)
+                                st.markdown(f"**Number of formulations:** {len(formulation_data)}")
+                            else:
+                                st.warning("⚠️ No Formulation data in this profile")
                     else:
-                        st.warning(f"❌ No target profiles of type '{selected_type_filter}' found")
+                        selected_target_profile = None
                         selected_target_profile_name = None
                 else:
                     st.error("❌ No complete target profiles in current job")
@@ -183,7 +143,18 @@ def show():
                     atps_model_options,
                     key=f"{prefix}_atps_model_select",
                     label_visibility="collapsed"
-                )           
+                )
+                
+                # Show ATPS model description based on selection
+                if selected_atps_model:
+                    atps_model_descriptions = {
+                        "MLP Model": "Multi-Layer Perceptron neural network model for nonlinear pattern recognition",
+                        "Group Method Model": "Group method of data handling for complex system modeling",
+                        "GNN Model": "Graph Neural Network model for molecular structure analysis"
+                    }
+                    
+                    with st.expander(f"ℹ️ About {selected_atps_model}", expanded=False):
+                        st.write(atps_model_descriptions.get(selected_atps_model, "Model description not available"))
                 
                 # Drug Release Model Selection
                 st.markdown("**Drug Release Model Selection**")
@@ -198,7 +169,17 @@ def show():
                     drug_release_model_options,
                     key=f"{prefix}_drug_release_model_select",
                     label_visibility="collapsed"
-                )              
+                )
+                
+                # Show Drug Release model description based on selection
+                if selected_drug_release_model:
+                    drug_release_model_descriptions = {
+                        "Diffusion Model": "Mathematical model based on Fick's laws of diffusion for drug release kinetics",
+                        "Particle Kinetics Model": "Kinetic model analyzing particle dissolution and drug release mechanisms"
+                    }
+                    
+                    with st.expander(f"ℹ️ About {selected_drug_release_model}", expanded=False):
+                        st.write(drug_release_model_descriptions.get(selected_drug_release_model, "Model description not available"))
 
             st.divider()
 
@@ -220,8 +201,13 @@ def show():
                     
                     st.markdown(f"• API Data: {api_status}")
                     st.markdown(f"• Polymer Data: {polymer_status}")
-                    st.markdown(f"• Formulation Data: {formulation_status}")                    
-
+                    st.markdown(f"• Formulation Data: {formulation_status}")
+                    
+                    # Show type if available
+                    if (selected_target_profile.get('formulation_data') is not None and 
+                        'Type' in selected_target_profile['formulation_data'].columns):
+                        profile_type = selected_target_profile['formulation_data'].iloc[0]['Type']
+                        st.markdown(f"• **Type:** {profile_type}")
                 else:
                     selected_target_profile_name = None
             
@@ -390,7 +376,6 @@ def show():
                             "drug_release_model_name": selected_drug_release_model,
                             "selected_target_profile": selected_target_profile,
                             "selected_target_profile_name": selected_target_profile_name,
-                            "target_type_filter": selected_type_filter if 'selected_type_filter' in locals() else "All",
                             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "status": "completed",
                             
