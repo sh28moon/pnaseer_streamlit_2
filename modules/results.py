@@ -8,6 +8,18 @@ import random
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
+def ensure_job_attributes(job):
+    """Ensure all required attributes exist on a job object"""
+    if not hasattr(job, 'common_api_datasets'):
+        job.common_api_datasets = {}
+    if not hasattr(job, 'polymer_datasets'):
+        job.polymer_datasets = {}
+    if not hasattr(job, 'complete_target_profiles'):
+        job.complete_target_profiles = {}
+    if not hasattr(job, 'formulation_results'):
+        job.formulation_results = {}
+    return job
+
 def show():
     st.header("Results")
 
@@ -19,8 +31,7 @@ def show():
     
     current_job = st.session_state.jobs[current_job_name]
     
-    # Import the ensure_job_attributes function from app
-    from app import ensure_job_attributes
+    # Ensure job has all required attributes
     current_job = ensure_job_attributes(current_job)
     
     # Update the job in session state
