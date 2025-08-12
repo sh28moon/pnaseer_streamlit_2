@@ -130,7 +130,6 @@ def show():
                                     # Replace current datasets with loaded ones
                                     st.session_state[session_key] = loaded_datasets
                                     st.success(f"✅ Loaded '{selected_save_name}' database with {count} dataset(s)!")
-                                    st.info(f"📅 Originally saved: {saved_time}")
                                     st.rerun()
                 
                 with col_remove:
@@ -143,8 +142,6 @@ def show():
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"❌ Failed to remove: {str(e)}")
-            else:
-                st.info(f"No saved {tab_name} databases found")
             
             st.divider()
             
@@ -175,8 +172,6 @@ def show():
                     temp_df = st.session_state[f"{session_key}_temp_dataset"]
                     st.dataframe(temp_df, use_container_width=True)
                     st.write(f"Shape: {temp_df.shape[0]} rows × {temp_df.shape[1]} columns")
-                else:
-                    st.info("Upload CSV to see summary")
             
             # Column 2: Save Dataset
             with col_save:
@@ -209,7 +204,6 @@ def show():
                         
                         if success:
                             st.success(f"✅ Saved '{dataset_name}' permanently!")
-                            st.info(f"📁 Saved to: {result}")
                             
                             # Clear temporary data
                             if f"{session_key}_temp_dataset" in st.session_state:
