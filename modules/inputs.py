@@ -431,3 +431,142 @@ def show():
                 st.rerun()
         else:
             st.info("No Formulation data saved in current job. Import or create Formulation data in 'Create target profile' tab.")
+
+        st.divider()
+
+        # Complete Target Profile Creation and Management
+        st.markdown("### Complete Target Profiles")
+        
+        # Check if all three components are available
+        has_api = current_job.has_api_data()
+        has_polymer = hasattr(current_job, 'polymer_dataset') and current_job.polymer_dataset is not None
+        has_formulations = current_job.has_target_data()
+        
+        if has_api and has_polymer and has_formulations:
+            st.markdown("**Create Complete Target Profile**")
+            st.info("✅ All components available (API + Polymer + Formulation)")
+            
+            # Profile creation section
+            col_name, col_formulation, col_create = st.columns([2, 2, 1])
+            
+            with col_name:
+                profile_name = st.text_input(
+                    "Target Profile Name:",
+                    placeholder="Enter unique profile name",
+                    key="complete_profile_name"
+                )
+            
+            with col_formulation:
+                # Select formulation to combine with API and Polymer
+                formulation_options = list(current_job.target_profile_dataset.keys())
+                selected_formulation_for_profile = st.selectbox(
+                    "Select Formulation:",
+                    formulation_options,
+                    key="formulation_for_complete_profile"
+                )
+            
+            with col_create:
+                st.write("")  # Space for alignment
+                if st.button("🔗 Create Profile", key="create_complete_profile"):
+                    if not profile_name.strip():
+                        st.error("Please enter a profile name.")
+                    elif not selected_formulation_for_profile:
+                        st.error("Please select a formulation.")
+                    else:
+                        # Initialize complete_target_profiles if it doesn't exist
+                        if not hasattr(current_job, 'complete_target_profiles'):
+                            current_job.complete_target_profiles = {}
+                        
+                        # Check if profile name already exists
+                        if profile_name.strip() in current_job.complete_target_profiles:
+                            st.error(f"Profile name '{profile_name.strip()}' already exists. Please choose a different name.")
+                        else:
+                            # Create complete target profile
+                            complete_profile = {
+                                "api_data": current_job.api_dataset.copy(),
+                                "polymer_data": current_job.polymer_dataset.copy(),
+                                "formulation_data": current_job.target_profile_dataset[selected_formulation_for_profile].copy(),
+                                "created_timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            
+                            current_job.complete_target_profiles[profile_name.strip()] = complete_profile
+                            st.session_state.jobs[current_job_name] = current_job
+                            st.success(f"Complete target profile '{profile_name.strip()}' created successfully!")
+                            st.rerun()
+        else:
+            st.markdown("**Create Complete Target Profile**")
+            missing_components = []
+            if not has_api:
+                missing_components.append("API")
+            if not has_polymer:
+                missing_components.append("Hydrogel Polymer")
+            if not has_formulations:
+                missing_components.append("Formulation")
+            
+            st.warning(f"⚠️ Missing components: {', '.join(missing_components)}")
+            st.info("Import all required components above to create complete target profiles.")
+        
+        # Display existing complete target profiles
+        if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
+            st.markdown("**Existing Complete Target Profiles**")
+            
+            profiles = current_job.complete_target_profiles
+            profile_names = list(profiles.keys())
+            
+            selected_complete_profile = st.selectbox(
+                "Select Complete Target Profile to View:",
+                profile_names,
+                key="view_complete_profile_select"
+            )
+            
+            if selected_complete_profile:
+                profile_data = profiles[selected_complete_profile]
+                
+                # Show profile creation timestamp
+                created_time = profile_data.get("created_timestamp", "Unknown")
+                st.markdown(f"**Created:** {created_time}")
+                
+                # Show formulation type if available
+                if ('formulation_data' in profile_data and 
+                    'Type' in profile_data['formulation_data'].columns):
+                    profile_type = profile_data['formulation_data'].iloc[0]['Type']
+                    st.markdown(f"**Type:** {profile_type}")
+                
+                # Expandable sections for each component
+                with st.expander("📋 API Component", expanded=False):
+                    if profile_data.get('api_data') is not None:
+                        st.dataframe(profile_data['api_data'], use_container_width=True)
+                    else:
+                        st.warning("No API data in this profile")
+                
+                with st.expander("🧪 Polymer Component", expanded=False):
+                    if profile_data.get('polymer_data') is not None:
+                        st.dataframe(profile_data['polymer_data'], use_container_width=True)
+                    else:
+                        st.warning("No Polymer data in this profile")
+                
+                with st.expander("⚗️ Formulation Component", expanded=False):
+                    if profile_data.get('formulation_data') is not None:
+                        st.dataframe(profile_data['formulation_data'], use_container_width=True)
+                    else:
+                        st.warning("No Formulation data in this profile")
+                
+                # Remove complete profile button
+                col_remove, col_clear_all = st.columns(2)
+                with col_remove:
+                    if st.button(f"🗑️ Remove '{selected_complete_profile}'", key="remove_complete_profile"):
+                        del current_job.complete_target_profiles[selected_complete_profile]
+                        if not current_job.complete_target_profiles:
+                            current_job.complete_target_profiles = {}
+                        st.session_state.jobs[current_job_name] = current_job
+                        st.success(f"Complete target profile '{selected_complete_profile}' removed")
+                        st.rerun()
+                
+                with col_clear_all:
+                    if st.button("🗑️ Clear All Profiles", key="clear_all_complete_profiles"):
+                        current_job.complete_target_profiles = {}
+                        st.session_state.jobs[current_job_name] = current_job
+                        st.success("All complete target profiles cleared")
+                        st.rerun()
+        else:
+            st.info("No complete target profiles created yet. Create profiles above to use in calculations.")
