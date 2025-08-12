@@ -224,10 +224,10 @@ def show():
                     st.error("❌ Job name already exists!")
                 else:
                     st.error("❌ Please enter a job name!")
-        if st.button("💾 Save Job to Cloud", key="save_current_job", help="Save this job permanently"):
+        if st.button("💾 Save Job to Cloud", key="save_current_job", help="Save this job to cloud"):
             success, result = save_job_to_file(current_job, st.session_state.current_job)
             if success:
-                st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
+                st.success(f"✅ Job '{st.session_state.current_job}' saved!")
             else:
                 st.error(f"❌ Failed to save job: {result}")
 
