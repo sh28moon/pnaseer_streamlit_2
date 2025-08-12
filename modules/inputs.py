@@ -8,7 +8,7 @@ from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
 def show():
-    st.markdown('<p class="font-large"><b>Manage target profile</b></p>', unsafe_allow_html=True)
+    st.markdown('<p class="font-large"><b>Create Target Profile</b></p>', unsafe_allow_html=True)
 
     # Check if a job is selected
     current_job_name = st.session_state.get("current_job")
@@ -234,42 +234,50 @@ def show():
         with col_manual:
             st.markdown("**Manual Input**")
             
-            # Profile name input
-            dataset_name = st.text_input("Profile Name", placeholder="Enter profile name", key="manual_formulation_name")
+            # Two-column layout for manual input fields
+            col_left, col_right = st.columns(2)
             
-            # Type input
-            dataset_type = st.text_input("Type", placeholder="Enter desired product types (e.g., Gel, Powder)", key="manual_formulation_type")
-            
-            # Parameter inputs
-            modulus = st.number_input("Modulus[MPa]", min_value=0.0, format="%.2f", key="formulation_modulus")
-            encapsulation_ratio = st.number_input("Encapsulation Ratio(0 ~ 1)", min_value=0.0, format="%.2f", key="formulation_encapsulation_ratio")
-            release_time = st.number_input("Release Time[Week]", min_value=0.0, format="%.2f", key="formulation_release_time")
-            
-            # Gel Polymer selection from database
-            st.markdown("**Gel Polymer**")
-            if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
-                # Collect all polymer names from all datasets
-                available_polymers = []
-                for dataset_name_db, dataset_df in st.session_state["polymer_datasets"].items():
-                    if 'Name' in dataset_df.columns:
-                        polymer_names = dataset_df['Name'].tolist()
-                        available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
+            with col_left:
+                # Profile name input
+                dataset_name = st.text_input("Profile Name", placeholder="Enter profile name", key="manual_formulation_name")
                 
-                # Remove duplicates and sort
-                unique_polymers = sorted(list(set(available_polymers)))
+                # Modulus input
+                modulus = st.number_input("Modulus[MPa]", min_value=0.0, format="%.2f", key="formulation_modulus")
                 
-                if unique_polymers:
-                    gel_polymer = st.selectbox(
-                        "Select Gel Polymer:",
-                        [""] + unique_polymers,
-                        key="formulation_gel_polymer_select"
-                    )
+                # Release time input
+                release_time = st.number_input("Release Time[Week]", min_value=0.0, format="%.2f", key="formulation_release_time")
+            
+            with col_right:
+                # Type input
+                dataset_type = st.text_input("Type", placeholder="Enter desired product types (e.g., Gel, Powder)", key="manual_formulation_type")
+                
+                # Encapsulation ratio input
+                encapsulation_ratio = st.number_input("Encapsulation Ratio(0 ~ 1)", min_value=0.0, format="%.2f", key="formulation_encapsulation_ratio")
+                
+                # Gel Polymer selection from database
+                if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
+                    # Collect all polymer names from all datasets
+                    available_polymers = []
+                    for dataset_name_db, dataset_df in st.session_state["polymer_datasets"].items():
+                        if 'Name' in dataset_df.columns:
+                            polymer_names = dataset_df['Name'].tolist()
+                            available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
+                    
+                    # Remove duplicates and sort
+                    unique_polymers = sorted(list(set(available_polymers)))
+                    
+                    if unique_polymers:
+                        gel_polymer = st.selectbox(
+                            "Gel Polymer:",
+                            [""] + unique_polymers,
+                            key="formulation_gel_polymer_select"
+                        )
+                    else:
+                        gel_polymer = ""
                 else:
                     gel_polymer = ""
-            else:
-                gel_polymer = ""
 
-            # Save manual formulation button
+            # Save manual formulation button (spanning both columns)
             if st.button("💾 Save Manual Data", key="save_manual_formulation"):
                 if not dataset_name.strip():
                     st.error("Please enter a profile name.")
