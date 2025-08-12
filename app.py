@@ -78,20 +78,25 @@ class Job:
                 formulation_name in self.formulation_results[profile_name])
 
 
+def ensure_job_attributes(job):
+    """Ensure all required attributes exist on a job object"""
+    if not hasattr(job, 'common_api_datasets'):
+        job.common_api_datasets = {}
+    if not hasattr(job, 'polymer_datasets'):
+        job.polymer_datasets = {}
+    if not hasattr(job, 'complete_target_profiles'):
+        job.complete_target_profiles = {}
+    if not hasattr(job, 'formulation_results'):
+        job.formulation_results = {}
+    return job
+
 def sync_databases_with_job():
     """Sync database data between session state and current job for persistence"""
     if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
         current_job = st.session_state.jobs[st.session_state.current_job]
         
-        # Initialize new attributes for existing jobs if they don't exist
-        if not hasattr(current_job, 'common_api_datasets'):
-            current_job.common_api_datasets = {}
-        if not hasattr(current_job, 'polymer_datasets'):
-            current_job.polymer_datasets = {}
-        if not hasattr(current_job, 'complete_target_profiles'):
-            current_job.complete_target_profiles = {}
-        if not hasattr(current_job, 'formulation_results'):
-            current_job.formulation_results = {}
+        # Ensure all attributes exist
+        current_job = ensure_job_attributes(current_job)
         
         # Sync databases from job to session state (for UI access)
         st.session_state["common_api_datasets"] = current_job.common_api_datasets
@@ -108,21 +113,17 @@ def save_databases_to_job():
     if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
         current_job = st.session_state.jobs[st.session_state.current_job]
         
-        # Initialize new attributes for existing jobs if they don't exist
-        if not hasattr(current_job, 'common_api_datasets'):
-            current_job.common_api_datasets = {}
-        if not hasattr(current_job, 'polymer_datasets'):
-            current_job.polymer_datasets = {}
-        if not hasattr(current_job, 'complete_target_profiles'):
-            current_job.complete_target_profiles = {}
-        if not hasattr(current_job, 'formulation_results'):
-            current_job.formulation_results = {}
+        # Ensure all attributes exist
+        current_job = ensure_job_attributes(current_job)
         
         # Save databases from session state to job
         if "common_api_datasets" in st.session_state:
             current_job.common_api_datasets = st.session_state["common_api_datasets"]
         if "polymer_datasets" in st.session_state:
             current_job.polymer_datasets = st.session_state["polymer_datasets"]
+        
+        # Update the job in session state to ensure it's current
+        st.session_state.jobs[st.session_state.current_job] = current_job
 
 def main(): 
     # uniform sidebar button height
@@ -191,6 +192,10 @@ def main():
                 
                 # Switch to new job
                 st.session_state.current_job = selected_job
+                
+                # Ensure the selected job has all required attributes
+                if selected_job in st.session_state.jobs:
+                    st.session_state.jobs[selected_job] = ensure_job_attributes(st.session_state.jobs[selected_job])
                 
                 # Sync new job data to session state
                 sync_databases_with_job()
