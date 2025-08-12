@@ -393,6 +393,11 @@ def show():
             with col_save:
                 # Save Progress button - saves the current optimization setup
                 if st.button("Save Progress", key=f"{prefix}_save_progress", help="Save current optimization setup permanently"):
+                    # Save databases to job before saving progress
+                    current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                    current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                    st.session_state.jobs[current_job_name] = current_job
+                    
                     save_progress_to_file(current_job, current_job_name, selected_target_profile, selected_target_profile_name, selected_atps_model, selected_drug_release_model)
             
             with col_clear:
