@@ -92,7 +92,7 @@ def show():
             with col_save:
                 st.write("")  # Space for alignment
                 if st.button("💾 Save API", key="save_api_to_temp"):
-                    if selected_api_data is not None:
+                    if 'selected_api_data' in locals() and selected_api_data is not None:
                         st.session_state.temp_profile_creation["api_data"] = selected_api_data
                         # Save API name for display
                         api_name = selected_api_data['Name'].iloc[0] if 'Name' in selected_api_data.columns else "Unnamed API"
@@ -159,7 +159,7 @@ def show():
             with col_save:
                 st.write("")  # Space for alignment
                 if st.button("💾 Save Polymer", key="save_polymer_to_temp"):
-                    if selected_polymer_data is not None:
+                    if 'selected_polymer_data' in locals() and selected_polymer_data is not None:
                         st.session_state.temp_profile_creation["polymer_data"] = selected_polymer_data
                         # Save Polymer name for display
                         polymer_name = selected_polymer_data['Name'].iloc[0] if 'Name' in selected_polymer_data.columns else "Unnamed Polymer"
