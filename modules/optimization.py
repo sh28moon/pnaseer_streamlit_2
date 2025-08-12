@@ -18,7 +18,6 @@ def show():
         return
     
     current_job = st.session_state.jobs[current_job_name]
-    st.info(f"📁 Working on job: **{current_job_name}**")
 
     # Top-level tabs
     tab_atps = st.tabs(["ATPS Partition"])[0]
@@ -183,15 +182,14 @@ def show():
                         profile_type = selected_target_profile['formulation_data'].iloc[0]['Type']
                         st.markdown(f"• **Type:** {profile_type}")
                 else:
-                    st.info("No target profile selected")
+                    selected_target_profile_name = None
             
             with col_model_summary:
                 st.markdown("**Selected Model**")
                 if selected_model:
                     st.markdown(f"*{selected_model}*")
-                    st.info("✅ Model ready for calculation")
                 else:
-                    st.info("No model selected")
+                    selected_model = None
             
             # Submit button and Clear Results button
             has_target_profile = selected_target_profile is not None and selected_target_profile_name is not None
@@ -374,12 +372,6 @@ def show():
                         st.session_state.jobs[current_job_name] = current_job
                         st.success(f"All results cleared from job '{current_job_name}'")
                         st.rerun()
-                
-                # Show results status
-                if has_results:
-                    st.info("✅ Results available")
-                else:
-                    st.info("ℹ️ No results to clear")
 
     # Render each tab
     render_model_tab("atps", tab_atps)
