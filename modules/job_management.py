@@ -185,64 +185,61 @@ def show():
         st.markdown("### ➕ Create New Job")
         job_name = st.text_input("Job Name", placeholder="Enter a descriptive job name", key="new_job_name")
         
-        col_create, col_save = st.columns(2)
-        with col_create:
-            if st.button("➕ Create Job", key="create_job"):
-                if job_name and job_name not in st.session_state.get("jobs", {}):
-                    # Save current job's databases before switching
-                    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
-                        current_job = st.session_state.jobs[st.session_state.current_job]
-                        # Initialize attributes if they don't exist
-                        if not hasattr(current_job, 'common_api_datasets'):
-                            current_job.common_api_datasets = {}
-                        if not hasattr(current_job, 'polymer_datasets'):
-                            current_job.polymer_datasets = {}
-                        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
-                        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
-                    
-                    # Import Job class from app
-                    from app import Job
-                    
-                    import datetime
-                    st.session_state.current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    new_job = Job(job_name)
-                    
-                    # Initialize jobs dict if needed
-                    if "jobs" not in st.session_state:
-                        st.session_state.jobs = {}
-                    
-                    st.session_state.jobs[job_name] = new_job
-                    st.session_state.current_job = job_name
-                    
-                    # Initialize databases for new job
-                    st.session_state["common_api_datasets"] = {}
-                    st.session_state["polymer_datasets"] = {}
-                    
-                    st.success(f"✅ Job '{job_name}' created and activated!")
-                    st.rerun()
-                elif job_name in st.session_state.get("jobs", {}):
-                    st.error("❌ Job name already exists!")
-                else:
-                    st.error("❌ Please enter a job name!")
+        if st.button("➕ Create Job", key="create_job"):
+            if job_name and job_name not in st.session_state.get("jobs", {}):
+                # Save current job's databases before switching
+                if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
+                    current_job = st.session_state.jobs[st.session_state.current_job]
+                    # Initialize attributes if they don't exist
+                    if not hasattr(current_job, 'common_api_datasets'):
+                        current_job.common_api_datasets = {}
+                    if not hasattr(current_job, 'polymer_datasets'):
+                        current_job.polymer_datasets = {}
+                    current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                    current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                
+                # Import Job class from app
+                from app import Job
+                
+                import datetime
+                st.session_state.current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_job = Job(job_name)
+                
+                # Initialize jobs dict if needed
+                if "jobs" not in st.session_state:
+                    st.session_state.jobs = {}
+                
+                st.session_state.jobs[job_name] = new_job
+                st.session_state.current_job = job_name
+                
+                # Initialize databases for new job
+                st.session_state["common_api_datasets"] = {}
+                st.session_state["polymer_datasets"] = {}
+                
+                st.success(f"✅ Job '{job_name}' created and activated!")
+                st.rerun()
+            elif job_name in st.session_state.get("jobs", {}):
+                st.error("❌ Job name already exists!")
+            else:
+                st.error("❌ Please enter a job name!")
         
-        with col_save:
-            # Save Job button - only enabled if current job exists
-            current_job_name = st.session_state.get("current_job")
-            has_current_job = (current_job_name and 
-                             current_job_name in st.session_state.get("jobs", {}))
-            
-            if st.button("💾 Save Job to Cloud", key="save_current_job", 
-                        disabled=not has_current_job,
-                        help="Save current job to cloud"):
-                if has_current_job:
-                    current_job = st.session_state.jobs[current_job_name]
-                    success, result = save_job_to_file(current_job, current_job_name)
-                    if success:
-                        st.success(f"✅ Job '{current_job_name}' saved!")
-                    else:
-                        st.error(f"❌ Failed to save job: {result}")
+        # Save Job button - only enabled if current job exists
+        current_job_name = st.session_state.get("current_job")
+        has_current_job = (current_job_name and 
+                         current_job_name in st.session_state.get("jobs", {}))
+        
+        if st.button("💾 Save Job to Cloud", key="save_current_job", 
+                    disabled=not has_current_job,
+                    help="Save current job to cloud"):
+            if has_current_job:
+                current_job = st.session_state.jobs[current_job_name]
+                success, result = save_job_to_file(current_job, current_job_name)
+                if success:
+                    st.success(f"✅ Job '{current_job_name}' saved!")
                 else:
-                    st.error("❌ No current job to save!")
+                    st.error(f"❌ Failed to save job: {result}")
+            else:
+                st.error("❌ No current job to save!")
 
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
