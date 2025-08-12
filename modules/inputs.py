@@ -197,10 +197,10 @@ def show():
                         st.error("❌ File is empty.")
                     else:
                         # Save all rows from CSV file
-                        st.success(f"✅ {len(df_formulation)} formulations loaded")
+                        # st.success(f"✅ {len(df_formulation)} formulations loaded")
                         st.dataframe(df_formulation, use_container_width=True)
                         
-                        if st.button("💾 Save All Formulations", key="save_imported_formulations_temp"):
+                        if st.button("💾 Save Imported Formulations", key="save_imported_formulations_temp"):
                             st.session_state.temp_profile_creation["formulation_data"] = df_formulation
                             st.success(f"All {len(df_formulation)} formulations saved to profile!")
                         
@@ -284,7 +284,7 @@ def show():
             # Show number of formulation rows or status
             if has_formulation:
                 formulation_count = len(temp_profile["formulation_data"])
-                st.write(f"• Formulation Data: {formulation_count} row(s)")
+                st.write(f"• Formulation Data: {formulation_count} formulation profile")
             else:
                 st.write("• Formulation Data: Not created")
         
@@ -292,7 +292,7 @@ def show():
             if has_api and has_polymer and has_formulation:
                 profile_name = st.text_input("Profile Name", placeholder="Enter target profile name", key="complete_profile_name")
                 
-                if st.button("💾 Save to cloud", key="save_complete_profile"):
+                if st.button("💾 Save profile", key="save_complete_profile"):
                     if not profile_name.strip():
                         st.error("Please enter a profile name.")
                     else:
@@ -367,43 +367,14 @@ def show():
                 
                 # ── 4th Row: Formulation ──────────────────────────────────────────
                 st.subheader("Formulation")
-                
-                col_selection, col_table = st.columns([1, 2])
-                
-                with col_selection:
-                    if 'formulation_data' in selected_profile and selected_profile['formulation_data'] is not None:
-                        formulation_data = selected_profile['formulation_data']
-                        
-                        # Formulation selection via togglebox (if multiple formulations in future)
-                        formulation_name = formulation_data.iloc[0]['Name'] if 'Name' in formulation_data.columns else "Formulation 1"
-                        st.selectbox(
-                            "Formulation togglebox:",
-                            [formulation_name],
-                            key="summary_formulation_select"
-                        )
-                        
-                        # Show formulation type if available
-                        if 'Type' in formulation_data.columns:
-                            formulation_type = formulation_data.iloc[0]['Type']
-                            st.markdown(f"**Type:** {formulation_type}")
-                        
-                        # Profile management buttons
-                        if st.button(f"🗑️ Remove Profile", key="remove_complete_profile"):
-                            del current_job.complete_target_profiles[selected_profile_name]
-                            if not current_job.complete_target_profiles:
-                                current_job.complete_target_profiles = {}
-                            st.session_state.jobs[current_job_name] = current_job
-                            st.success(f"Profile '{selected_profile_name}' removed")
-                            st.rerun()
-                    else:
-                        st.warning("No formulation data in this profile")
-                
-                with col_table:
-                    # Property Table
-                    if 'formulation_data' in selected_profile and selected_profile['formulation_data'] is not None:
-                        st.markdown("**Property Table**")
-                        st.dataframe(selected_profile['formulation_data'], use_container_width=True)
-                    else:
-                        st.info("No formulation properties to display")
+
+                # Property Table
+                if 'formulation_data' in selected_profile and selected_profile['formulation_data'] is not None:
+                    st.markdown("**Property Table**")
+                    st.dataframe(selected_profile['formulation_data'], use_container_width=True)
+                else:
+                    st.info("No formulation properties to display")
+
         else:
             st.info("No complete target profiles found. Create profiles in 'Create New Profile' tab.")
+
