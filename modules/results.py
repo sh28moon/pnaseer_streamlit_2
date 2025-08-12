@@ -19,8 +19,11 @@ def show():
     
     current_job = st.session_state.jobs[current_job_name]
     
-    # Check if current job has results
-    if not current_job.has_result_data():
+    # Check if current job has results (either old format or new formulation-specific format)
+    has_old_results = current_job.result_dataset is not None
+    has_formulation_results = hasattr(current_job, 'formulation_results') and bool(current_job.formulation_results)
+    
+    if not (has_old_results or has_formulation_results):
         st.info("No results available. Please run optimization first.")
         return
 
@@ -31,437 +34,489 @@ def show():
     with tab_summary:
         st.subheader("Results Summary")
         
-        result_data = current_job.result_dataset
-        
-        # Profile and formulation selection for analysis
-        col_profile_sel, col_form_sel = st.columns(2)
+        # Formulation-specific results selection
+        col_profile_sel, col_form_sel, col_clear = st.columns([2, 2, 1])
         
         with col_profile_sel:
-            # Get available target profiles for analysis
-            if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
-                profile_names = list(current_job.complete_target_profiles.keys())
-                selected_analysis_profile = st.selectbox(
-                    "Select Profile for Analysis:",
-                    profile_names,
-                    key="analysis_profile_select"
+            # Get available profiles with results
+            profiles_with_results = []
+            if hasattr(current_job, 'formulation_results') and current_job.formulation_results:
+                profiles_with_results = list(current_job.formulation_results.keys())
+            
+            if profiles_with_results:
+                selected_profile_for_results = st.selectbox(
+                    "Select Profile with Results:",
+                    profiles_with_results,
+                    key="results_profile_select"
                 )
             else:
-                st.warning("No target profiles available")
-                selected_analysis_profile = None
+                selected_profile_for_results = None
+                st.selectbox(
+                    "Select Profile with Results:",
+                    ["No profiles with results available"],
+                    disabled=True
+                )
         
         with col_form_sel:
-            if selected_analysis_profile:
-                # Get formulations from the selected profile
-                profile_data = current_job.complete_target_profiles[selected_analysis_profile]
-                if ('formulation_data' in profile_data and 
-                    profile_data['formulation_data'] is not None and
-                    'Name' in profile_data['formulation_data'].columns):
-                    
-                    formulation_names = profile_data['formulation_data']['Name'].tolist()
-                    selected_analysis_formulation = st.selectbox(
-                        "Select Formulation for Analysis:",
-                        formulation_names,
-                        key="analysis_formulation_select"
-                    )
-                else:
-                    st.warning("No formulations available in selected profile")
-                    selected_analysis_formulation = None
+            if selected_profile_for_results and selected_profile_for_results in current_job.formulation_results:
+                formulations_with_results = list(current_job.formulation_results[selected_profile_for_results].keys())
+                selected_formulation_for_results = st.selectbox(
+                    "Select Formulation with Results:",
+                    formulations_with_results,
+                    key="results_formulation_select"
+                )
             else:
-                selected_analysis_formulation = None
+                selected_formulation_for_results = None
+                st.selectbox(
+                    "Select Formulation with Results:",
+                    ["Select profile first"],
+                    disabled=True
+                )
         
-        # Get Gel Polymer name from target profile
-        gel_polymer_name = "Not specified"
-        if selected_analysis_profile and 'selected_target_profile' in result_data:
-            target_profile = result_data['selected_target_profile']
-            if ('polymer_data' in target_profile and 
-                target_profile['polymer_data'] is not None and
-                'Name' in target_profile['polymer_data'].columns):
-                gel_polymer_name = target_profile['polymer_data'].iloc[0]['Name']
-        
-        # Get Co-polymer name randomly from Polymer database, excluding Gel Polymer
-        co_polymer_name = "Not specified"
-        if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
-            # Set seed for consistent results per job
-            random.seed(hash(current_job_name) % 2147483647)
-            
-            # Collect all polymer names from all datasets
-            available_polymers = []
-            for dataset_name, dataset_df in st.session_state["polymer_datasets"].items():
-                if 'Name' in dataset_df.columns:
-                    polymer_names = dataset_df['Name'].tolist()
-                    available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
-            
-            # Remove duplicates and exclude Gel Polymer
-            unique_polymers = list(set(available_polymers))
-            if gel_polymer_name in unique_polymers:
-                unique_polymers.remove(gel_polymer_name)
-            
-            # Select random co-polymer
-            if unique_polymers:
-                co_polymer_name = random.choice(unique_polymers)
-        
-        # Composition Results with Clear Button
-        col_comp, col_clear = st.columns([4, 1])
-        with col_comp:
-            st.markdown("**Composition Results**")
         with col_clear:
-            if st.button("🗑️ Clear Results", key="clear_current_results", help="Remove results from current job"):
-                current_job.result_dataset = None
-                st.success(f"Results cleared from job '{current_job_name}'")
-                st.rerun()
+            # Clear specific formulation results
+            if (selected_profile_for_results and selected_formulation_for_results and
+                current_job.has_formulation_results(selected_profile_for_results, selected_formulation_for_results)):
+                if st.button("🗑️ Clear Results", key="clear_specific_results", help="Remove results for this formulation"):
+                    del current_job.formulation_results[selected_profile_for_results][selected_formulation_for_results]
+                    # Clean up empty profile entries
+                    if not current_job.formulation_results[selected_profile_for_results]:
+                        del current_job.formulation_results[selected_profile_for_results]
+                    st.success(f"Results cleared for '{selected_formulation_for_results}'")
+                    st.rerun()
+            else:
+                st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
         
-        # Generate enhanced composition results based on selected profile/formulation
-        composition_results = []
-        for i in range(3):  # Create 3 rows
-            buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
-            remaining_pct = 100 - buffer_pct
+        # Display results if formulation is selected
+        if (selected_profile_for_results and selected_formulation_for_results and
+            current_job.has_formulation_results(selected_profile_for_results, selected_formulation_for_results)):
             
-            # Distribute remaining percentage between Gel Polymer and Co-polymer
-            gel_polymer_pct = random.randint(1, remaining_pct - 1)
-            co_polymer_pct = remaining_pct - gel_polymer_pct
+            result_data = current_job.get_formulation_result(selected_profile_for_results, selected_formulation_for_results)
             
-            composition_results.append({
-                "Gel Polymer": gel_polymer_name,
-                "Co-polymer": co_polymer_name,
-                "Candidate": f"Formulation {i+1}",
-                "Gel Polymer w/w": f"{gel_polymer_pct}%",
-                "Co-polymer w/w": f"{co_polymer_pct}%",
-                "Buffer w/w": f"{buffer_pct}%"
-            })
-        
-        df_comp_enhanced = pd.DataFrame(composition_results)
-        st.dataframe(df_comp_enhanced, use_container_width=True)
-        
-        st.divider()
-        
-        # Performance Review (renamed from Performance Trend Analysis)
-        st.markdown("**Performance review**")
-        
-        # Generate performance trends based on selected profile
-        formulation_options = [f"Formulation {i+1}" for i in range(3)]
-        selected_formulation = st.selectbox(
-            "Select Formulation to Analyze:",
-            formulation_options,
-            key="formulation_selector"
-        )
-        
-        # Get release time from the selected analysis formulation
-        release_time_value = 10  # Default fallback
-        if (selected_analysis_profile and selected_analysis_formulation and 
-            hasattr(current_job, 'complete_target_profiles') and 
-            selected_analysis_profile in current_job.complete_target_profiles):
+            st.markdown(f"**Results for: {selected_profile_for_results} → {selected_formulation_for_results}**")
             
-            analysis_profile_data = current_job.complete_target_profiles[selected_analysis_profile]
-            if ('formulation_data' in analysis_profile_data and 
-                analysis_profile_data['formulation_data'] is not None):
-                formulation_data = analysis_profile_data['formulation_data']
-                matching_rows = formulation_data[formulation_data['Name'] == selected_analysis_formulation]
-                if len(matching_rows) > 0 and 'Release Time (Week)' in matching_rows.columns:
-                    release_time_value = matching_rows.iloc[0]['Release Time (Week)']
+            # Show optimization details
+            with st.expander("🔬 Optimization Details", expanded=False):
+                col_models, col_timestamp = st.columns(2)
+                with col_models:
+                    st.markdown(f"**ATPS Model:** {result_data.get('atps_model_name', 'Unknown')}")
+                    st.markdown(f"**Drug Release Model:** {result_data.get('drug_release_model_name', 'Unknown')}")
+                with col_timestamp:
+                    st.markdown(f"**Generated:** {result_data.get('timestamp', 'Unknown')}")
+                    st.markdown(f"**Status:** {result_data.get('status', 'Unknown')}")
+                
+                # Show formulation properties
+                if 'formulation_properties' in result_data:
+                    st.markdown("**Formulation Properties:**")
+                    form_props = result_data['formulation_properties']
+                    props_df = pd.DataFrame([form_props])
+                    st.dataframe(props_df, use_container_width=True)
+        
+            # Get Gel Polymer name from target profile
+            gel_polymer_name = "Not specified"
+            if 'selected_target_profile' in result_data and result_data['selected_target_profile']:
+                target_profile = result_data['selected_target_profile']
+                if ('polymer_data' in target_profile and 
+                    target_profile['polymer_data'] is not None and
+                    'Name' in target_profile['polymer_data'].columns):
+                    gel_polymer_name = target_profile['polymer_data'].iloc[0]['Name']
+            
+            # Get Co-polymer name randomly from Polymer database, excluding Gel Polymer
+            co_polymer_name = "Not specified"
+            if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
+                # Set seed for consistent results per job and formulation
+                random.seed(hash(current_job_name + selected_formulation_for_results) % 2147483647)
+                
+                # Collect all polymer names from all datasets
+                available_polymers = []
+                for dataset_name, dataset_df in st.session_state["polymer_datasets"].items():
+                    if 'Name' in dataset_df.columns:
+                        polymer_names = dataset_df['Name'].tolist()
+                        available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
+                
+                # Remove duplicates and exclude Gel Polymer
+                unique_polymers = list(set(available_polymers))
+                if gel_polymer_name in unique_polymers:
+                    unique_polymers.remove(gel_polymer_name)
+                
+                # Select random co-polymer
+                if unique_polymers:
+                    co_polymer_name = random.choice(unique_polymers)
+            
+            st.divider()
+            
+            # Composition Results
+            st.markdown("**Composition Results**")
+            
+            # Use the composition results from the specific formulation
+            if 'composition_results' in result_data:
+                composition_data = result_data['composition_results']
+                
+                # Enhance composition results with polymer names
+                enhanced_composition = []
+                for comp in composition_data:
+                    enhanced_comp = comp.copy()
+                    enhanced_comp["Gel Polymer"] = gel_polymer_name
+                    enhanced_comp["Co-polymer"] = co_polymer_name
+                    enhanced_composition.append(enhanced_comp)
+                
+                df_comp_enhanced = pd.DataFrame(enhanced_composition)
+                # Reorder columns for better display
+                column_order = ["Gel Polymer", "Co-polymer", "Candidate", "Gel Polymer w/w", "Co-polymer w/w", "Buffer w/w"]
+                available_columns = [col for col in column_order if col in df_comp_enhanced.columns]
+                df_comp_enhanced = df_comp_enhanced[available_columns]
+                st.dataframe(df_comp_enhanced, use_container_width=True)
+            else:
+                st.warning("No composition results available")
+            
+            st.divider()
+            
+            # Performance Review
+            st.markdown("**Performance review**")
+            
+            # Use candidates from the specific formulation results
+            if 'composition_results' in result_data:
+                candidate_options = [comp['Candidate'] for comp in result_data['composition_results']]
+                selected_candidate = st.selectbox(
+                    "Select Candidate to Analyze:",
+                    candidate_options,
+                    key="candidate_selector"
+                )
+            else:
+                st.warning("No candidates available")
+                selected_candidate = None
+        
+            if selected_candidate:
+                # Get release time from the formulation properties
+                release_time_value = 10  # Default fallback
+                if 'formulation_properties' in result_data and 'Release Time (Week)' in result_data['formulation_properties']:
+                    release_time_value = result_data['formulation_properties']['Release Time (Week)']
                     if isinstance(release_time_value, str):
                         release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
                     elif not isinstance(release_time_value, (int, float)):
                         release_time_value = float(release_time_value)
-            
-        # Three column layout for ATPS Composition, Drug Release, and Target vs Result
-        col_atps, col_performance, col_radar = st.columns(3)
+                
+                # Three column layout for ATPS Composition, Drug Release, and Target vs Result
+                col_atps, col_performance, col_radar = st.columns(3)
+                
+                with col_atps:
+                    st.markdown("**ATPS Composition**")
+                    
+                    # Generate ATPS composition based on selected formulation and candidate
+                    # Set seed for consistent ATPS values per formulation and candidate
+                    seed_str = f"{current_job_name}_{selected_profile_for_results}_{selected_formulation_for_results}_{selected_candidate}_atps"
+                    random.seed(hash(seed_str) % 2147483647)
+                    
+                    # Get reference values from composition results
+                    ref_gel_polymer = random.randint(5, 15)  # Reference gel polymer percentage
+                    ref_co_polymer = random.randint(5, 15)   # Reference co-polymer percentage
+                    ref_buffer = 100 - ref_gel_polymer - ref_co_polymer  # Reference buffer percentage
+                    
+                    # Calculate ATPS composition following the rules:
+                    # Top Phase: gel polymer < ref, co-polymer > ref
+                    # Bottom Phase: gel polymer > ref, co-polymer < ref
+                    # Each column sums to 100%
+                    
+                    # Top Phase calculations
+                    top_gel_polymer = ref_gel_polymer * random.uniform(0.6, 0.9)  # Smaller than reference
+                    top_co_polymer = ref_co_polymer * random.uniform(1.1, 1.4)   # Larger than reference
+                    top_buffer = 100 - top_gel_polymer - top_co_polymer          # Make sum = 100%
+                    
+                    # Ensure top_buffer is positive
+                    if top_buffer < 0:
+                        top_buffer = random.uniform(70, 85)
+                        remaining = 100 - top_buffer
+                        top_gel_polymer = remaining * 0.3
+                        top_co_polymer = remaining * 0.7
+                    
+                    # Bottom Phase calculations
+                    bottom_gel_polymer = ref_gel_polymer * random.uniform(1.1, 1.4)  # Larger than reference
+                    bottom_co_polymer = ref_co_polymer * random.uniform(0.6, 0.9)   # Smaller than reference
+                    bottom_buffer = 100 - bottom_gel_polymer - bottom_co_polymer    # Make sum = 100%
+                    
+                    # Ensure bottom_buffer is positive
+                    if bottom_buffer < 0:
+                        bottom_buffer = random.uniform(70, 85)
+                        remaining = 100 - bottom_buffer
+                        bottom_gel_polymer = remaining * 0.7
+                        bottom_co_polymer = remaining * 0.3
+                    
+                    # Create ATPS composition table
+                    atps_data = {
+                        "Component": ["Gel polymer concentration", "Co-polymer concentration", "Buffer concentration"],
+                        "Top Phase": [f"{top_gel_polymer:.1f}%", f"{top_co_polymer:.1f}%", f"{top_buffer:.1f}%"],
+                        "Bottom Phase": [f"{bottom_gel_polymer:.1f}%", f"{bottom_co_polymer:.1f}%", f"{bottom_buffer:.1f}%"]
+                    }
+                    df_atps = pd.DataFrame(atps_data)
+                    st.dataframe(df_atps, use_container_width=True)
+                    
+                    # Show verification that columns sum to 100%
+                    top_sum = top_gel_polymer + top_co_polymer + top_buffer
+                    bottom_sum = bottom_gel_polymer + bottom_co_polymer + bottom_buffer
+                    st.caption(f"Top Phase Total: {top_sum:.1f}% | Bottom Phase Total: {bottom_sum:.1f}%")
+                
+                with col_performance:
+                    st.markdown("**Drug Release**")
+                    
+                    # Use performance trends from the result data if available
+                    if 'performance_trends' in result_data and selected_candidate in result_data['performance_trends']:
+                        trend_data = result_data['performance_trends'][selected_candidate]
+                        x_values = trend_data['x_values']
+                        log_y_values = trend_data['y_values']
+                        release_time_value = trend_data['release_time']
+                    else:
+                        # Fallback: generate logarithmic curve
+                        x_points = 10
+                        x_values = np.linspace(0, release_time_value, x_points).tolist()
+                        
+                        # Set seed for consistent curve per formulation and candidate
+                        seed_str = f"{current_job_name}_{selected_profile_for_results}_{selected_formulation_for_results}_{selected_candidate}_drug_release"
+                        random.seed(hash(seed_str) % 2147483647)
+                        
+                        # Parameters for logarithmic curve
+                        start_value = random.uniform(0.0, 0.1)  # Start between 0.0 ~ 0.1
+                        max_value = random.uniform(0.6, 0.7)    # End not exceeding 0.7
+                        
+                        # Create logarithmic curve
+                        a = 5.0  # Steepness parameter
+                        max_x = max(x_values) if x_values else release_time_value
+                        
+                        # Generate logarithmic y values
+                        log_y_values = []
+                        for x in x_values:
+                            if x == 0:
+                                y = start_value
+                            else:
+                                # Logarithmic function for diminishing increase
+                                normalized_x = x / max_x
+                                log_factor = np.log(1 + a * normalized_x) / np.log(1 + a)
+                                y = start_value + (max_value - start_value) * log_factor
+                            log_y_values.append(y)
+                        
+                        # Add small random noise to make it more realistic
+                        noise_factor = 0.01
+                        for i in range(len(log_y_values)):
+                            noise = random.uniform(-noise_factor, noise_factor)
+                            log_y_values[i] = max(0, min(0.7, log_y_values[i] + noise))
+                        
+                        # Ensure the curve is monotonically increasing
+                        for i in range(1, len(log_y_values)):
+                            if log_y_values[i] < log_y_values[i-1]:
+                                log_y_values[i] = log_y_values[i-1] + 0.001
+                    
+                    # Create graph using the curve data
+                    fig, ax = plt.subplots(figsize=(4, 3.3))  # Reduced size by 2/3
+                    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each candidate
+                    
+                    # Get color index based on candidate name (assuming Candidate 1, 2, 3)
+                    candidate_num = int(selected_candidate.split()[-1]) - 1 if selected_candidate.split()[-1].isdigit() else 0
+                    color = colors[candidate_num % len(colors)]
+                    
+                    # Plot the curve
+                    ax.plot(x_values, log_y_values, marker="o", linewidth=2, markersize=4, color=color)
+                    ax.fill_between(x_values, log_y_values, alpha=0.3, color=color)
+                    
+                    # Highlight the pivot point at the start
+                    if len(x_values) > 0 and len(log_y_values) > 0:
+                        pivot_y = log_y_values[0]
+                        ax.plot(x_values[0], log_y_values[0], marker="^", markersize=8, 
+                               color='red', markeredgecolor='darkred', markeredgewidth=1.5, 
+                               label=f'Start Point ({pivot_y:.3f})')
+                    
+                    # Set axis limits and labels with smaller font
+                    ax.set_xlim(0, release_time_value)
+                    ax.set_ylim(0, 0.75)  # Slightly above 0.7 for better visualization
+                    ax.set_xlabel("Time (Weeks)", fontsize=9)
+                    ax.set_ylabel("Drug Release", fontsize=9)
+                    ax.set_title(f"Drug Release (Log Curve)", fontsize=10, fontweight='bold')
+                    
+                    # Add grid for better readability
+                    ax.grid(True, alpha=0.3)
+                    ax.set_axisbelow(True)
+                    
+                    # Add legend for start point with smaller font
+                    ax.legend(loc='lower right', fontsize=8)
+                    
+                    # Adjust tick label sizes
+                    ax.tick_params(labelsize=8)
+                    
+                    st.pyplot(fig)
         
-        with col_atps:
-            st.markdown("**ATPS Composition**")
-            
-            # Generate ATPS composition based on selected profile and formulation
-            # Set seed for consistent ATPS values per selected profile/formulation
-            seed_str = f"{current_job_name}_{selected_analysis_profile or 'default'}_{selected_analysis_formulation or 'default'}_atps"
-            random.seed(hash(seed_str) % 2147483647)
-            
-            # Get reference values from composition results
-            ref_gel_polymer = random.randint(5, 15)  # Reference gel polymer percentage
-            ref_co_polymer = random.randint(5, 15)   # Reference co-polymer percentage
-            ref_buffer = 100 - ref_gel_polymer - ref_co_polymer  # Reference buffer percentage
-            
-            # Calculate ATPS composition following the rules:
-            # Top Phase: gel polymer < ref, co-polymer > ref
-            # Bottom Phase: gel polymer > ref, co-polymer < ref
-            # Each column sums to 100%
-            
-            # Top Phase calculations
-            top_gel_polymer = ref_gel_polymer * random.uniform(0.6, 0.9)  # Smaller than reference
-            top_co_polymer = ref_co_polymer * random.uniform(1.1, 1.4)   # Larger than reference
-            top_buffer = 100 - top_gel_polymer - top_co_polymer          # Make sum = 100%
-            
-            # Ensure top_buffer is positive
-            if top_buffer < 0:
-                top_buffer = random.uniform(70, 85)
-                remaining = 100 - top_buffer
-                top_gel_polymer = remaining * 0.3
-                top_co_polymer = remaining * 0.7
-            
-            # Bottom Phase calculations
-            bottom_gel_polymer = ref_gel_polymer * random.uniform(1.1, 1.4)  # Larger than reference
-            bottom_co_polymer = ref_co_polymer * random.uniform(0.6, 0.9)   # Smaller than reference
-            bottom_buffer = 100 - bottom_gel_polymer - bottom_co_polymer    # Make sum = 100%
-            
-            # Ensure bottom_buffer is positive
-            if bottom_buffer < 0:
-                bottom_buffer = random.uniform(70, 85)
-                remaining = 100 - bottom_buffer
-                bottom_gel_polymer = remaining * 0.7
-                bottom_co_polymer = remaining * 0.3
-            
-            # Create ATPS composition table
-            atps_data = {
-                "Component": ["Gel polymer concentration", "Co-polymer concentration", "Buffer concentration"],
-                "Top Phase": [f"{top_gel_polymer:.1f}%", f"{top_co_polymer:.1f}%", f"{top_buffer:.1f}%"],
-                "Bottom Phase": [f"{bottom_gel_polymer:.1f}%", f"{bottom_co_polymer:.1f}%", f"{bottom_buffer:.1f}%"]
-            }
-            df_atps = pd.DataFrame(atps_data)
-            st.dataframe(df_atps, use_container_width=True)
-            
-            # Show verification that columns sum to 100%
-            top_sum = top_gel_polymer + top_co_polymer + top_buffer
-            bottom_sum = bottom_gel_polymer + bottom_co_polymer + bottom_buffer
-            st.caption(f"Top Phase Total: {top_sum:.1f}% | Bottom Phase Total: {bottom_sum:.1f}%")
+                with col_radar:
+                    st.markdown("**Target vs Result**")
+                    
+                    # Generate result values based on selected formulation and candidate
+                    # Set seed for consistent results per formulation and candidate
+                    seed_str = f"{current_job_name}_{selected_profile_for_results}_{selected_formulation_for_results}_{selected_candidate}_radar"
+                    random.seed(hash(seed_str) % 2147483647)
+                    
+                    # Target values are always 100%
+                    target_values = [100, 100, 100]
+                    
+                    # Result values are 70-110% of target values
+                    result_values = [
+                        random.uniform(70, 110),  # Modulus result (70-110%)
+                        random.uniform(70, 110),  # Encapsulation Rate result (70-110%)
+                        random.uniform(70, 110)   # Release Time result (70-110%)
+                    ]
+                    
+                    # Create radar chart with updated specifications
+                    labels = ['Modulus', 'Encap Rate', 'Release Time']  # Shortened labels
+                    angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
+                    
+                    # Close the radar chart
+                    target_plot = target_values + target_values[:1]
+                    result_plot = result_values + result_values[:1]
+                    angles_plot = angles + angles[:1]
+                    
+                    fig, ax = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})  # Reduced size by 2/3
+                    
+                    # Plot target profile line at 100%
+                    ax.plot(angles_plot, target_plot, marker="o", linewidth=1.5, markersize=4, 
+                           color='blue', label='Target', alpha=0.8)
+                    ax.fill(angles_plot, target_plot, alpha=0.15, color='blue')
+                    
+                    # Plot result line (70-110% range)
+                    ax.plot(angles_plot, result_plot, marker="s", linewidth=1.5, markersize=4, 
+                           color='red', label='Result', alpha=0.8)
+                    ax.fill(angles_plot, result_plot, alpha=0.15, color='red')
+                    
+                    # Customize radar chart with 5 graduations, 100% at 4th position
+                    ax.set_thetagrids(np.degrees(angles), labels)
+                    ax.set_ylim(0, 120)  # Scale to accommodate 110% max with headroom
+                    
+                    # Set 5 graduations with 100% at 4th position
+                    ax.set_yticks([0, 30, 60, 90, 120])
+                    ax.set_yticklabels(['0%', '30%', '60%', '90%', '120%'], fontsize=6)
+                    
+                    ax.set_title(f"Target vs Result\n{selected_candidate}", 
+                               y=1.05, fontsize=9, fontweight='bold')
+                    ax.grid(True, alpha=0.3)
+                    ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0), fontsize=7)
+                    
+                    # Add percentage labels on the chart
+                    for angle, target_val, result_val in zip(angles, target_values, result_values):
+                        # Target values (always 100%)
+                        ax.text(angle, target_val + 3, '100%', 
+                               ha='center', va='center', fontsize=6, color='blue', fontweight='bold')
+                        # Result values (70-110%)  
+                        ax.text(angle, result_val - 8, f'{result_val:.0f}%', 
+                               ha='center', va='center', fontsize=6, color='red', fontweight='bold')
+                    
+                    st.pyplot(fig)
+            else:
+                st.info("Please select a candidate to view performance analysis")
         
-        with col_performance:
-            st.markdown("**Drug Release**")
-            
-            # Generate logarithmic diminishingly increasing curve based on selected profile
-            x_points = 10
-            x_values = np.linspace(0, release_time_value, x_points).tolist()
-            
-            # Set seed for consistent curve per selected profile and formulation
-            seed_str = f"{current_job_name}_{selected_analysis_profile or 'default'}_{selected_analysis_formulation or 'default'}_{selected_formulation}_drug_release"
-            random.seed(hash(seed_str) % 2147483647)
-            
-            # Parameters for logarithmic curve
-            start_value = random.uniform(0.0, 0.1)  # Start between 0.0 ~ 0.1
-            max_value = random.uniform(0.6, 0.7)    # End not exceeding 0.7
-            
-            # Create logarithmic curve: y = start + (max - start) * log(1 + ax) / log(1 + a*max_x)
-            a = 5.0  # Steepness parameter
-            max_x = max(x_values) if x_values else release_time_value
-            
-            # Generate logarithmic y values
-            log_y_values = []
-            for x in x_values:
-                if x == 0:
-                    y = start_value
-                else:
-                    # Logarithmic function for diminishing increase
-                    normalized_x = x / max_x
-                    log_factor = np.log(1 + a * normalized_x) / np.log(1 + a)
-                    y = start_value + (max_value - start_value) * log_factor
-                log_y_values.append(y)
-            
-            # Add small random noise to make it more realistic
-            noise_factor = 0.01
-            for i in range(len(log_y_values)):
-                noise = random.uniform(-noise_factor, noise_factor)
-                log_y_values[i] = max(0, min(0.7, log_y_values[i] + noise))
-            
-            # Ensure the curve is monotonically increasing
-            for i in range(1, len(log_y_values)):
-                if log_y_values[i] < log_y_values[i-1]:
-                    log_y_values[i] = log_y_values[i-1] + 0.001
-            
-            # Add pivot point highlighting at the start
-            pivot_y = log_y_values[0] if log_y_values else start_value
-            
-            # Create graph using logarithmic curve
-            fig, ax = plt.subplots(figsize=(4, 3.3))  # Reduced size by 2/3
-            colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each formulation
-            
-            # Get color index based on formulation number
-            formulation_index = formulation_options.index(selected_formulation)
-            color = colors[formulation_index % len(colors)]
-            
-            # Plot the logarithmic curve
-            ax.plot(x_values, log_y_values, marker="o", linewidth=2, markersize=4, color=color)  # Reduced line and marker size
-            ax.fill_between(x_values, log_y_values, alpha=0.3, color=color)
-            
-            # Highlight the pivot point at the start
-            if len(x_values) > 0 and len(log_y_values) > 0:
-                ax.plot(x_values[0], log_y_values[0], marker="^", markersize=8, 
-                       color='red', markeredgecolor='darkred', markeredgewidth=1.5, 
-                       label=f'Start Point ({pivot_y:.3f})')
-            
-            # Set axis limits and labels with smaller font
-            ax.set_xlim(0, release_time_value)
-            ax.set_ylim(0, 0.75)  # Slightly above 0.7 for better visualization
-            ax.set_xlabel("Time (Weeks)", fontsize=9)  # Reduced font size
-            ax.set_ylabel("Drug Release", fontsize=9)   # Reduced font size
-            ax.set_title(f"Drug Release (Log Curve)", fontsize=10, fontweight='bold')  # Reduced font size
-            
-            # Add grid for better readability
-            ax.grid(True, alpha=0.3)
-            ax.set_axisbelow(True)
-            
-            # Add legend for start point with smaller font
-            ax.legend(loc='lower right', fontsize=8)  # Reduced font size
-            
-            # Adjust tick label sizes
-            ax.tick_params(labelsize=8)  # Reduced tick label size
-            
-            st.pyplot(fig)
-        
-        with col_radar:
-            st.markdown("**Target vs Result**")
-            
-            # Generate result values based on selected analysis profile and formulation
-            # Set seed for consistent results per selected profile/formulation
-            seed_str = f"{current_job_name}_{selected_analysis_profile or 'default'}_{selected_analysis_formulation or 'default'}_{selected_formulation}_radar"
-            random.seed(hash(seed_str) % 2147483647)
-            
-            # Target values are always 100%
-            target_values = [100, 100, 100]
-            
-            # Result values are 70-110% of target values
-            result_values = [
-                random.uniform(70, 110),  # Modulus result (70-110%)
-                random.uniform(70, 110),  # Encapsulation Rate result (70-110%)
-                random.uniform(70, 110)   # Release Time result (70-110%)
-            ]
-            
-            # Create radar chart with updated specifications
-            labels = ['Modulus', 'Encap Rate', 'Release Time']  # Shortened labels
-            angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
-            
-            # Close the radar chart
-            target_plot = target_values + target_values[:1]
-            result_plot = result_values + result_values[:1]
-            angles_plot = angles + angles[:1]
-            
-            fig, ax = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})  # Reduced size by 2/3
-            
-            # Plot target profile line at 100%
-            ax.plot(angles_plot, target_plot, marker="o", linewidth=1.5, markersize=4, 
-                   color='blue', label='Target', alpha=0.8)
-            ax.fill(angles_plot, target_plot, alpha=0.15, color='blue')
-            
-            # Plot result line (70-110% range)
-            ax.plot(angles_plot, result_plot, marker="s", linewidth=1.5, markersize=4, 
-                   color='red', label='Result', alpha=0.8)
-            ax.fill(angles_plot, result_plot, alpha=0.15, color='red')
-            
-            # Customize radar chart with 5 graduations, 100% at 4th position
-            ax.set_thetagrids(np.degrees(angles), labels)
-            ax.set_ylim(0, 120)  # Scale to accommodate 110% max with headroom
-            
-            # Set 5 graduations with 100% at 4th position
-            ax.set_yticks([0, 30, 60, 90, 120])
-            ax.set_yticklabels(['0%', '30%', '60%', '90%', '120%'], fontsize=6)
-            
-            ax.set_title(f"Target vs Result\n{selected_formulation}", 
-                       y=1.05, fontsize=9, fontweight='bold')
-            ax.grid(True, alpha=0.3)
-            ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0), fontsize=7)
-            
-            # Add percentage labels on the chart
-            for angle, target_val, result_val in zip(angles, target_values, result_values):
-                # Target values (always 100%)
-                ax.text(angle, target_val + 3, '100%', 
-                       ha='center', va='center', fontsize=6, color='blue', fontweight='bold')
-                # Result values (70-110%)  
-                ax.text(angle, result_val - 8, f'{result_val:.0f}%', 
-                       ha='center', va='center', fontsize=6, color='red', fontweight='bold')
-            
-            st.pyplot(fig)
+        elif not selected_profile_for_results:
+            st.info("No results available. Please run optimization first to generate results.")
+        else:
+            st.info("Please select a profile and formulation with results to view detailed analysis.")
 
     # ── Evaluation Tab ───────────────────────────────────────────────────────
     with tab_evaluation:
         st.subheader("Evaluation")
         
-        # Check if target profiles are available
-        if not (hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles):
-            st.info("No target profiles available for evaluation. Create target profiles first.")
-            return
-        
-        # Use the same target profile selection as in Summary tab
-        if 'analysis_profile_select' in st.session_state and st.session_state.analysis_profile_select:
-            selected_eval_profile = st.session_state.analysis_profile_select
-            selected_eval_formulation = st.session_state.get('analysis_formulation_select', 'Formulation 1')
+        # Use the same formulation selection as in Summary tab
+        if (selected_profile_for_results and selected_formulation_for_results and
+            current_job.has_formulation_results(selected_profile_for_results, selected_formulation_for_results)):
             
-            # Generate evaluation data based on selected profile and formulation
-            seed_str = f"{current_job_name}_{selected_eval_profile}_{selected_eval_formulation}_evaluation"
-            eval_seed = hash(seed_str) % 2147483647
+            result_data = current_job.get_formulation_result(selected_profile_for_results, selected_formulation_for_results)
             
-            # Generate evaluation data for 3 formulations
-            formulation_options = [f"Formulation {i+1}" for i in range(3)]
-            selected_formulation = st.selectbox(
-                "Select Formulation for Evaluation:",
-                formulation_options,
-                key="evaluation_formulation_selector"
-            )
+            st.markdown(f"**Evaluation for: {selected_profile_for_results} → {selected_formulation_for_results}**")
             
-            # Generate evaluation data for selected formulation
-            random.seed(eval_seed + hash(selected_formulation) % 1000)
-            
-            # Safety & Stability Score (6-9) - different for each formulation
-            safety_stability_scores = {
-                "Degradability": random.randint(6, 9),
-                "Cytotoxicity": random.randint(6, 9),
-                "Immunogenicity": random.randint(6, 9)
-            }
-            
-            # Formulation Score (6-9) - different for each formulation
-            formulation_scores = {
-                "Durability": random.randint(6, 9),
-                "Injectability": random.randint(6, 9),
-                "Strength": random.randint(6, 9)
-            }
-            
-            st.divider()
-            
-            col_left, col_right = st.columns(2)
-            
-            # Left Column: Safety & Stability Score
-            with col_left:
-                labels_safety = list(safety_stability_scores.keys())
-                vals_safety = list(safety_stability_scores.values())
+            # Candidate selection for evaluation
+            if 'composition_results' in result_data:
+                candidate_options = [comp['Candidate'] for comp in result_data['composition_results']]
+                selected_candidate_eval = st.selectbox(
+                    "Select Candidate for Evaluation:",
+                    candidate_options,
+                    key="evaluation_candidate_selector"
+                )
                 
-                # Create radar chart for Safety & Stability
-                angles = np.linspace(0, 2*np.pi, len(labels_safety), endpoint=False).tolist()
-                vals_plot = vals_safety + vals_safety[:1]  # Complete the circle
-                angles_plot = angles + angles[:1]  # Complete the circle
-                
-                fig1, ax1 = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
-                ax1.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#2E8B57')
-                ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
-                ax1.set_thetagrids(np.degrees(angles), labels_safety)
-                ax1.set_ylim(0, 10)
-                ax1.set_title(f"Safety & Stability Score", y=1.08, fontsize=12, fontweight='bold')
-                ax1.grid(True, alpha=0.3)
-                
-                # Add score labels on the chart
-                for angle, val, label in zip(angles, vals_safety, labels_safety):
-                    ax1.text(angle, val + 0.5, str(val), ha='center', va='center', 
-                           fontsize=11, fontweight='bold', color='darkgreen')
-                
-                st.pyplot(fig1)
-            
-            # Right Column: Formulation Score
-            with col_right:
-                labels_formulation = list(formulation_scores.keys())
-                vals_formulation = list(formulation_scores.values())
-                
-                # Create radar chart for Formulation
-                angles = np.linspace(0, 2*np.pi, len(labels_formulation), endpoint=False).tolist()
-                vals_plot = vals_formulation + vals_formulation[:1]  # Complete the circle
-                angles_plot = angles + angles[:1]  # Complete the circle
-                
-                fig2, ax2 = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
-                ax2.plot(angles_plot, vals_plot, marker="s", linewidth=3, markersize=8, color='#FF6347')
-                ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
-                ax2.set_thetagrids(np.degrees(angles), labels_formulation)
-                ax2.set_ylim(0, 10)
-                ax2.set_title(f"Formulation Score", y=1.08, fontsize=12, fontweight='bold')
-                ax2.grid(True, alpha=0.3)
-                
-                # Add score labels on the chart
-                for angle, val, label in zip(angles, vals_formulation, labels_formulation):
-                    ax2.text(angle, val + 0.5, str(val), ha='center', va='center', 
-                           fontsize=11, fontweight='bold', color='darkred')
-                
-                st.pyplot(fig2)
+                if selected_candidate_eval:
+                    # Get evaluation data from result_data if available
+                    if ('evaluation_diagrams' in result_data and 
+                        selected_candidate_eval in result_data['evaluation_diagrams']):
+                        
+                        eval_data = result_data['evaluation_diagrams'][selected_candidate_eval]
+                        safety_stability_scores = eval_data['safety_stability']
+                        formulation_scores = eval_data['formulation']
+                    else:
+                        # Fallback: generate evaluation data
+                        seed_str = f"{current_job_name}_{selected_profile_for_results}_{selected_formulation_for_results}_{selected_candidate_eval}_evaluation"
+                        eval_seed = hash(seed_str) % 2147483647
+                        random.seed(eval_seed)
+                        
+                        # Safety & Stability Score (6-9) - different for each candidate
+                        safety_stability_scores = {
+                            "Degradability": random.randint(6, 9),
+                            "Cytotoxicity": random.randint(6, 9),
+                            "Immunogenicity": random.randint(6, 9)
+                        }
+                        
+                        # Formulation Score (6-9) - different for each candidate
+                        formulation_scores = {
+                            "Durability": random.randint(6, 9),
+                            "Injectability": random.randint(6, 9),
+                            "Strength": random.randint(6, 9)
+                        }
+                    
+                    st.divider()
+                    
+                    col_left, col_right = st.columns(2)
+                    
+                    # Left Column: Safety & Stability Score
+                    with col_left:
+                        labels_safety = list(safety_stability_scores.keys())
+                        vals_safety = list(safety_stability_scores.values())
+                        
+                        # Create radar chart for Safety & Stability
+                        angles = np.linspace(0, 2*np.pi, len(labels_safety), endpoint=False).tolist()
+                        vals_plot = vals_safety + vals_safety[:1]  # Complete the circle
+                        angles_plot = angles + angles[:1]  # Complete the circle
+                        
+                        fig1, ax1 = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
+                        ax1.plot(angles_plot, vals_plot, marker="o", linewidth=3, markersize=8, color='#2E8B57')
+                        ax1.fill(angles_plot, vals_plot, alpha=0.25, color='#2E8B57')
+                        ax1.set_thetagrids(np.degrees(angles), labels_safety)
+                        ax1.set_ylim(0, 10)
+                        ax1.set_title(f"Safety & Stability Score\n{selected_candidate_eval}", y=1.08, fontsize=12, fontweight='bold')
+                        ax1.grid(True, alpha=0.3)
+                        
+                        # Add score labels on the chart
+                        for angle, val, label in zip(angles, vals_safety, labels_safety):
+                            ax1.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                                   fontsize=11, fontweight='bold', color='darkgreen')
+                        
+                        st.pyplot(fig1)
+                    
+                    # Right Column: Formulation Score
+                    with col_right:
+                        labels_formulation = list(formulation_scores.keys())
+                        vals_formulation = list(formulation_scores.values())
+                        
+                        # Create radar chart for Formulation
+                        angles = np.linspace(0, 2*np.pi, len(labels_formulation), endpoint=False).tolist()
+                        vals_plot = vals_formulation + vals_formulation[:1]  # Complete the circle
+                        angles_plot = angles + angles[:1]  # Complete the circle
+                        
+                        fig2, ax2 = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})
+                        ax2.plot(angles_plot, vals_plot, marker="s", linewidth=3, markersize=8, color='#FF6347')
+                        ax2.fill(angles_plot, vals_plot, alpha=0.25, color='#FF6347')
+                        ax2.set_thetagrids(np.degrees(angles), labels_formulation)
+                        ax2.set_ylim(0, 10)
+                        ax2.set_title(f"Formulation Score\n{selected_candidate_eval}", y=1.08, fontsize=12, fontweight='bold')
+                        ax2.grid(True, alpha=0.3)
+                        
+                        # Add score labels on the chart
+                        for angle, val, label in zip(angles, vals_formulation, labels_formulation):
+                            ax2.text(angle, val + 0.5, str(val), ha='center', va='center', 
+                                   fontsize=11, fontweight='bold', color='darkred')
+                        
+                        st.pyplot(fig2)
+                else:
+                    st.info("Please select a candidate for evaluation")
+            else:
+                st.warning("No candidates available for evaluation")
         else:
-            st.info("Please select a target profile in the Summary tab first to view evaluation data.")
+            st.info("Please select a formulation with results in the Summary tab first to view evaluation data.")
