@@ -126,16 +126,7 @@ def show():
         
         st.markdown(f"## Current Job Status")
         st.markdown(f"**Name:** {st.session_state.current_job}")
-        st.markdown(f"**Created:** {current_job.created_at}")
-        
-        # Save job to cloud section
-        
-        if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
-            success, result = save_job_to_file(current_job, st.session_state.current_job)
-            if success:
-                st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
-            else:
-                st.error(f"❌ Failed to save job: {result}")
+        st.markdown(f"**Created:** {current_job.created_at}") 
                 
         st.divider()   
     
@@ -173,6 +164,15 @@ def show():
                     st.error("❌ Job name already exists!")
                 else:
                     st.error("❌ Please enter a job name!")
+
+                    # Save job to cloud section
+        
+            if st.button("💾 Save Job to Cloud", key="save_current_job", help="Save this job to the cloud server"):
+                success, result = save_job_to_file(current_job, st.session_state.current_job)
+                if success:
+                    st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
+                else:
+                    st.error(f"❌ Failed to save job: {result}")
         
         # Select existing job section
         st.markdown("### 🔄 Switch Active Job")
