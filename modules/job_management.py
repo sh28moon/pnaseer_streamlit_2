@@ -129,8 +129,7 @@ def show():
         st.markdown(f"**Created:** {current_job.created_at}")
         
         # Save job to cloud section
-        st.markdown("### 💾 Save job to cloud")
-
+        
         if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
             success, result = save_job_to_file(current_job, st.session_state.current_job)
             if success:
@@ -139,14 +138,14 @@ def show():
                 st.error(f"❌ Failed to save job: {result}")
 
     st.divider()
-
+    
+    st.markdown("## 🏗️ Create & Manage Jobs")
+    
     # Two-column layout for job management
     col_left, col_right = st.columns(2)
 
     # ═══ LEFT COLUMN: Create & Manage Jobs ══════════════════════════════════
-    with col_left:
-        st.markdown("## 🏗️ Create & Manage Jobs")
-        
+    with col_left:    
         # Create new job section
         st.markdown("### ➕ Create New Job")
         job_name = st.text_input("Job Name", placeholder="Enter a descriptive job name", key="new_job_name")
@@ -203,7 +202,7 @@ def show():
         saved_jobs = get_saved_jobs()
         
         if saved_jobs:
-            st.markdown(f"### 📂 Available Saved Jobs ({len(saved_jobs)})")
+            st.markdown(f"### 📂 Load Jobs)")
             
             # Load saved job section
             job_options = [""] + [f"{job['name']} ({job['modified']})" for job in saved_jobs]
