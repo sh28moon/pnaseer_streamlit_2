@@ -136,8 +136,8 @@ def show():
                 st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
             else:
                 st.error(f"❌ Failed to save job: {result}")
-
-    st.divider()
+                
+        st.divider()   
     
     st.markdown("## 🏗️ Create & Manage Jobs")
     
