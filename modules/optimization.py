@@ -6,8 +6,7 @@ import random
 import numpy as np
 import json
 import os
-import datetime
-from datetime import datetime as dt
+from datetime import datetime
 
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
@@ -25,7 +24,7 @@ def save_progress_to_file(job, job_name, target_profile, target_profile_name, at
             "atps_model": atps_model,
             "drug_release_model": drug_release_model,
             "target_profile": target_profile,
-            "saved_timestamp": dt.now().strftime("%Y-%m-%d %H:%M:%S")
+            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
         # Convert DataFrames to serializable format
