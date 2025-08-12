@@ -27,6 +27,9 @@ class Job:
         self.common_api_datasets = {}
         self.polymer_datasets = {}
         self.complete_target_profiles = {}
+        
+        # Add formulation-specific results storage
+        self.formulation_results = {}  # {profile_name: {formulation_name: result_data}}
     
     def has_api_data(self):
         return self.api_dataset is not None
@@ -38,7 +41,7 @@ class Job:
         return self.model_dataset is not None
     
     def has_result_data(self):
-        return self.result_dataset is not None
+        return self.result_dataset is not None or bool(self.formulation_results)
     
     def has_evaluation_diagrams(self):
         """Check if evaluation diagrams data exists in results"""
@@ -56,6 +59,23 @@ class Job:
     def get_result_status(self):
         """Check if result data is present"""
         return self.has_result_data()
+    
+    def get_formulation_result(self, profile_name, formulation_name):
+        """Get results for a specific formulation"""
+        if profile_name in self.formulation_results:
+            return self.formulation_results[profile_name].get(formulation_name)
+        return None
+    
+    def set_formulation_result(self, profile_name, formulation_name, result_data):
+        """Set results for a specific formulation"""
+        if profile_name not in self.formulation_results:
+            self.formulation_results[profile_name] = {}
+        self.formulation_results[profile_name][formulation_name] = result_data
+    
+    def has_formulation_results(self, profile_name, formulation_name):
+        """Check if specific formulation has results"""
+        return (profile_name in self.formulation_results and 
+                formulation_name in self.formulation_results[profile_name])
 
 
 def sync_databases_with_job():
@@ -70,6 +90,8 @@ def sync_databases_with_job():
             current_job.polymer_datasets = {}
         if not hasattr(current_job, 'complete_target_profiles'):
             current_job.complete_target_profiles = {}
+        if not hasattr(current_job, 'formulation_results'):
+            current_job.formulation_results = {}
         
         # Sync databases from job to session state (for UI access)
         st.session_state["common_api_datasets"] = current_job.common_api_datasets
@@ -93,6 +115,8 @@ def save_databases_to_job():
             current_job.polymer_datasets = {}
         if not hasattr(current_job, 'complete_target_profiles'):
             current_job.complete_target_profiles = {}
+        if not hasattr(current_job, 'formulation_results'):
+            current_job.formulation_results = {}
         
         # Save databases from session state to job
         if "common_api_datasets" in st.session_state:
@@ -128,7 +152,7 @@ def main():
     sync_databases_with_job()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("Pnaseer DDS Optimization")
+    st.sidebar.title("Pnaseer/nDDS Optimization")
     
     # Main navigation
     st.sidebar.markdown("### Main Menu")
@@ -143,12 +167,35 @@ def main():
     if st.sidebar.button("Show\nResults"):
         st.session_state.current_tab = "Show Results"
 
-    # Current job indicator (minimal)
+    # Current job indicator with job switching capability
     st.sidebar.markdown("---")
-    if st.session_state.current_job:
-        st.sidebar.markdown(f"**Active Job:** {st.session_state.current_job}")
+    if st.session_state.get("jobs"):
+        job_names = list(st.session_state.jobs.keys())
+        if st.session_state.current_job in job_names:
+            current_index = job_names.index(st.session_state.current_job)
+        else:
+            current_index = 0
+            
+        selected_job = st.sidebar.selectbox(
+            "**Active Job:**",
+            job_names,
+            index=current_index,
+            key="job_switcher"
+        )
+        
+        # Switch job if selection changed
+        if selected_job != st.session_state.current_job:
+            # Save current job data before switching
+            save_databases_to_job()
+            
+            # Switch to new job
+            st.session_state.current_job = selected_job
+            
+            # Sync new job data to session state
+            sync_databases_with_job()
+            st.rerun()
     else:
-        st.sidebar.markdown("**No Active Job**")
+        st.sidebar.markdown("**No Jobs Available**")
 
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
     # Save databases to job before rendering pages
@@ -168,5 +215,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
