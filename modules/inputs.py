@@ -32,7 +32,9 @@ def show():
         if "temp_profile_creation" not in st.session_state:
             st.session_state.temp_profile_creation = {
                 "api_data": None,
+                "api_name": None,
                 "polymer_data": None,
+                "polymer_name": None,
                 "formulation_data": None
             }
 
@@ -92,6 +94,9 @@ def show():
                 if st.button("💾 Save API", key="save_api_to_temp"):
                     if selected_api_data is not None:
                         st.session_state.temp_profile_creation["api_data"] = selected_api_data
+                        # Save API name for display
+                        api_name = selected_api_data['Name'].iloc[0] if 'Name' in selected_api_data.columns else "Unnamed API"
+                        st.session_state.temp_profile_creation["api_name"] = api_name
                         st.success("API saved to profile!")
                     else:
                         st.error("Please select API data first.")
@@ -156,6 +161,9 @@ def show():
                 if st.button("💾 Save Polymer", key="save_polymer_to_temp"):
                     if selected_polymer_data is not None:
                         st.session_state.temp_profile_creation["polymer_data"] = selected_polymer_data
+                        # Save Polymer name for display
+                        polymer_name = selected_polymer_data['Name'].iloc[0] if 'Name' in selected_polymer_data.columns else "Unnamed Polymer"
+                        st.session_state.temp_profile_creation["polymer_name"] = polymer_name
                         st.success("Polymer saved to profile!")
                     else:
                         st.error("Please select polymer data first.")
@@ -188,16 +196,13 @@ def show():
                     elif len(df_formulation) == 0:
                         st.error("❌ File is empty.")
                     else:
-                        # Use first row for formulation data
-                        formulation_row = df_formulation.iloc[0]
-                        formulation_data = pd.DataFrame([formulation_row])
+                        # Save all rows from CSV file
+                        st.success(f"✅ {len(df_formulation)} formulations loaded")
+                        st.dataframe(df_formulation, use_container_width=True)
                         
-                        st.success(f"✅ Formulation loaded: {formulation_row.get('Name', 'Unnamed')}")
-                        st.dataframe(formulation_data, use_container_width=True)
-                        
-                        if st.button("💾 Save Imported Formulation", key="save_imported_formulation_temp"):
-                            st.session_state.temp_profile_creation["formulation_data"] = formulation_data
-                            st.success("Imported formulation saved to profile!")
+                        if st.button("💾 Save All Formulations", key="save_imported_formulations_temp"):
+                            st.session_state.temp_profile_creation["formulation_data"] = df_formulation
+                            st.success(f"All {len(df_formulation)} formulations saved to profile!")
                         
                 except Exception as e:
                     st.error(f"❌ Error reading file: {str(e)}")
@@ -217,44 +222,34 @@ def show():
             with col_right:
                 dataset_type = st.text_input("Type", placeholder="e.g., Gel, Powder", key="manual_form_type")
                 encapsulation_ratio = st.number_input("Encapsulation Ratio(0~1)", min_value=0.0, max_value=1.0, format="%.2f", key="manual_form_encap")
-                
-                # Gel Polymer selection
-                if st.session_state.get("polymer_datasets"):
-                    available_polymers = []
-                    for dataset_name, dataset_df in st.session_state["polymer_datasets"].items():
-                        if 'Name' in dataset_df.columns:
-                            polymer_names = dataset_df['Name'].tolist()
-                            available_polymers.extend([str(name) for name in polymer_names if pd.notna(name)])
-                    
-                    unique_polymers = sorted(list(set(available_polymers)))
-                    gel_polymer = st.selectbox(
-                        "Gel Polymer:",
-                        [""] + unique_polymers,
-                        key="manual_form_gel_polymer"
-                    )
-                else:
-                    gel_polymer = ""
 
             # Save manual formulation button
-            if st.button("💾 Save Manual Formulation", key="save_manual_formulation_temp"):
+            if st.button("💾 Add Manual Formulation", key="add_manual_formulation_temp"):
                 if not formulation_name.strip():
                     st.error("Please enter a formulation name.")
                 elif not dataset_type.strip():
                     st.error("Please enter a product type.")
-                elif not gel_polymer:
-                    st.error("Please select a gel polymer.")
                 else:
-                    df_manual = pd.DataFrame([{
+                    # Create new formulation row
+                    new_formulation = pd.DataFrame([{
                         "Name": formulation_name.strip(),
                         "Modulus": modulus,
                         "Encapsulation Ratio": encapsulation_ratio,
                         "Release Time (Week)": release_time,
-                        "Gel Polymer": gel_polymer,
                         "Type": dataset_type.strip()
                     }])
                     
-                    st.session_state.temp_profile_creation["formulation_data"] = df_manual
-                    st.success("Manual formulation saved to profile!")
+                    # Append to existing formulation data or create new
+                    if st.session_state.temp_profile_creation["formulation_data"] is not None:
+                        # Append to existing data
+                        existing_data = st.session_state.temp_profile_creation["formulation_data"]
+                        combined_data = pd.concat([existing_data, new_formulation], ignore_index=True)
+                        st.session_state.temp_profile_creation["formulation_data"] = combined_data
+                        st.success(f"Manual formulation added! Total formulations: {len(combined_data)}")
+                    else:
+                        # Create new formulation data
+                        st.session_state.temp_profile_creation["formulation_data"] = new_formulation
+                        st.success("Manual formulation saved to profile!")
 
         st.divider()
 
@@ -271,9 +266,27 @@ def show():
         
         with col_status:
             st.markdown("**Profile Status:**")
-            st.write(f"• API Data: {'✅' if has_api else '❌'}")
-            st.write(f"• Polymer Data: {'✅' if has_polymer else '❌'}")
-            st.write(f"• Formulation Data: {'✅' if has_formulation else '❌'}")
+            
+            # Show API name or status
+            if has_api:
+                api_name = temp_profile.get("api_name", "Unknown API")
+                st.write(f"• API Data: {api_name}")
+            else:
+                st.write("• API Data: Not selected")
+            
+            # Show Polymer name or status
+            if has_polymer:
+                polymer_name = temp_profile.get("polymer_name", "Unknown Polymer")
+                st.write(f"• Polymer Data: {polymer_name}")
+            else:
+                st.write("• Polymer Data: Not selected")
+            
+            # Show number of formulation rows or status
+            if has_formulation:
+                formulation_count = len(temp_profile["formulation_data"])
+                st.write(f"• Formulation Data: {formulation_count} row(s)")
+            else:
+                st.write("• Formulation Data: Not created")
         
         with col_create:
             if has_api and has_polymer and has_formulation:
@@ -305,7 +318,9 @@ def show():
                             # Clear temporary data
                             st.session_state.temp_profile_creation = {
                                 "api_data": None,
+                                "api_name": None,
                                 "polymer_data": None,
+                                "polymer_name": None,
                                 "formulation_data": None
                             }
                             
