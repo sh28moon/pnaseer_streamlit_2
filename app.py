@@ -75,30 +75,30 @@ def main():
         st.session_state.current_job = None
 
     if "current_tab" not in st.session_state:
-        st.session_state.current_tab = "Job Management"
+        st.session_state.current_tab = "Manage Job"
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("🧪 Pnaseer Toolkit")
+    st.sidebar.title("Pnaseer Toolkit")
     
     # Main navigation
-    st.sidebar.markdown("### 📋 Main Menu")
-    if st.sidebar.button("💼 Job Management"):
-        st.session_state.current_tab = "Job Management"
-    if st.sidebar.button("🗂️ Database management"):
-        st.session_state.current_tab = "Database management"
-    if st.sidebar.button("📥 Manage target profile"):
-        st.session_state.current_tab = "Manage target profile"
-    if st.sidebar.button("⚙️ Calculation"):
-        st.session_state.current_tab = "Calculation"
-    if st.sidebar.button("📊 Results"):
-        st.session_state.current_tab = "Results"
+    st.sidebar.markdown("### Main Menu")
+    if st.sidebar.button("Manage\nJob"):
+        st.session_state.current_tab = "Manage Job"
+    if st.sidebar.button("Manage\nDatabase"):
+        st.session_state.current_tab = "Manage Database"
+    if st.sidebar.button("Create Target\nProfile"):
+        st.session_state.current_tab = "Create Target Profile"
+    if st.sidebar.button("Modeling\nOptimization"):
+        st.session_state.current_tab = "Modeling Optimization"
+    if st.sidebar.button("Show\nResults"):
+        st.session_state.current_tab = "Show Results"
 
     # Current job indicator (minimal)
     st.sidebar.markdown("---")
     if st.session_state.current_job:
-        st.sidebar.markdown(f"**🔸 Active Job:** {st.session_state.current_job}")
+        st.sidebar.markdown(f"**Active Job:** {st.session_state.current_job}")
     else:
-        st.sidebar.markdown("**🔹 No Active Job**")
+        st.sidebar.markdown("**No Active Job**")
 
     # Quick status (minimal)
     if (st.session_state.current_job and 
@@ -106,7 +106,7 @@ def main():
         
         current_job = st.session_state.jobs[st.session_state.current_job]
         
-        st.sidebar.markdown("**📈 Quick Status:**")
+        st.sidebar.markdown("**Quick Status:**")
         status_items = [
             ("Input", current_job.get_input_status()),
             ("Model", current_job.get_model_status()),
@@ -119,15 +119,15 @@ def main():
 
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
     tab = st.session_state.current_tab
-    if tab == "Job Management":
+    if tab == "Manage Job":
         show_job_management()
-    elif tab == "Database management":
+    elif tab == "Manage Database":
         show_data_management()
-    elif tab == "Manage target profile":
+    elif tab == "Create Target Profile":
         show_input()
-    elif tab == "Calculation":
+    elif tab == "Modeling Optimization":
         show_optimization()
-    elif tab == "Results":
+    elif tab == "Show Results":
         show_results()
 
 if __name__ == "__main__":
