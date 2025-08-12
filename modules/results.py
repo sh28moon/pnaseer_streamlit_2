@@ -110,8 +110,8 @@ def show():
                 key="formulation_selector"
             )
             
-            # Two column layout for ATPS Composition and Drug Release
-            col_atps, col_performance = st.columns(2)
+            # Three column layout for ATPS Composition, Drug Release, and Target vs Result
+            col_atps, col_performance, col_radar = st.columns(3)
             
             with col_atps:
                 st.markdown("**ATPS Composition**")
@@ -217,162 +217,188 @@ def show():
                 if selected_formulation in performance_trends:
                     trend_data = performance_trends[selected_formulation]
                     x_values = trend_data["x_values"]
-                    y_values = trend_data["y_values"]
                     release_time_value = trend_data["release_time"]
                     
-                    # Add pivot shape at the start (0.2 ~ 0.5)
+                    # Generate logarithmic diminishingly increasing curve
                     import random
-                    # Set seed for consistent pivot per formulation
-                    random.seed(hash(f"{current_job_name}_{selected_formulation}_pivot") % 2147483647)
-                    pivot_y = random.uniform(0.2, 0.5)
+                    # Set seed for consistent curve per formulation
+                    random.seed(hash(f"{current_job_name}_{selected_formulation}_drug_release") % 2147483647)
                     
-                    # Modify y_values to include pivot at start
-                    modified_y_values = y_values.copy()
-                    if len(modified_y_values) > 0:
-                        # Set the first point to the pivot value
-                        modified_y_values[0] = pivot_y
-                        # Ensure the trend still increases overall
-                        for i in range(1, len(modified_y_values)):
-                            if modified_y_values[i] < modified_y_values[i-1]:
-                                modified_y_values[i] = modified_y_values[i-1] + 0.01
+                    # Parameters for logarithmic curve
+                    start_value = random.uniform(0.0, 0.1)  # Start between 0.0 ~ 0.1
+                    max_value = random.uniform(0.6, 0.7)    # End not exceeding 0.7
                     
-                    # Create graph using modified data with pivot
-                    fig, ax = plt.subplots(figsize=(6, 5))
+                    # Create logarithmic curve: y = start + (max - start) * log(1 + ax) / log(1 + a*max_x)
+                    # where 'a' controls the curve steepness
+                    a = 5.0  # Steepness parameter
+                    max_x = max(x_values) if x_values else release_time_value
+                    
+                    # Generate logarithmic y values
+                    log_y_values = []
+                    for x in x_values:
+                        if x == 0:
+                            y = start_value
+                        else:
+                            # Logarithmic function for diminishing increase
+                            normalized_x = x / max_x
+                            log_factor = np.log(1 + a * normalized_x) / np.log(1 + a)
+                            y = start_value + (max_value - start_value) * log_factor
+                        log_y_values.append(y)
+                    
+                    # Add small random noise to make it more realistic
+                    noise_factor = 0.01
+                    for i in range(len(log_y_values)):
+                        noise = random.uniform(-noise_factor, noise_factor)
+                        log_y_values[i] = max(0, min(0.7, log_y_values[i] + noise))
+                    
+                    # Ensure the curve is monotonically increasing
+                    for i in range(1, len(log_y_values)):
+                        if log_y_values[i] < log_y_values[i-1]:
+                            log_y_values[i] = log_y_values[i-1] + 0.001
+                    
+                    # Add pivot point highlighting at the start
+                    pivot_y = log_y_values[0] if log_y_values else start_value
+                    
+                    # Create graph using logarithmic curve
+                    fig, ax = plt.subplots(figsize=(4, 3.3))  # Reduced size by 2/3
                     colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each formulation
                     
                     # Get color index based on formulation number
                     formulation_index = formulation_options.index(selected_formulation)
                     color = colors[formulation_index % len(colors)]
                     
-                    # Plot the line with pivot point highlighted
-                    ax.plot(x_values, modified_y_values, marker="o", linewidth=3, markersize=6, color=color)
-                    ax.fill_between(x_values, modified_y_values, alpha=0.3, color=color)
+                    # Plot the logarithmic curve
+                    ax.plot(x_values, log_y_values, marker="o", linewidth=2, markersize=4, color=color)  # Reduced line and marker size
+                    ax.fill_between(x_values, log_y_values, alpha=0.3, color=color)
                     
                     # Highlight the pivot point at the start
-                    if len(x_values) > 0 and len(modified_y_values) > 0:
-                        ax.plot(x_values[0], modified_y_values[0], marker="^", markersize=12, 
-                               color='red', markeredgecolor='darkred', markeredgewidth=2, 
-                               label=f'Pivot Point ({pivot_y:.2f})')
+                    if len(x_values) > 0 and len(log_y_values) > 0:
+                        ax.plot(x_values[0], log_y_values[0], marker="^", markersize=8, 
+                               color='red', markeredgecolor='darkred', markeredgewidth=1.5, 
+                               label=f'Start Point ({pivot_y:.3f})')
                     
-                    # Set axis limits and labels
+                    # Set axis limits and labels with smaller font
                     ax.set_xlim(0, release_time_value)
-                    ax.set_ylim(0, 1)
-                    ax.set_xlabel("Time (Weeks)", fontsize=12)
-                    ax.set_ylabel("Performance", fontsize=12)
-                    ax.set_title(f"Drug Release", fontsize=12, fontweight='bold')
+                    ax.set_ylim(0, 0.75)  # Slightly above 0.7 for better visualization
+                    ax.set_xlabel("Time (Weeks)", fontsize=9)  # Reduced font size
+                    ax.set_ylabel("Drug Release", fontsize=9)   # Reduced font size
+                    ax.set_title(f"Drug Release (Log Curve)", fontsize=10, fontweight='bold')  # Reduced font size
                     
                     # Add grid for better readability
                     ax.grid(True, alpha=0.3)
                     ax.set_axisbelow(True)
                     
-                    # Add legend for pivot point
-                    ax.legend(loc='lower right')
+                    # Add legend for start point with smaller font
+                    ax.legend(loc='lower right', fontsize=8)  # Reduced font size
+                    
+                    # Adjust tick label sizes
+                    ax.tick_params(labelsize=8)  # Reduced tick label size
                     
                     st.pyplot(fig)
             
-            # Show radar comparison below the two columns
-            st.divider()
-            
-            # Radar chart comparison (moved from previous column layout)
-            st.markdown("**Target vs Result Comparison**")
-            
-            # Get target profile data
-            if 'selected_target_profile' in result_data:
-                target_profile = result_data['selected_target_profile']
+            with col_radar:
+                st.markdown("**Target vs Result**")
                 
-                if ('formulation_data' in target_profile and 
-                    len(target_profile['formulation_data'].columns) >= 4):
+                # Get target profile data
+                if 'selected_target_profile' in result_data:
+                    target_profile = result_data['selected_target_profile']
                     
-                    formulation_data = target_profile['formulation_data']
-                    
-                    # Extract target values (columns 1, 2, 3 after Name column)
-                    target_modulus = float(str(formulation_data.iloc[0, 1]).replace('%', '').replace('Day', '').strip())
-                    target_encap_rate = float(str(formulation_data.iloc[0, 2]).replace('%', '').replace('Day', '').strip())
-                    target_release_time = float(str(formulation_data.iloc[0, 3]).replace('%', '').replace('Day', '').strip())
-                    
-                    # Generate result values based on formulation (simulate calculation results)
-                    import random
-                    formulation_index = formulation_options.index(selected_formulation)
-                    
-                    # Set seed for consistent results per formulation
-                    random.seed(hash(f"{current_job_name}_{selected_formulation}_radar") % 2147483647)
-                    
-                    # Generate result values with some variance from target (±10-20%)
-                    result_modulus = target_modulus * random.uniform(0.85, 1.15)
-                    result_encap_rate = target_encap_rate * random.uniform(0.9, 1.1)
-                    result_release_time = target_release_time * random.uniform(0.8, 1.2)
-                    
-                    # Normalize values for radar chart (scale to 0-100 for better visualization)
-                    max_modulus = max(target_modulus, result_modulus) * 1.2
-                    max_encap_rate = max(target_encap_rate, result_encap_rate) * 1.2
-                    max_release_time = max(target_release_time, result_release_time) * 1.2
-                    
-                    # Normalized values for radar chart
-                    target_norm = [
-                        (target_modulus / max_modulus) * 100,
-                        (target_encap_rate / max_encap_rate) * 100,
-                        (target_release_time / max_release_time) * 100
-                    ]
-                    
-                    result_norm = [
-                        (result_modulus / max_modulus) * 100,
-                        (result_encap_rate / max_encap_rate) * 100,
-                        (result_release_time / max_release_time) * 100
-                    ]
-                    
-                    # Create radar chart
-                    labels = ['Modulus', 'Encapsulation Rate', 'Release Time (Week)']
-                    angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
-                    
-                    # Close the radar chart
-                    target_norm += target_norm[:1]
-                    result_norm += result_norm[:1]
-                    angles += angles[:1]
-                    
-                    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={'polar': True})
-                    
-                    # Plot target profile line
-                    ax.plot(angles, target_norm, marker="o", linewidth=2.5, markersize=6, 
-                           color='blue', label='Target Profile', alpha=0.8)
-                    ax.fill(angles, target_norm, alpha=0.15, color='blue')
-                    
-                    # Plot result line
-                    ax.plot(angles, result_norm, marker="s", linewidth=2.5, markersize=6, 
-                           color='red', label=f'{selected_formulation} Result', alpha=0.8)
-                    ax.fill(angles, result_norm, alpha=0.15, color='red')
-                    
-                    # Customize radar chart
-                    ax.set_thetagrids(np.degrees(angles[:-1]), labels)
-                    ax.set_ylim(0, 100)
-                    ax.set_title(f"Target vs Result Comparison\n{selected_formulation}", 
-                               y=1.08, fontsize=14, fontweight='bold')
-                    ax.grid(True, alpha=0.3)
-                    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0))
-                    
-                    # Add value labels
-                    for angle, target_val, result_val, label in zip(angles[:-1], target_norm[:-1], result_norm[:-1], labels):
-                        # Target values
-                        ax.text(angle, target_val + 5, f'T:{target_val:.1f}', 
-                               ha='center', va='center', fontsize=8, color='blue', fontweight='bold')
-                        # Result values  
-                        ax.text(angle, result_val - 8, f'R:{result_val:.1f}', 
-                               ha='center', va='center', fontsize=8, color='red', fontweight='bold')
-                    
-                    st.pyplot(fig)
-                    
-                    # Show actual values below chart
-                    st.markdown("**Actual Values:**")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown("**Target:**")
-                        st.write(f"• Modulus: {target_modulus:.2f}")
-                        st.write(f"• Encap Rate: {target_encap_rate:.2f}")
-                        st.write(f"• Release Time: {target_release_time:.2f}")
-                    with col2:
-                        st.markdown("**Result:**")
-                        st.write(f"• Modulus: {result_modulus:.2f}")
-                        st.write(f"• Encap Rate: {result_encap_rate:.2f}")
-                        st.write(f"• Release Time: {result_release_time:.2f}")
+                    if ('formulation_data' in target_profile and 
+                        len(target_profile['formulation_data'].columns) >= 4):
+                        
+                        formulation_data = target_profile['formulation_data']
+                        
+                        # Extract target values (columns 1, 2, 3 after Name column)
+                        target_modulus = float(str(formulation_data.iloc[0, 1]).replace('%', '').replace('Day', '').strip())
+                        target_encap_rate = float(str(formulation_data.iloc[0, 2]).replace('%', '').replace('Day', '').strip())
+                        target_release_time = float(str(formulation_data.iloc[0, 3]).replace('%', '').replace('Day', '').strip())
+                        
+                        # Generate result values based on formulation (simulate calculation results)
+                        import random
+                        formulation_index = formulation_options.index(selected_formulation)
+                        
+                        # Set seed for consistent results per formulation
+                        random.seed(hash(f"{current_job_name}_{selected_formulation}_radar") % 2147483647)
+                        
+                        # Generate result values with some variance from target (±10-20%)
+                        result_modulus = target_modulus * random.uniform(0.85, 1.15)
+                        result_encap_rate = target_encap_rate * random.uniform(0.9, 1.1)
+                        result_release_time = target_release_time * random.uniform(0.8, 1.2)
+                        
+                        # Normalize values for radar chart (scale to 0-100 for better visualization)
+                        max_modulus = max(target_modulus, result_modulus) * 1.2
+                        max_encap_rate = max(target_encap_rate, result_encap_rate) * 1.2
+                        max_release_time = max(target_release_time, result_release_time) * 1.2
+                        
+                        # Normalized values for radar chart
+                        target_norm = [
+                            (target_modulus / max_modulus) * 100,
+                            (target_encap_rate / max_encap_rate) * 100,
+                            (target_release_time / max_release_time) * 100
+                        ]
+                        
+                        result_norm = [
+                            (result_modulus / max_modulus) * 100,
+                            (result_encap_rate / max_encap_rate) * 100,
+                            (result_release_time / max_release_time) * 100
+                        ]
+                        
+                        # Create radar chart with reduced size
+                        labels = ['Modulus', 'Encap Rate', 'Release Time']  # Shortened labels
+                        angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
+                        
+                        # Close the radar chart
+                        target_norm += target_norm[:1]
+                        result_norm += result_norm[:1]
+                        angles += angles[:1]
+                        
+                        fig, ax = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})  # Reduced size by 2/3
+                        
+                        # Plot target profile line with reduced line width
+                        ax.plot(angles, target_norm, marker="o", linewidth=1.5, markersize=4, 
+                               color='blue', label='Target', alpha=0.8)  # Shortened label, reduced sizes
+                        ax.fill(angles, target_norm, alpha=0.15, color='blue')
+                        
+                        # Plot result line with reduced line width
+                        ax.plot(angles, result_norm, marker="s", linewidth=1.5, markersize=4, 
+                               color='red', label='Result', alpha=0.8)  # Shortened label, reduced sizes
+                        ax.fill(angles, result_norm, alpha=0.15, color='red')
+                        
+                        # Customize radar chart with smaller fonts
+                        ax.set_thetagrids(np.degrees(angles[:-1]), labels)
+                        ax.set_ylim(0, 100)
+                        ax.set_title(f"Target vs Result\n{selected_formulation}", 
+                                   y=1.05, fontsize=9, fontweight='bold')  # Reduced font size and spacing
+                        ax.grid(True, alpha=0.3)
+                        ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0), fontsize=7)  # Reduced font size
+                        
+                        # Reduce tick label font size
+                        ax.tick_params(labelsize=6)
+                        
+                        # Add value labels with smaller font
+                        for angle, target_val, result_val in zip(angles[:-1], target_norm[:-1], result_norm[:-1]):
+                            # Target values
+                            ax.text(angle, target_val + 3, f'T:{target_val:.0f}', 
+                                   ha='center', va='center', fontsize=6, color='blue', fontweight='bold')  # Reduced font
+                            # Result values  
+                            ax.text(angle, result_val - 5, f'R:{result_val:.0f}', 
+                                   ha='center', va='center', fontsize=6, color='red', fontweight='bold')  # Reduced font
+                        
+                        st.pyplot(fig)
+                        
+                        # Show actual values below chart with smaller text
+                        st.markdown("**Values:**")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("**Target:**")
+                            st.write(f"• Mod: {target_modulus:.1f}")  # Shortened labels
+                            st.write(f"• Enc: {target_encap_rate:.1f}")
+                            st.write(f"• Rel: {target_release_time:.1f}")
+                        with col2:
+                            st.markdown("**Result:**")
+                            st.write(f"• Mod: {result_modulus:.1f}")
+                            st.write(f"• Enc: {result_encap_rate:.1f}")
+                            st.write(f"• Rel: {result_release_time:.1f}")
 
     # ── Evaluation Tab ───────────────────────────────────────────────────────
     with tab_evaluation:
