@@ -19,12 +19,33 @@ def show():
     
     current_job = st.session_state.jobs[current_job_name]
     
+    # Import the ensure_job_attributes function from app
+    from app import ensure_job_attributes
+    current_job = ensure_job_attributes(current_job)
+    
+    # Update the job in session state
+    st.session_state.jobs[current_job_name] = current_job
+    
+    # Initialize formulation_results if it doesn't exist
+    if not hasattr(current_job, 'formulation_results'):
+        current_job.formulation_results = {}
+    
     # Check if current job has results (either old format or new formulation-specific format)
     has_old_results = current_job.result_dataset is not None
-    has_formulation_results = hasattr(current_job, 'formulation_results') and bool(current_job.formulation_results)
+    has_formulation_results = bool(current_job.formulation_results)
     
     if not (has_old_results or has_formulation_results):
         st.info("No results available. Please run optimization first.")
+        
+        # Show helpful guidance
+        st.markdown("""
+        **To generate results:**
+        1. Go to **'Modeling Optimization'** tab
+        2. Select a **Target Profile** and **Formulation**
+        3. Choose **ATPS Model** and **Drug Release Model**
+        4. Click **'Submit Job'** to generate results
+        5. Return here to view the analysis
+        """)
         return
 
     # Top-level tabs
