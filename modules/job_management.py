@@ -21,6 +21,8 @@ def save_job_to_file(job, job_name):
             job.polymer_datasets = {}
         if not hasattr(job, 'complete_target_profiles'):
             job.complete_target_profiles = {}
+        if not hasattr(job, 'formulation_results'):
+            job.formulation_results = {}
         
         # Convert job to serializable format
         job_data = {
@@ -35,6 +37,9 @@ def save_job_to_file(job, job_name):
             # Include database data for persistence
             "common_api_datasets": {k: v.to_dict('records') for k, v in job.common_api_datasets.items()} if job.common_api_datasets else {},
             "polymer_datasets": {k: v.to_dict('records') for k, v in job.polymer_datasets.items()} if job.polymer_datasets else {},
+            
+            # Include formulation-specific results
+            "formulation_results": job.formulation_results if hasattr(job, 'formulation_results') else {}
         }
         
         # Handle complete_target_profiles with DataFrame serialization
@@ -124,6 +129,12 @@ def load_job_from_file(filename):
         else:
             job.complete_target_profiles = {}
         
+        # Restore formulation-specific results
+        if "formulation_results" in job_data:
+            job.formulation_results = job_data["formulation_results"]
+        else:
+            job.formulation_results = {}
+        
         # Restore result dataset
         if job_data["result_dataset"] is not None:
             result_data = job_data["result_dataset"].copy()
@@ -170,6 +181,30 @@ def get_saved_jobs():
 
 def show():
     st.header("Job Management")
+    
+    # Display current job information if available
+    current_job_name = st.session_state.get("current_job")
+    if current_job_name and current_job_name in st.session_state.get("jobs", {}):
+        current_job = st.session_state.jobs[current_job_name]
+        
+        # Show job status
+        col_info1, col_info2, col_info3 = st.columns(3)
+        with col_info1:
+            target_profile_count = len(getattr(current_job, 'complete_target_profiles', {}))
+            st.metric("Target Profiles", target_profile_count)
+        
+        with col_info2:
+            # Count formulations with results
+            formulation_result_count = 0
+            if hasattr(current_job, 'formulation_results'):
+                for profile_results in current_job.formulation_results.values():
+                    formulation_result_count += len(profile_results)
+            st.metric("Formulation Results", formulation_result_count)
+        
+        with col_info3:
+            api_dataset_count = len(getattr(current_job, 'common_api_datasets', {}))
+            polymer_dataset_count = len(getattr(current_job, 'polymer_datasets', {}))
+            st.metric("Datasets", f"API: {api_dataset_count}, Polymer: {polymer_dataset_count}")
     
     st.divider()
     
@@ -282,16 +317,36 @@ def show():
                             st.session_state.jobs[loaded_job.name] = loaded_job
                             st.session_state.current_job = loaded_job.name
                             
-                            # Sync databases from loaded job to session state
-                            # Initialize attributes if they don't exist
+                            # Sync ALL job data to session state for immediate availability
                             if not hasattr(loaded_job, 'common_api_datasets'):
                                 loaded_job.common_api_datasets = {}
                             if not hasattr(loaded_job, 'polymer_datasets'):
                                 loaded_job.polymer_datasets = {}
+                            if not hasattr(loaded_job, 'complete_target_profiles'):
+                                loaded_job.complete_target_profiles = {}
+                            if not hasattr(loaded_job, 'formulation_results'):
+                                loaded_job.formulation_results = {}
+                            
                             st.session_state["common_api_datasets"] = loaded_job.common_api_datasets
                             st.session_state["polymer_datasets"] = loaded_job.polymer_datasets
                             
-                            st.success(f"✅ Job '{loaded_job.name}' loaded and activated!")
+                            # Show loaded data summary
+                            profile_count = len(loaded_job.complete_target_profiles)
+                            api_count = len(loaded_job.common_api_datasets)
+                            polymer_count = len(loaded_job.polymer_datasets)
+                            
+                            # Count formulation results
+                            formulation_result_count = 0
+                            for profile_results in loaded_job.formulation_results.values():
+                                formulation_result_count += len(profile_results)
+                            
+                            st.success(f"""✅ Job '{loaded_job.name}' loaded and activated!
+                            
+**Loaded Data:**
+- Target Profiles: {profile_count}
+- API Datasets: {api_count}
+- Polymer Datasets: {polymer_count}  
+- Formulation Results: {formulation_result_count}""")
                             st.rerun()
                         else:
                             st.error(f"❌ Failed to load job: {saved_time}")
