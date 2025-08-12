@@ -14,6 +14,14 @@ def save_job_to_file(job, job_name):
         # Create saved_jobs directory if it doesn't exist
         os.makedirs("saved_jobs", exist_ok=True)
         
+        # Initialize new attributes for existing jobs if they don't exist
+        if not hasattr(job, 'common_api_datasets'):
+            job.common_api_datasets = {}
+        if not hasattr(job, 'polymer_datasets'):
+            job.polymer_datasets = {}
+        if not hasattr(job, 'complete_target_profiles'):
+            job.complete_target_profiles = {}
+        
         # Convert job to serializable format
         job_data = {
             "name": job.name,
@@ -93,9 +101,13 @@ def load_job_from_file(filename):
         # Restore database data
         if "common_api_datasets" in job_data:
             job.common_api_datasets = {k: pd.DataFrame(v) for k, v in job_data["common_api_datasets"].items()}
+        else:
+            job.common_api_datasets = {}
         
         if "polymer_datasets" in job_data:
             job.polymer_datasets = {k: pd.DataFrame(v) for k, v in job_data["polymer_datasets"].items()}
+        else:
+            job.polymer_datasets = {}
         
         # Restore complete target profiles
         if "complete_target_profiles" in job_data:
@@ -109,6 +121,8 @@ def load_job_from_file(filename):
                         restored_profile[key] = value
                 restored_profiles[profile_name] = restored_profile
             job.complete_target_profiles = restored_profiles
+        else:
+            job.complete_target_profiles = {}
         
         # Restore result dataset
         if job_data["result_dataset"] is not None:
@@ -197,6 +211,11 @@ def show():
                     # Save current job's databases before switching
                     if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
                         current_job = st.session_state.jobs[st.session_state.current_job]
+                        # Initialize attributes if they don't exist
+                        if not hasattr(current_job, 'common_api_datasets'):
+                            current_job.common_api_datasets = {}
+                        if not hasattr(current_job, 'polymer_datasets'):
+                            current_job.polymer_datasets = {}
                         current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
                         current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
                     
@@ -246,6 +265,11 @@ def show():
                     # Save current job's databases before switching
                     if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
                         current_job = st.session_state.jobs[st.session_state.current_job]
+                        # Initialize attributes if they don't exist
+                        if not hasattr(current_job, 'common_api_datasets'):
+                            current_job.common_api_datasets = {}
+                        if not hasattr(current_job, 'polymer_datasets'):
+                            current_job.polymer_datasets = {}
                         current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
                         current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
                     
@@ -254,6 +278,11 @@ def show():
                     
                     # Load new job's databases
                     new_job = st.session_state.jobs[selected_job]
+                    # Initialize attributes if they don't exist
+                    if not hasattr(new_job, 'common_api_datasets'):
+                        new_job.common_api_datasets = {}
+                    if not hasattr(new_job, 'polymer_datasets'):
+                        new_job.polymer_datasets = {}
                     st.session_state["common_api_datasets"] = new_job.common_api_datasets
                     st.session_state["polymer_datasets"] = new_job.polymer_datasets
                     
@@ -303,6 +332,11 @@ def show():
                             st.session_state.current_job = loaded_job.name
                             
                             # Sync databases from loaded job to session state
+                            # Initialize attributes if they don't exist
+                            if not hasattr(loaded_job, 'common_api_datasets'):
+                                loaded_job.common_api_datasets = {}
+                            if not hasattr(loaded_job, 'polymer_datasets'):
+                                loaded_job.polymer_datasets = {}
                             st.session_state["common_api_datasets"] = loaded_job.common_api_datasets
                             st.session_state["polymer_datasets"] = loaded_job.polymer_datasets
                             
