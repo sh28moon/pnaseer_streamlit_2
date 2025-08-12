@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Pnaseer Toolkit", layout="wide")
+st.set_page_config(page_title="Pnaseer/nDDS Optimization", layout="wide")
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
@@ -78,10 +78,10 @@ def main():
         st.session_state.current_tab = "Manage Job"
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("Pnaseer Toolkit")
+    st.sidebar.title("Pnaseer DDS Optimization")
     
     # Main navigation
-    st.sidebar.markdown("### Main Menu")
+    st.sidebar.markdown("### Menu")
     if st.sidebar.button("Manage\nJob"):
         st.session_state.current_tab = "Manage Job"
     if st.sidebar.button("Manage\nDatabase"):
@@ -132,3 +132,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
