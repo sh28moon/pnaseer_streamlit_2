@@ -153,7 +153,7 @@ def main():
     sync_databases_with_job()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("Pnaseer/nDDS Optimization")
+    st.sidebar.title("Pnaseer DDS Optimization")
     
     # Main navigation
     st.sidebar.markdown("### Main Menu")
@@ -223,3 +223,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
