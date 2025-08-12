@@ -308,11 +308,6 @@ def show():
                         
                         formulation_data = target_profile['formulation_data']
                         
-                        # Extract target values (columns 1, 2, 3 after Name column)
-                        target_modulus = float(str(formulation_data.iloc[0, 1]).replace('%', '').replace('Day', '').strip())
-                        target_encap_rate = float(str(formulation_data.iloc[0, 2]).replace('%', '').replace('Day', '').strip())
-                        target_release_time = float(str(formulation_data.iloc[0, 3]).replace('%', '').replace('Day', '').strip())
-                        
                         # Generate result values based on formulation (simulate calculation results)
                         import random
                         formulation_index = formulation_options.index(selected_formulation)
@@ -320,85 +315,60 @@ def show():
                         # Set seed for consistent results per formulation
                         random.seed(hash(f"{current_job_name}_{selected_formulation}_radar") % 2147483647)
                         
-                        # Generate result values with some variance from target (±10-20%)
-                        result_modulus = target_modulus * random.uniform(0.85, 1.15)
-                        result_encap_rate = target_encap_rate * random.uniform(0.9, 1.1)
-                        result_release_time = target_release_time * random.uniform(0.8, 1.2)
+                        # Target values are always 100%
+                        target_values = [100, 100, 100]
                         
-                        # Normalize values for radar chart (scale to 0-100 for better visualization)
-                        max_modulus = max(target_modulus, result_modulus) * 1.2
-                        max_encap_rate = max(target_encap_rate, result_encap_rate) * 1.2
-                        max_release_time = max(target_release_time, result_release_time) * 1.2
-                        
-                        # Normalized values for radar chart
-                        target_norm = [
-                            (target_modulus / max_modulus) * 100,
-                            (target_encap_rate / max_encap_rate) * 100,
-                            (target_release_time / max_release_time) * 100
+                        # Result values are 70-110% of target values
+                        result_values = [
+                            random.uniform(70, 110),  # Modulus result (70-110%)
+                            random.uniform(70, 110),  # Encapsulation Rate result (70-110%)
+                            random.uniform(70, 110)   # Release Time result (70-110%)
                         ]
                         
-                        result_norm = [
-                            (result_modulus / max_modulus) * 100,
-                            (result_encap_rate / max_encap_rate) * 100,
-                            (result_release_time / max_release_time) * 100
-                        ]
-                        
-                        # Create radar chart with reduced size
+                        # Create radar chart with updated specifications
                         labels = ['Modulus', 'Encap Rate', 'Release Time']  # Shortened labels
                         angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
                         
                         # Close the radar chart
-                        target_norm += target_norm[:1]
-                        result_norm += result_norm[:1]
-                        angles += angles[:1]
+                        target_plot = target_values + target_values[:1]
+                        result_plot = result_values + result_values[:1]
+                        angles_plot = angles + angles[:1]
                         
                         fig, ax = plt.subplots(figsize=(4, 4), subplot_kw={'polar': True})  # Reduced size by 2/3
                         
-                        # Plot target profile line with reduced line width
-                        ax.plot(angles, target_norm, marker="o", linewidth=1.5, markersize=4, 
-                               color='blue', label='Target', alpha=0.8)  # Shortened label, reduced sizes
-                        ax.fill(angles, target_norm, alpha=0.15, color='blue')
+                        # Plot target profile line at 100%
+                        ax.plot(angles_plot, target_plot, marker="o", linewidth=1.5, markersize=4, 
+                               color='blue', label='Target', alpha=0.8)
+                        ax.fill(angles_plot, target_plot, alpha=0.15, color='blue')
                         
-                        # Plot result line with reduced line width
-                        ax.plot(angles, result_norm, marker="s", linewidth=1.5, markersize=4, 
-                               color='red', label='Result', alpha=0.8)  # Shortened label, reduced sizes
-                        ax.fill(angles, result_norm, alpha=0.15, color='red')
+                        # Plot result line (70-110% range)
+                        ax.plot(angles_plot, result_plot, marker="s", linewidth=1.5, markersize=4, 
+                               color='red', label='Result', alpha=0.8)
+                        ax.fill(angles_plot, result_plot, alpha=0.15, color='red')
                         
-                        # Customize radar chart with smaller fonts
-                        ax.set_thetagrids(np.degrees(angles[:-1]), labels)
-                        ax.set_ylim(0, 100)
+                        # Customize radar chart with 5 graduations, 100% at 4th position
+                        ax.set_thetagrids(np.degrees(angles), labels)
+                        ax.set_ylim(0, 120)  # Scale to accommodate 110% max with headroom
+                        
+                        # Set 5 graduations with 100% at 4th position
+                        ax.set_yticks([0, 30, 60, 90, 120])
+                        ax.set_yticklabels(['0%', '30%', '60%', '90%', '120%'], fontsize=6)
+                        
                         ax.set_title(f"Target vs Result\n{selected_formulation}", 
-                                   y=1.05, fontsize=9, fontweight='bold')  # Reduced font size and spacing
+                                   y=1.05, fontsize=9, fontweight='bold')
                         ax.grid(True, alpha=0.3)
-                        ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0), fontsize=7)  # Reduced font size
+                        ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0), fontsize=7)
                         
-                        # Reduce tick label font size
-                        ax.tick_params(labelsize=6)
-                        
-                        # Add value labels with smaller font
-                        for angle, target_val, result_val in zip(angles[:-1], target_norm[:-1], result_norm[:-1]):
-                            # Target values
-                            ax.text(angle, target_val + 3, f'T:{target_val:.0f}', 
-                                   ha='center', va='center', fontsize=6, color='blue', fontweight='bold')  # Reduced font
-                            # Result values  
-                            ax.text(angle, result_val - 5, f'R:{result_val:.0f}', 
-                                   ha='center', va='center', fontsize=6, color='red', fontweight='bold')  # Reduced font
+                        # Add percentage labels on the chart
+                        for angle, target_val, result_val in zip(angles, target_values, result_values):
+                            # Target values (always 100%)
+                            ax.text(angle, target_val + 3, '100%', 
+                                   ha='center', va='center', fontsize=6, color='blue', fontweight='bold')
+                            # Result values (70-110%)  
+                            ax.text(angle, result_val - 8, f'{result_val:.0f}%', 
+                                   ha='center', va='center', fontsize=6, color='red', fontweight='bold')
                         
                         st.pyplot(fig)
-                        
-                        # Show actual values below chart with smaller text
-                        st.markdown("**Values:**")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown("**Target:**")
-                            st.write(f"• Mod: {target_modulus:.1f}")  # Shortened labels
-                            st.write(f"• Enc: {target_encap_rate:.1f}")
-                            st.write(f"• Rel: {target_release_time:.1f}")
-                        with col2:
-                            st.markdown("**Result:**")
-                            st.write(f"• Mod: {result_modulus:.1f}")
-                            st.write(f"• Enc: {result_encap_rate:.1f}")
-                            st.write(f"• Rel: {result_release_time:.1f}")
 
     # ── Evaluation Tab ───────────────────────────────────────────────────────
     with tab_evaluation:
