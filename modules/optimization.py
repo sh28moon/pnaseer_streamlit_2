@@ -279,8 +279,6 @@ def show():
                     if not can_submit:
                         if not has_target_profile:
                             st.error("Please select a target profile first.")
-                        elif not has_formulation:
-                            st.error("Please select a formulation first.")
                         elif not profile_complete:
                             st.error("Selected target profile is incomplete. Please ensure it has API, Polymer, and Formulation data.")
                         elif not has_atps_model:
@@ -288,7 +286,7 @@ def show():
                         elif not has_drug_release_model:
                             st.error("Please select a Drug Release model first.")
                         else:
-                            st.error("Please ensure target profile, formulation, and both models are selected before submitting.")
+                            st.error("Please ensure target profile and both models are selected before submitting.")
                     else:
                         progress = st.progress(0)
                         for i in range(101):
@@ -393,7 +391,7 @@ def show():
                             "drug_release_model_name": selected_drug_release_model,
                             "selected_target_profile": selected_target_profile,
                             "selected_target_profile_name": selected_target_profile_name,
-                            "selected_formulation_name": selected_formulation_name,
+                            # "selected_formulation_name": selected_formulation_name,
                             "formulation_properties": selected_formulation_row.to_dict(),
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "status": "completed",
@@ -409,7 +407,7 @@ def show():
                         if not hasattr(current_job, 'formulation_results'):
                             current_job.formulation_results = {}
                         
-                        current_job.set_formulation_result(selected_target_profile_name, selected_formulation_name, formulation_result_data)
+                        current_job.set_formulation_result(selected_target_profile_name, formulation_result_data)
                         
                         # Ensure the job is updated in session state
                         st.session_state.jobs[current_job_name] = current_job
@@ -418,7 +416,7 @@ def show():
                         if "current_job" in st.session_state and st.session_state.current_job == current_job_name:
                             st.session_state.jobs[st.session_state.current_job] = current_job
                         
-                        st.success(f"✅ Results generated for '{selected_formulation_name}' using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
+                        st.success(f"✅ Results generated using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
                         
                         # Show summary of what was saved
                         total_profiles = len(current_job.formulation_results)
