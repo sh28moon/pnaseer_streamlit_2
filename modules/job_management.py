@@ -171,25 +171,6 @@ def get_saved_jobs():
 def show():
     st.header("Job Management")
 
-    st.divider()
-
-    # Top section: Current Job Overview
-    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
-        current_job = st.session_state.jobs[st.session_state.current_job]
-        
-        st.markdown(f"## Current Job Status")
-        st.markdown(f"**Name:** {st.session_state.current_job}")
-        st.markdown(f"**Created:** {current_job.created_at}")
-        
-        # Save job to cloud section
-        st.markdown("### 💾 Save job to cloud")
-
-        if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
-            success, result = save_job_to_file(current_job, st.session_state.current_job)
-            if success:
-                st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
-            else:
-                st.error(f"❌ Failed to save job: {result}")
 
     st.divider()
 
@@ -243,51 +224,13 @@ def show():
                     st.error("❌ Job name already exists!")
                 else:
                     st.error("❌ Please enter a job name!")
-        
-        # Select existing job section
-        st.markdown("### 🔄 Switch Active Job")
-        jobs = st.session_state.get("jobs", {})
-        job_names = list(jobs.keys())
-        
-        if job_names:
-            current_selection = st.session_state.get("current_job", "")
-            current_index = job_names.index(current_selection) if current_selection in job_names else -1
-            
-            selected_job = st.selectbox(
-                "Select Job",
-                job_names,
-                index=current_index if current_index >= 0 else 0,
-                key="job_selector_main"
-            )
-            
-            if st.button("🔄 Switch to This Job", key="switch_job"):
-                if selected_job != st.session_state.get("current_job"):
-                    # Save current job's databases before switching
-                    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
-                        current_job = st.session_state.jobs[st.session_state.current_job]
-                        # Initialize attributes if they don't exist
-                        if not hasattr(current_job, 'common_api_datasets'):
-                            current_job.common_api_datasets = {}
-                        if not hasattr(current_job, 'polymer_datasets'):
-                            current_job.polymer_datasets = {}
-                        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
-                        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
-                    
-                    # Switch to new job
-                    st.session_state.current_job = selected_job
-                    
-                    # Load new job's databases
-                    new_job = st.session_state.jobs[selected_job]
-                    # Initialize attributes if they don't exist
-                    if not hasattr(new_job, 'common_api_datasets'):
-                        new_job.common_api_datasets = {}
-                    if not hasattr(new_job, 'polymer_datasets'):
-                        new_job.polymer_datasets = {}
-                    st.session_state["common_api_datasets"] = new_job.common_api_datasets
-                    st.session_state["polymer_datasets"] = new_job.polymer_datasets
-                    
-                    st.success(f"✅ Switched to job: {selected_job}")
-                    st.rerun()
+        if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
+            success, result = save_job_to_file(current_job, st.session_state.current_job)
+            if success:
+                st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
+            else:
+                st.error(f"❌ Failed to save job: {result}")
+
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
     with col_right:
