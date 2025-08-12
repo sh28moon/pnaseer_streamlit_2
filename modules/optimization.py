@@ -60,6 +60,13 @@ def show():
         return
     
     current_job = st.session_state.jobs[current_job_name]
+    
+    # Import the ensure_job_attributes function from app
+    from app import ensure_job_attributes
+    current_job = ensure_job_attributes(current_job)
+    
+    # Update the job in session state
+    st.session_state.jobs[current_job_name] = current_job
 
     # Top-level tabs
     tab_atps = st.tabs(["ATPS Partition"])[0]
@@ -416,9 +423,33 @@ def show():
                         }
                         
                         # Save results at formulation level
+                        if not hasattr(current_job, 'formulation_results'):
+                            current_job.formulation_results = {}
+                        
                         current_job.set_formulation_result(selected_target_profile_name, selected_formulation_name, formulation_result_data)
+                        
+                        # Ensure the job is updated in session state
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Results generated for '{selected_formulation_name}' using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
+                        
+                        # Force session state sync
+                        if "current_job" in st.session_state and st.session_state.current_job == current_job_name:
+                            st.session_state.jobs[st.session_state.current_job] = current_job
+                        
+                        st.success(f"✅ Results generated for '{selected_formulation_name}' using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
+                        
+                        # Show summary of what was saved
+                        total_profiles = len(current_job.formulation_results)
+                        total_formulations = sum(len(prof_results) for prof_results in current_job.formulation_results.values())
+                        
+                        st.info(f"📊 Results saved! Job now has {total_profiles} profile(s) with {total_formulations} formulation result(s)")
+                        
+                        # Suggest next step
+                        st.success("💡 **Go to 'Show Results' tab to view the detailed analysis!**")
+                        
+                        # Optional: Auto-switch to results tab
+                        if st.button("🔍 View Results Now", key="auto_switch_to_results"):
+                            st.session_state.current_tab = "Show Results"
+                            st.rerun()
             
             with col_save:
                 # Save Progress button - saves the current optimization setup
