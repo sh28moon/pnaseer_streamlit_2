@@ -94,99 +94,40 @@ def show():
             # Dataset type for saving (extract from session key)
             dataset_type = session_key.replace("_datasets", "")
             
-            # ── Load Database Section ─────────────────────────────────────────
-            st.subheader("Load Database")
+            # ── 1st Row: Create new database ─────────────────────────────────────────
+            st.subheader("Create new database")
             
-            saved_datasets = get_saved_datasets(dataset_type)
-            if saved_datasets:
-                col_select, col_import, col_remove = st.columns([3, 1, 1])
-                
-                with col_select:
-                    # Create options for selectbox
-                    dataset_options = [""] + [f"{ds['save_name']} ({ds['modified']})" for ds in saved_datasets]
-                    selected_saved = st.selectbox(
-                        f"Select saved {tab_name} database:",
-                        dataset_options,
-                        key=f"{session_key}_load_database_select"
-                    )
-                
-                with col_import:
-                    if selected_saved and selected_saved != "":
-                        # Extract save name from selection
-                        selected_save_name = selected_saved.split(" (")[0]
-                        
-                        # Find the corresponding file
-                        selected_file = None
-                        for ds in saved_datasets:
-                            if ds["save_name"] == selected_save_name:
-                                selected_file = ds
-                                break
-                        
-                        if selected_file:
-                            if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
-                                loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])
-                                
-                                if loaded_datasets is not None:
-                                    # Replace current datasets with loaded ones
-                                    st.session_state[session_key] = loaded_datasets
-                                    st.success(f"✅ Loaded '{selected_save_name}' database with {count} dataset(s)!")
-                                    st.rerun()
-                
-                with col_remove:
-                    if selected_saved and selected_saved != "":
-                        if st.button("🗑️ Remove", key=f"{session_key}_remove_database_btn"):
-                            if selected_file:
-                                try:
-                                    os.remove(selected_file["filepath"])
-                                    st.success(f"✅ Removed '{selected_save_name}' database")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"❌ Failed to remove: {str(e)}")
+            col_import, col_save = st.columns(2)
             
-            st.divider()
+            # Left Column: Import external file
+            with col_import:
+                st.markdown("**Import external file**")
+                uploaded = st.file_uploader(
+                    "CSV import box",
+                    type=["csv"],
+                    key=f"{session_key}_new_upload"
+                )
+                if uploaded:
+                    df = pd.read_csv(uploaded)
+                    # Store temporarily for preview and saving
+                    st.session_state[f"{session_key}_temp_dataset"] = df
+                    st.session_state[f"{session_key}_temp_filename"] = uploaded.name
+                    st.success(f"Loaded: {uploaded.name}")
             
-            # ── New Database Section ─────────────────────────────────────────
-            st.subheader("New Database")
-            
-            # Upload CSV row
-            st.markdown("**Upload CSV**")
-            uploaded = st.file_uploader(
-                "Select CSV file",
-                type=["csv"],
-                key=f"{session_key}_new_upload"
-            )
-            if uploaded:
-                df = pd.read_csv(uploaded)
-                # Store temporarily for preview and saving
-                st.session_state[f"{session_key}_temp_dataset"] = df
-                st.session_state[f"{session_key}_temp_filename"] = uploaded.name
-                st.success(f"Loaded: {uploaded.name}")
-            
-            # Dataset Summary and Save Dataset row
-            col_summary, col_save = st.columns(2)
-            
-            # Column 1: Dataset Summary (Table)
-            with col_summary:
-                st.markdown("**Dataset Summary**")
-                if f"{session_key}_temp_dataset" in st.session_state:
-                    temp_df = st.session_state[f"{session_key}_temp_dataset"]
-                    st.dataframe(temp_df, use_container_width=True)
-                    st.write(f"Shape: {temp_df.shape[0]} rows × {temp_df.shape[1]} columns")
-            
-            # Column 2: Save Dataset
+            # Right Column: Save database to cloud
             with col_save:
-                st.markdown("**Save Dataset**")
+                st.markdown("**Save database to cloud**")
                 
-                # Save name input
+                # Dataset name input
                 save_name = st.text_input(
-                    "Dataset Name:", 
+                    "Dataset namebox:", 
                     placeholder=f"Enter name for {tab_name} dataset",
                     key=f"{session_key}_new_save_name"
                 )
                 
                 # Save button
                 save_disabled = f"{session_key}_temp_dataset" not in st.session_state
-                if st.button("💾 Save Dataset", key=f"{session_key}_new_save_btn", disabled=save_disabled):
+                if st.button("Save", key=f"{session_key}_new_save_btn", disabled=save_disabled):
                     if save_name.strip() and f"{session_key}_temp_dataset" in st.session_state:
                         temp_df = st.session_state[f"{session_key}_temp_dataset"]
                         
@@ -217,6 +158,95 @@ def show():
                         st.error("Please enter a dataset name")
                     else:
                         st.error("Please upload a CSV file first")
+            
+            st.divider()
+            
+            # ── 2nd Row: Manage existing database ─────────────────────────────────────────
+            st.subheader("Manage existing database")
+            
+            col_load, col_summary = st.columns(2)
+            
+            # Left Column: Load database from cloud
+            with col_load:
+                st.markdown("**Load database from cloud**")
+                
+                saved_datasets = get_saved_datasets(dataset_type)
+                if saved_datasets:
+                    # Create options for selectbox (toggle box of saved databases)
+                    dataset_options = [""] + [f"{ds['save_name']} ({ds['modified']})" for ds in saved_datasets]
+                    selected_saved = st.selectbox(
+                        "Toggle box of saved databases:",
+                        dataset_options,
+                        key=f"{session_key}_load_database_select"
+                    )
+                    
+                    if selected_saved and selected_saved != "":
+                        # Extract save name from selection
+                        selected_save_name = selected_saved.split(" (")[0]
+                        
+                        # Find the corresponding file
+                        selected_file = None
+                        for ds in saved_datasets:
+                            if ds["save_name"] == selected_save_name:
+                                selected_file = ds
+                                break
+                        
+                        # Load and Remove buttons
+                        col_load_btn, col_remove_btn = st.columns(2)
+                        
+                        with col_load_btn:
+                            if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
+                                if selected_file:
+                                    loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])
+                                    
+                                    if loaded_datasets is not None:
+                                        # Replace current datasets with loaded ones
+                                        st.session_state[session_key] = loaded_datasets
+                                        st.success(f"✅ Loaded '{selected_save_name}' database with {count} dataset(s)!")
+                                        st.rerun()
+                        
+                        with col_remove_btn:
+                            if st.button("🗑️ Remove", key=f"{session_key}_remove_database_btn"):
+                                if selected_file:
+                                    try:
+                                        os.remove(selected_file["filepath"])
+                                        st.success(f"✅ Removed '{selected_save_name}' database")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"❌ Failed to remove: {str(e)}")
+                else:
+                    st.selectbox(
+                        "Toggle box of saved databases:",
+                        ["No saved databases available"],
+                        disabled=True,
+                        key=f"{session_key}_no_databases"
+                    )
+            
+            # Right Column: Database Summary
+            with col_summary:
+                st.markdown("**Database Summary**")
+                
+                # Show current loaded databases in session
+                if session_key in st.session_state and st.session_state[session_key]:
+                    current_datasets = st.session_state[session_key]
+                    
+                    # Dataset selector
+                    dataset_names = list(current_datasets.keys())
+                    if dataset_names:
+                        selected_dataset = st.selectbox(
+                            "Select dataset to view:",
+                            dataset_names,
+                            key=f"{session_key}_summary_select"
+                        )
+                        
+                        if selected_dataset:
+                            dataset_df = current_datasets[selected_dataset]
+                            st.dataframe(dataset_df, use_container_width=True)
+                            st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
+                    else:
+                        st.info("No datasets loaded in current session")
+                else:
+                    st.info("No datasets loaded in current session")
 
     # Render each subpage
     render_subpage(tab_api, "common_api_datasets", "API")
