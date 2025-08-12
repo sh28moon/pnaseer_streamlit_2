@@ -135,11 +135,8 @@ def show():
             success, result = save_job_to_file(current_job, st.session_state.current_job)
             if success:
                 st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
-                st.info(f"📁 Saved to: {result}")
             else:
                 st.error(f"❌ Failed to save job: {result}")
-    else:
-        st.warning("⚠️ No job currently selected. Create or select a job below.")
 
     st.divider()
 
@@ -199,10 +196,6 @@ def show():
                     st.session_state.current_job = selected_job
                     st.success(f"✅ Switched to job: {selected_job}")
                     st.rerun()
-                else:
-                    st.info("💡 This job is already active")
-        else:
-            st.info("💡 No jobs in current session. Create your first job above!")
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
     with col_right:
@@ -247,7 +240,6 @@ def show():
                             st.session_state.current_job = loaded_job.name
                             
                             st.success(f"✅ Job '{loaded_job.name}' loaded and activated!")
-                            st.info(f"📅 Originally saved: {saved_time}")
                             st.rerun()
                         else:
                             st.error(f"❌ Failed to load job: {saved_time}")
@@ -260,5 +252,3 @@ def show():
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Failed to remove: {str(e)}")
-        else:
-            st.info("💡 No saved jobs found. Save your current jobs to make them persistent across sessions.")
