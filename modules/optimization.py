@@ -11,7 +11,7 @@ from datetime import datetime
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
-def save_progress_to_file(job, job_name, target_profile, target_profile_name, atps_model, drug_release_model):
+def save_progress_to_file(job, job_name, target_profile, target_profile_name, formulation_name, atps_model, drug_release_model):
     """Save optimization progress to JSON file"""
     try:
         # Create saved_progress directory if it doesn't exist
@@ -21,6 +21,7 @@ def save_progress_to_file(job, job_name, target_profile, target_profile_name, at
         progress_data = {
             "job_name": job_name,
             "target_profile_name": target_profile_name,
+            "formulation_name": formulation_name,
             "atps_model": atps_model,
             "drug_release_model": drug_release_model,
             "target_profile": target_profile,
@@ -38,7 +39,7 @@ def save_progress_to_file(job, job_name, target_profile, target_profile_name, at
             progress_data["target_profile"] = serializable_profile
         
         # Save to file
-        filename = f"saved_progress/{job_name}_optimization_progress.json"
+        filename = f"saved_progress/{job_name}_{target_profile_name}_{formulation_name}_optimization_progress.json"
         with open(filename, 'w') as f:
             json.dump(progress_data, f, indent=2)
         
@@ -65,24 +66,25 @@ def show():
 
     def render_model_tab(prefix, tab):
         with tab:
-            # Two-column layout: Target Profile Selection (2 cols) + Model Selection (1 col)
+            # Two-column layout: Target Profile and Formulation Selection + Model Selection
             st.markdown('<p class="font-medium"><b>Select Model Inputs</b></p>', unsafe_allow_html=True)
             
             col_target, col_model = st.columns([2, 1])
             
-            # Column 1: Target Profile Selection (replaces separate API/Polymer/Target selection)
+            # Column 1: Target Profile and Formulation Selection
             with col_target:
-                st.markdown("**Target Profile Selection**")
+                st.markdown("**Target Profile and Formulation Selection**")
                 
-                # Initialize target profile selection variables
+                # Initialize selection variables
                 selected_target_profile = None
                 selected_target_profile_name = None
+                selected_formulation_name = None
                 
                 # Check if job has complete target profiles
                 if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
                     target_profiles = current_job.complete_target_profiles
                     
-                    # Target Profile Selection (no type filter)
+                    # Target Profile Selection
                     profile_names = list(target_profiles.keys())
                     selected_target_profile_name = st.selectbox(
                         "Select Target Profile:",
@@ -92,6 +94,20 @@ def show():
                     
                     if selected_target_profile_name:
                         selected_target_profile = target_profiles[selected_target_profile_name]
+                        
+                        # Formulation Selection within the selected profile
+                        if ('formulation_data' in selected_target_profile and 
+                            selected_target_profile['formulation_data'] is not None and
+                            'Name' in selected_target_profile['formulation_data'].columns):
+                            
+                            formulation_names = selected_target_profile['formulation_data']['Name'].tolist()
+                            selected_formulation_name = st.selectbox(
+                                "Select Formulation:",
+                                [""] + formulation_names,
+                                key=f"{prefix}_formulation_select"
+                            )
+                        else:
+                            st.warning("⚠️ No formulations available in selected profile")
                         
                         # Show profile components summary
                         with st.expander(f"📄 Target Profile Details: {selected_target_profile_name}", expanded=False):
@@ -120,10 +136,12 @@ def show():
                     else:
                         selected_target_profile = None
                         selected_target_profile_name = None
+                        selected_formulation_name = None
                 else:
                     st.error("❌ No complete target profiles in current job")
                     st.info("💡 Create complete target profiles in 'Manage target profile' → 'Create target profile'")
                     selected_target_profile_name = None
+                    selected_formulation_name = None
             
             # Column 2: Model Selection
             with col_model:
@@ -190,9 +208,20 @@ def show():
             col_profile_summary, col_model_summary = st.columns(2)
             
             with col_profile_summary:
-                st.markdown("**Selected Target Profile**")
+                st.markdown("**Selected Target Profile & Formulation**")
                 if selected_target_profile and selected_target_profile_name:
-                    st.markdown(f"*{selected_target_profile_name}*")
+                    st.markdown(f"*Profile: {selected_target_profile_name}*")
+                    
+                    if selected_formulation_name:
+                        st.markdown(f"*Formulation: {selected_formulation_name}*")
+                        
+                        # Check if this formulation already has results
+                        if hasattr(current_job, 'formulation_results'):
+                            has_existing_results = current_job.has_formulation_results(selected_target_profile_name, selected_formulation_name)
+                            if has_existing_results:
+                                st.info("🔄 This formulation already has results. New optimization will overwrite them.")
+                    else:
+                        st.warning("⚠️ No formulation selected")
                     
                     # Quick summary of profile components
                     api_status = "✅" if selected_target_profile.get('api_data') is not None else "❌"
@@ -211,6 +240,7 @@ def show():
                 else:
                     st.info("No target profile selected")
                     selected_target_profile_name = None
+                    selected_formulation_name = None
             
             with col_model_summary:
                 st.markdown("**Selected Models**")
@@ -230,6 +260,7 @@ def show():
             
             # Submit button and Clear Results button
             has_target_profile = selected_target_profile is not None and selected_target_profile_name is not None
+            has_formulation = selected_formulation_name is not None and selected_formulation_name != ""
             has_atps_model = selected_atps_model is not None and selected_atps_model != ""
             has_drug_release_model = selected_drug_release_model is not None and selected_drug_release_model != ""
             
@@ -241,7 +272,7 @@ def show():
                 formulation_ok = selected_target_profile.get('formulation_data') is not None
                 profile_complete = api_ok and polymer_ok and formulation_ok
             
-            can_submit = has_target_profile and has_atps_model and has_drug_release_model and profile_complete
+            can_submit = has_target_profile and has_formulation and has_atps_model and has_drug_release_model and profile_complete
             
             col_submit, col_save, col_clear = st.columns(3)
             
@@ -250,6 +281,8 @@ def show():
                     if not can_submit:
                         if not has_target_profile:
                             st.error("Please select a target profile first.")
+                        elif not has_formulation:
+                            st.error("Please select a formulation first.")
                         elif not profile_complete:
                             st.error("Selected target profile is incomplete. Please ensure it has API, Polymer, and Formulation data.")
                         elif not has_atps_model:
@@ -257,7 +290,7 @@ def show():
                         elif not has_drug_release_model:
                             st.error("Please select a Drug Release model first.")
                         else:
-                            st.error("Please ensure target profile and both models are selected before submitting.")
+                            st.error("Please ensure target profile, formulation, and both models are selected before submitting.")
                     else:
                         progress = st.progress(0)
                         for i in range(101):
@@ -265,11 +298,27 @@ def show():
                             progress.progress(i)
                         st.success("Completed Calculation")
 
-                        # Create comprehensive result datasets during optimization
+                        # Get specific formulation data for the selected formulation
+                        formulation_data = selected_target_profile['formulation_data']
+                        selected_formulation_row = formulation_data[formulation_data['Name'] == selected_formulation_name].iloc[0]
                         
-                        # Generate composition results - 3 rows with 3 components, all percentages sum to 100%
+                        # Get Release Time from the selected formulation
+                        release_time_value = 10  # Default fallback
+                        if 'Release Time (Week)' in selected_formulation_row:
+                            release_time_value = selected_formulation_row['Release Time (Week)']
+                            if isinstance(release_time_value, str):
+                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
+                            elif not isinstance(release_time_value, (int, float)):
+                                release_time_value = float(release_time_value)
+
+                        # Set seed for reproducible results for this specific formulation
+                        seed_base = hash(current_job_name + selected_target_profile_name + selected_formulation_name + selected_atps_model + selected_drug_release_model) % 2147483647
+                        random.seed(seed_base)
+                        np.random.seed(seed_base)
+
+                        # Generate composition results - 3 candidates for this specific formulation
                         composition_results = []
-                        for i in range(3):  # Create 3 rows
+                        for i in range(3):  # Create 3 candidates
                             buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
                             remaining_pct = 100 - buffer_pct
                             
@@ -278,13 +327,13 @@ def show():
                             co_polymer_pct = remaining_pct - gel_polymer_pct
                             
                             composition_results.append({
-                                "Row": f"Formulation {i+1}",
+                                "Candidate": f"Candidate {i+1}",
                                 "Gel Polymer w/w": f"{gel_polymer_pct}%",
                                 "Co-polymer w/w": f"{co_polymer_pct}%", 
                                 "Buffer w/w": f"{buffer_pct}%"
                             })
                         
-                        # Generate performance metrics
+                        # Generate performance metrics specific to this formulation
                         performance_metrics = {
                             "metrics": ["Stability", "Efficacy", "Safety", "Bioavailability", "Manufacturability"],
                             "values": [random.uniform(0.6, 1.0) for _ in range(5)],
@@ -296,39 +345,16 @@ def show():
                             for v in performance_metrics["values"]
                         ]
                         
-                        # Get Release Time from target profile formulation data
-                        release_time_value = 10  # Default fallback
-                        if (selected_target_profile.get('formulation_data') is not None and 
-                            len(selected_target_profile['formulation_data'].columns) >= 4):
-                            formulation_data = selected_target_profile['formulation_data']
-                            
-                            # Find release time column
-                            if 'Type' in formulation_data.columns:
-                                data_columns = [col for col in formulation_data.columns if col not in ['Name', 'Type']]
-                                if len(data_columns) >= 3:
-                                    release_time_value = formulation_data.iloc[0][data_columns[2]]  # Third data column
-                            else:
-                                release_time_value = formulation_data.iloc[0, 3]  # Fourth column
-                            
-                            # Convert to numeric if it's a string with units
-                            if isinstance(release_time_value, str):
-                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
-                            elif not isinstance(release_time_value, (int, float)):
-                                release_time_value = float(release_time_value)
-                        
-                        # Generate fixed performance trend data for all 3 formulations
+                        # Generate fixed performance trend data for 3 candidates
                         performance_trends = {}
                         x_points = 10
                         x_values = np.linspace(0, release_time_value, x_points).tolist()
-                        
-                        # Set seed for reproducible results within this job
-                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_atps_model + selected_drug_release_model) % 2147483647)
                         
                         start_values = [0.1, 0.15, 0.08]
                         end_values = [0.85, 0.92, 0.88]
                         
                         for i in range(3):
-                            formulation_name = f"Formulation {i+1}"
+                            candidate_name = f"Candidate {i+1}"
                             base_trend = np.linspace(start_values[i], end_values[i], x_points)
                             noise = np.random.normal(0, 0.02, x_points)
                             y_values = base_trend + noise
@@ -337,65 +363,66 @@ def show():
                             y_values = np.clip(y_values, 0, 1)
                             y_values = np.sort(y_values)  # Force upward trend
                             
-                            performance_trends[formulation_name] = {
+                            performance_trends[candidate_name] = {
                                 "x_values": x_values,
                                 "y_values": y_values.tolist(),
                                 "release_time": release_time_value
                             }
                         
-                        # Generate evaluation diagrams data for each formulation
-                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_atps_model + selected_drug_release_model + "evaluation") % 2147483647)
-                        
+                        # Generate evaluation diagrams data for each candidate
                         evaluation_diagrams_data = {}
                         
-                        # Generate evaluation data for each of the 3 formulations
+                        # Generate evaluation data for each of the 3 candidates
                         for i in range(3):
-                            formulation_name = f"Formulation {i+1}"
+                            candidate_name = f"Candidate {i+1}"
                             
-                            # Safety & Stability Score (6-9) - different for each formulation
+                            # Safety & Stability Score (6-9) - different for each candidate
                             safety_stability_scores = {
                                 "Degradability": random.randint(6, 9),
                                 "Cytotoxicity": random.randint(6, 9),
                                 "Immunogenicity": random.randint(6, 9)
                             }
                             
-                            # Formulation Score (6-9) - different for each formulation
+                            # Formulation Score (6-9) - different for each candidate
                             formulation_scores = {
                                 "Durability": random.randint(6, 9),
                                 "Injectability": random.randint(6, 9),
                                 "Strength": random.randint(6, 9)
                             }
                             
-                            evaluation_diagrams_data[formulation_name] = {
+                            evaluation_diagrams_data[candidate_name] = {
                                 "safety_stability": safety_stability_scores,
                                 "formulation": formulation_scores,
                                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             }
                         
-                        # Create comprehensive result data with all generated datasets
-                        result_data = {
+                        # Create formulation-specific result data
+                        formulation_result_data = {
                             "type": prefix,
                             "atps_model_name": selected_atps_model,
                             "drug_release_model_name": selected_drug_release_model,
                             "selected_target_profile": selected_target_profile,
                             "selected_target_profile_name": selected_target_profile_name,
+                            "selected_formulation_name": selected_formulation_name,
+                            "formulation_properties": selected_formulation_row.to_dict(),
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "status": "completed",
                             
-                            # Generated result datasets
+                            # Generated result datasets specific to this formulation
                             "composition_results": composition_results,
                             "performance_metrics": performance_metrics,
                             "performance_trends": performance_trends,
                             "evaluation_diagrams": evaluation_diagrams_data
                         }
                         
-                        current_job.result_dataset = result_data
+                        # Save results at formulation level
+                        current_job.set_formulation_result(selected_target_profile_name, selected_formulation_name, formulation_result_data)
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Results generated using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
+                        st.success(f"Results generated for '{selected_formulation_name}' using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
             
             with col_save:
                 # Save Progress button - saves the current optimization setup
-                save_disabled = not (selected_target_profile and selected_atps_model and selected_drug_release_model)
+                save_disabled = not (selected_target_profile and selected_formulation_name and selected_atps_model and selected_drug_release_model)
                 
                 if st.button("Save Progress", key=f"{prefix}_save_progress", 
                            disabled=save_disabled,
@@ -406,28 +433,52 @@ def show():
                         current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
                         st.session_state.jobs[current_job_name] = current_job
                         
-                        save_progress_to_file(current_job, current_job_name, selected_target_profile, selected_target_profile_name, selected_atps_model, selected_drug_release_model)
+                        save_progress_to_file(current_job, current_job_name, selected_target_profile, selected_target_profile_name, selected_formulation_name, selected_atps_model, selected_drug_release_model)
                     else:
-                        st.error("Please select target profile and both models before saving progress.")
+                        st.error("Please select target profile, formulation, and both models before saving progress.")
             
             with col_clear:
-                # Clear Results button - only enabled if results exist
-                has_results = current_job.has_result_data()
+                # Clear Results button - clear results for specific formulation or all results
+                has_any_results = current_job.has_result_data()
+                has_current_formulation_results = (selected_target_profile_name and selected_formulation_name and 
+                                                 hasattr(current_job, 'formulation_results') and
+                                                 current_job.has_formulation_results(selected_target_profile_name, selected_formulation_name))
                 
-                if st.button("🗑️ Clear Results", key=f"{prefix}_clear_results", 
-                           disabled=not has_results, 
-                           help="Remove all calculation results from current job"):
-                    if has_results:
-                        # Clear optimization results
-                        current_job.result_dataset = None
-                        
-                        # Also clear evaluation diagrams display state
-                        if 'show_evaluation_diagrams' in st.session_state:
-                            st.session_state.show_evaluation_diagrams = False
+                clear_options = []
+                if has_current_formulation_results:
+                    clear_options.append(f"Clear '{selected_formulation_name}' Results")
+                if has_any_results:
+                    clear_options.append("Clear All Results")
+                
+                if clear_options:
+                    clear_choice = st.selectbox(
+                        "Clear Options:",
+                        [""] + clear_options,
+                        key=f"{prefix}_clear_choice"
+                    )
+                    
+                    if clear_choice and st.button("🗑️ Clear Results", key=f"{prefix}_clear_results"):
+                        if clear_choice.startswith("Clear All"):
+                            # Clear all results
+                            current_job.result_dataset = None
+                            if hasattr(current_job, 'formulation_results'):
+                                current_job.formulation_results = {}
+                            st.success(f"All results cleared from job '{current_job_name}'")
+                        elif clear_choice.startswith("Clear") and selected_target_profile_name and selected_formulation_name:
+                            # Clear specific formulation results
+                            if (hasattr(current_job, 'formulation_results') and
+                                selected_target_profile_name in current_job.formulation_results and 
+                                selected_formulation_name in current_job.formulation_results[selected_target_profile_name]):
+                                del current_job.formulation_results[selected_target_profile_name][selected_formulation_name]
+                                # Clean up empty profile entries
+                                if not current_job.formulation_results[selected_target_profile_name]:
+                                    del current_job.formulation_results[selected_target_profile_name]
+                                st.success(f"Results cleared for '{selected_formulation_name}' in '{selected_target_profile_name}'")
                         
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"All results cleared from job '{current_job_name}'")
                         st.rerun()
+                else:
+                    st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
 
     # Render each tab
     render_model_tab("atps", tab_atps)
