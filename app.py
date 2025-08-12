@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Pnaseer/nDDS Optimization", layout="wide")
+st.set_page_config(page_title="Pnaseer DDS Optimization", layout="wide")
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
@@ -100,23 +100,6 @@ def main():
     else:
         st.sidebar.markdown("**No Active Job**")
 
-    # Quick status (minimal)
-    if (st.session_state.current_job and 
-        st.session_state.current_job in st.session_state.jobs):
-        
-        current_job = st.session_state.jobs[st.session_state.current_job]
-        
-        st.sidebar.markdown("**Quick Status:**")
-        status_items = [
-            ("Input", current_job.get_input_status()),
-            ("Model", current_job.get_model_status()),
-            ("Calculation", current_job.get_result_status()),
-            ("Evaluation", current_job.has_evaluation_diagrams())
-        ]
-        
-        status_text = " | ".join([f"{name}: {'✅' if status else '❌'}" for name, status in status_items])
-        st.sidebar.markdown(f"<small>{status_text}</small>", unsafe_allow_html=True)
-
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
     tab = st.session_state.current_tab
     if tab == "Manage Job":
@@ -132,4 +115,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
