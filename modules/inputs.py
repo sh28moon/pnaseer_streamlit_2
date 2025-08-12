@@ -17,6 +17,13 @@ def show():
         return
     
     current_job = st.session_state.jobs[current_job_name]
+    
+    # Import the ensure_job_attributes function from app
+    from app import ensure_job_attributes
+    current_job = ensure_job_attributes(current_job)
+    
+    # Update the job in session state
+    st.session_state.jobs[current_job_name] = current_job
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
