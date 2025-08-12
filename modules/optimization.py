@@ -296,25 +296,17 @@ def show():
                             progress.progress(i)
                         st.success("Completed Calculation")
 
-                        # Get specific formulation data for the selected formulation
+                        # Get all formulations from the selected profile
                         formulation_data = selected_target_profile['formulation_data']
-                        selected_formulation_row = formulation_data[formulation_data['Name'] == selected_formulation_name].iloc[0]
+                        formulation_count = len(formulation_data)
                         
-                        # Get Release Time from the selected formulation
-                        release_time_value = 10  # Default fallback
-                        if 'Release Time (Week)' in selected_formulation_row:
-                            release_time_value = selected_formulation_row['Release Time (Week)']
-                            if isinstance(release_time_value, str):
-                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
-                            elif not isinstance(release_time_value, (int, float)):
-                                release_time_value = float(release_time_value)
-
-                        # Set seed for reproducible results for this specific formulation
-                        seed_base = hash(current_job_name + selected_target_profile_name + selected_formulation_name + selected_atps_model + selected_drug_release_model) % 2147483647
-                        random.seed(seed_base)
-                        np.random.seed(seed_base)
-
-                        # Generate composition results - 3 candidates for this specific formulation
+                        progress = st.progress(0)
+                        status_text = st.empty()
+                        
+                        # Process each formulation
+                        total_processed = 0
+                        
+                        for idx, (_, formulation_row) in enumerate(formulation_data.iterrows()):
                         composition_results = []
                         for i in range(3):  # Create 3 candidates
                             buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
