@@ -116,15 +116,99 @@ def show():
             with col_atps:
                 st.markdown("**ATPS Composition**")
                 
-                # Create blank ATPS Composition table for now
-                atps_data = {
-                    "Component": ["Salt 1", "Salt 2", "Polymer", "pH Buffer", "Water"],
-                    "Concentration (w/w%)": ["", "", "", "", ""],
-                    "Phase": ["", "", "", "", ""]
-                }
-                df_atps = pd.DataFrame(atps_data)
-                st.dataframe(df_atps, use_container_width=True)
-                st.info("ATPS composition data will be populated in future updates")
+                # Get composition results to use as reference values
+                if 'composition_results' in result_data and selected_formulation:
+                    comp_data_list = result_data['composition_results']
+                    
+                    # Find the composition data for selected formulation
+                    selected_comp = None
+                    for comp in comp_data_list:
+                        if comp.get("Row") == selected_formulation or comp.get("Candidate") == selected_formulation:
+                            selected_comp = comp
+                            break
+                    
+                    if selected_comp:
+                        # Extract reference values from composition results (remove % sign and convert to float)
+                        ref_gel_polymer = float(selected_comp.get("Gel Polymer w/w", "10%").replace('%', ''))
+                        ref_co_polymer = float(selected_comp.get("Co-polymer w/w", "10%").replace('%', ''))
+                        ref_buffer = float(selected_comp.get("Buffer w/w", "80%").replace('%', ''))
+                        
+                        # Set seed for consistent ATPS values per formulation
+                        import random
+                        random.seed(hash(f"{current_job_name}_{selected_formulation}_atps") % 2147483647)
+                        
+                        # Calculate ATPS composition following the rules:
+                        # Top Phase: gel polymer < ref, co-polymer > ref
+                        # Bottom Phase: gel polymer > ref, co-polymer < ref
+                        # Each column sums to 100%
+                        
+                        # Top Phase calculations
+                        top_gel_polymer = ref_gel_polymer * random.uniform(0.6, 0.9)  # Smaller than reference
+                        top_co_polymer = ref_co_polymer * random.uniform(1.1, 1.4)   # Larger than reference
+                        top_buffer = 100 - top_gel_polymer - top_co_polymer          # Make sum = 100%
+                        
+                        # Ensure top_buffer is positive
+                        if top_buffer < 0:
+                            # Adjust values to ensure positive buffer and sum = 100%
+                            top_gel_polymer = ref_gel_polymer * 0.7
+                            top_co_polymer = ref_co_polymer * 1.2
+                            top_buffer = 100 - top_gel_polymer - top_co_polymer
+                            if top_buffer < 0:
+                                top_buffer = random.uniform(70, 85)
+                                remaining = 100 - top_buffer
+                                top_gel_polymer = remaining * 0.3
+                                top_co_polymer = remaining * 0.7
+                        
+                        # Bottom Phase calculations
+                        bottom_gel_polymer = ref_gel_polymer * random.uniform(1.1, 1.4)  # Larger than reference
+                        bottom_co_polymer = ref_co_polymer * random.uniform(0.6, 0.9)   # Smaller than reference
+                        bottom_buffer = 100 - bottom_gel_polymer - bottom_co_polymer    # Make sum = 100%
+                        
+                        # Ensure bottom_buffer is positive
+                        if bottom_buffer < 0:
+                            # Adjust values to ensure positive buffer and sum = 100%
+                            bottom_gel_polymer = ref_gel_polymer * 1.2
+                            bottom_co_polymer = ref_co_polymer * 0.8
+                            bottom_buffer = 100 - bottom_gel_polymer - bottom_co_polymer
+                            if bottom_buffer < 0:
+                                bottom_buffer = random.uniform(70, 85)
+                                remaining = 100 - bottom_buffer
+                                bottom_gel_polymer = remaining * 0.7
+                                bottom_co_polymer = remaining * 0.3
+                        
+                        # Create ATPS composition table
+                        atps_data = {
+                            "Component": ["Gel polymer concentration", "Co-polymer concentration", "Buffer concentration"],
+                            "Top Phase": [f"{top_gel_polymer:.1f}%", f"{top_co_polymer:.1f}%", f"{top_buffer:.1f}%"],
+                            "Bottom Phase": [f"{bottom_gel_polymer:.1f}%", f"{bottom_co_polymer:.1f}%", f"{bottom_buffer:.1f}%"]
+                        }
+                        df_atps = pd.DataFrame(atps_data)
+                        st.dataframe(df_atps, use_container_width=True)
+                        
+                        # Show verification that columns sum to 100%
+                        top_sum = top_gel_polymer + top_co_polymer + top_buffer
+                        bottom_sum = bottom_gel_polymer + bottom_co_polymer + bottom_buffer
+                        st.caption(f"Top Phase Total: {top_sum:.1f}% | Bottom Phase Total: {bottom_sum:.1f}%")
+                    else:
+                        # Fallback if no composition data found
+                        atps_data = {
+                            "Component": ["Gel polymer concentration", "Co-polymer concentration", "Buffer concentration"],
+                            "Top Phase": ["", "", ""],
+                            "Bottom Phase": ["", "", ""]
+                        }
+                        df_atps = pd.DataFrame(atps_data)
+                        st.dataframe(df_atps, use_container_width=True)
+                        st.info("Select a formulation to view ATPS composition")
+                else:
+                    # Fallback table structure
+                    atps_data = {
+                        "Component": ["Gel polymer concentration", "Co-polymer concentration", "Buffer concentration"],
+                        "Top Phase": ["", "", ""],
+                        "Bottom Phase": ["", "", ""]
+                    }
+                    df_atps = pd.DataFrame(atps_data)
+                    st.dataframe(df_atps, use_container_width=True)
+                    st.info("No composition data available")
             
             with col_performance:
                 st.markdown("**Drug Release**")
