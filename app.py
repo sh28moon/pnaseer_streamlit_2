@@ -86,8 +86,8 @@ def main():
         st.session_state.current_tab = "Job Management"
     if st.sidebar.button("🗂️ Database management"):
         st.session_state.current_tab = "Database management"
-    if st.sidebar.button("📥 Input Target"):
-        st.session_state.current_tab = "Input Target"
+    if st.sidebar.button("📥 Manage target profile"):
+        st.session_state.current_tab = "Manage target profile"
     if st.sidebar.button("⚙️ Calculation"):
         st.session_state.current_tab = "Calculation"
     if st.sidebar.button("📊 Results"):
@@ -99,7 +99,6 @@ def main():
         st.sidebar.markdown(f"**🔸 Active Job:** {st.session_state.current_job}")
     else:
         st.sidebar.markdown("**🔹 No Active Job**")
-        st.sidebar.info("💡 Visit Job Management to create or select a job")
 
     # Quick status (minimal)
     if (st.session_state.current_job and 
@@ -118,18 +117,13 @@ def main():
         status_text = " | ".join([f"{name}: {'✅' if status else '❌'}" for name, status in status_items])
         st.sidebar.markdown(f"<small>{status_text}</small>", unsafe_allow_html=True)
 
-    # # App info
-    # st.sidebar.markdown("---")
-    # st.sidebar.markdown("**ℹ️ About**")
-    # st.sidebar.markdown("<small>Pharmaceutical formulation optimization toolkit</small>", unsafe_allow_html=True)
-
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
     tab = st.session_state.current_tab
     if tab == "Job Management":
         show_job_management()
     elif tab == "Database management":
         show_data_management()
-    elif tab == "Input Target":
+    elif tab == "Manage target profile":
         show_input()
     elif tab == "Calculation":
         show_optimization()
