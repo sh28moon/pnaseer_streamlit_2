@@ -164,18 +164,7 @@ def show():
                     atps_model_options,
                     key=f"{prefix}_atps_model_select",
                     label_visibility="collapsed"
-                )
-                
-                # Show ATPS model description based on selection
-                if selected_atps_model:
-                    atps_model_descriptions = {
-                        "MLP Model": "Multi-Layer Perceptron neural network model for nonlinear pattern recognition",
-                        "Group Method Model": "Group method of data handling for complex system modeling",
-                        "GNN Model": "Graph Neural Network model for molecular structure analysis"
-                    }
-                    
-                    with st.expander(f"ℹ️ About {selected_atps_model}", expanded=False):
-                        st.write(atps_model_descriptions.get(selected_atps_model, "Model description not available"))
+                )              
                 
                 # Drug Release Model Selection
                 st.markdown("**Drug Release Model Selection**")
@@ -190,17 +179,7 @@ def show():
                     drug_release_model_options,
                     key=f"{prefix}_drug_release_model_select",
                     label_visibility="collapsed"
-                )
-                
-                # Show Drug Release model description based on selection
-                if selected_drug_release_model:
-                    drug_release_model_descriptions = {
-                        "Diffusion Model": "Mathematical model based on Fick's laws of diffusion for drug release kinetics",
-                        "Particle Kinetics Model": "Kinetic model analyzing particle dissolution and drug release mechanisms"
-                    }
-                    
-                    with st.expander(f"ℹ️ About {selected_drug_release_model}", expanded=False):
-                        st.write(drug_release_model_descriptions.get(selected_drug_release_model, "Model description not available"))
+                )               
 
             st.divider()
 
@@ -422,11 +401,8 @@ def show():
                         total_profiles = len(current_job.formulation_results)
                         total_formulations = sum(len(prof_results) for prof_results in current_job.formulation_results.values())
                         
-                        st.info(f"📊 Results saved! Job now has {total_profiles} profile(s) with {total_formulations} formulation result(s)")
-                        
-                        # Suggest next step
-                        st.success("💡 **Go to 'Show Results' tab to view the detailed analysis!**")
-                        
+                        st.info(f"📊 Results saved")
+                                                
                         # Optional: Auto-switch to results tab
                         if st.button("🔍 View Results Now", key="auto_switch_to_results"):
                             st.session_state.current_tab = "Show Results"
