@@ -390,18 +390,18 @@ def show():
                         for i in range(3):
                             formulation_name = f"Formulation {i+1}"
                             
-                            # Safety & Stability Score (0-10) - different for each formulation
+                            # Safety & Stability Score (6-9) - different for each formulation
                             safety_stability_scores = {
-                                "Degradability": random.randint(1, 10),
-                                "Cytotoxicity": random.randint(1, 10),
-                                "Immunogenicity": random.randint(1, 10)
+                                "Degradability": random.randint(6, 9),
+                                "Cytotoxicity": random.randint(6, 9),
+                                "Immunogenicity": random.randint(6, 9)
                             }
                             
-                            # Formulation Score (0-10) - different for each formulation
+                            # Formulation Score (6-9) - different for each formulation
                             formulation_scores = {
-                                "Durability": random.randint(1, 10),
-                                "Injectability": random.randint(1, 10),
-                                "Strength": random.randint(1, 10)
+                                "Durability": random.randint(6, 9),
+                                "Injectability": random.randint(6, 9),
+                                "Strength": random.randint(6, 9)
                             }
                             
                             evaluation_diagrams_data[formulation_name] = {
