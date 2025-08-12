@@ -118,6 +118,8 @@ def get_saved_jobs():
 def show():
     st.header("Job Management")
 
+    st.divider()
+
     # Top section: Current Job Overview
     if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[st.session_state.current_job]
