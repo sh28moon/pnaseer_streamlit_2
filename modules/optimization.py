@@ -25,308 +25,201 @@ def show():
 
     def render_model_tab(prefix, tab):
         with tab:
-            # All selections in one row with three columns
-            st.markdown('<p class="font-medium"><b>Input Data Selection & Model Selection</b></p>', unsafe_allow_html=True)
+            # Two-column layout: Target Profile Selection (2 cols) + Model Selection (1 col)
+            st.markdown('<p class="font-medium"><b>Target Profile Selection & Model Selection</b></p>', unsafe_allow_html=True)
             
-            # Three-column layout: Input Data Selection (1 col) + Target Selection (1 col) + Model Selection (1 col)
-            col1, col2, col3 = st.columns(3)
+            col_target, col_model = st.columns([2, 1])
             
-            # Column 1: API and Polymer Data Selection (Input Data Selection - Part 1)
-            with col1:
-                st.markdown("**API/Polymer Data**")
+            # Column 1: Target Profile Selection (replaces separate API/Polymer/Target selection)
+            with col_target:
+                st.markdown("**Target Profile Selection**")
                 
-                # Initialize selection variables for both API and Polymer
-                selected_api_data = None
-                selected_api_index = None
-                selected_api_name = None
-                selected_polymer_data = None
-                selected_polymer_index = None
-                selected_polymer_name = None
+                # Initialize target profile selection variables
+                selected_target_profile = None
+                selected_target_profile_name = None
                 
-                # Upper togglebox: API Data
-                st.markdown("*API Data:*")
-                if "common_api_datasets" in st.session_state and st.session_state["common_api_datasets"]:
-                    api_datasets = st.session_state["common_api_datasets"]
-                    api_dataset_options = [""] + list(api_datasets.keys())
+                # Check if job has complete target profiles
+                if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
+                    target_profiles = current_job.complete_target_profiles
                     
-                    selected_api_dataset = st.selectbox(
-                        "",
-                        api_dataset_options,
-                        key=f"{prefix}_api_dataset_select"
-                    )
-                    
-                    if selected_api_dataset:
-                        api_data = api_datasets[selected_api_dataset]
-                        
-                        # API row selection
-                        if len(api_data) > 1:
-                            if 'Name' in api_data.columns:
-                                api_name_options = api_data['Name'].tolist()
-                                selected_api_name = st.selectbox(
-                                    "",
-                                    api_name_options,
-                                    key=f"{prefix}_api_row_select"
-                                )
-                                selected_api_index = api_name_options.index(selected_api_name)
-                                selected_api_data = api_data.iloc[[selected_api_index]]
-                            else:
-                                first_column_values = api_data.iloc[:, 0].tolist()
-                                first_column_display = [str(val) if pd.notna(val) else f"Row {i+1}" for i, val in enumerate(first_column_values)]
-                                
-                                selected_api_row = st.selectbox(
-                                    "",
-                                    first_column_display,
-                                    key=f"{prefix}_api_row_select"
-                                )
-                                selected_api_index = first_column_display.index(selected_api_row)
-                                selected_api_data = api_data.iloc[[selected_api_index]]
-                                selected_api_name = selected_api_row
-                        else:
-                            # Single row
-                            selected_api_data = api_data
-                            selected_api_index = 0
-                            if 'Name' in api_data.columns:
-                                selected_api_name = api_data['Name'].iloc[0] if pd.notna(api_data['Name'].iloc[0]) else str(api_data.iloc[0, 0])
-                            else:
-                                selected_api_name = str(api_data.iloc[0, 0]) if pd.notna(api_data.iloc[0, 0]) else "Row 1"
-                else:
-                    st.selectbox("", ["No API datasets available"], disabled=True, key=f"{prefix}_api_placeholder")
-                
-                # Lower togglebox: Polymer Data
-                st.markdown("*Polymer Data:*")
-                if "polymer_datasets" in st.session_state and st.session_state["polymer_datasets"]:
-                    polymer_datasets = st.session_state["polymer_datasets"]
-                    polymer_dataset_options = [""] + list(polymer_datasets.keys())
-                    
-                    selected_polymer_dataset = st.selectbox(
-                        "",
-                        polymer_dataset_options,
-                        key=f"{prefix}_polymer_dataset_select"
-                    )
-                    
-                    if selected_polymer_dataset:
-                        polymer_data = polymer_datasets[selected_polymer_dataset]
-                        
-                        # Polymer row selection
-                        if len(polymer_data) > 1:
-                            if 'Name' in polymer_data.columns:
-                                polymer_name_options = polymer_data['Name'].tolist()
-                                selected_polymer_name = st.selectbox(
-                                    "",
-                                    polymer_name_options,
-                                    key=f"{prefix}_polymer_row_select"
-                                )
-                                selected_polymer_index = polymer_name_options.index(selected_polymer_name)
-                                selected_polymer_data = polymer_data.iloc[[selected_polymer_index]]
-                            else:
-                                first_column_values = polymer_data.iloc[:, 0].tolist()
-                                first_column_display = [str(val) if pd.notna(val) else f"Row {i+1}" for i, val in enumerate(first_column_values)]
-                                
-                                selected_polymer_row = st.selectbox(
-                                    "",
-                                    first_column_display,
-                                    key=f"{prefix}_polymer_row_select"
-                                )
-                                selected_polymer_index = first_column_display.index(selected_polymer_row)
-                                selected_polymer_data = polymer_data.iloc[[selected_polymer_index]]
-                                selected_polymer_name = selected_polymer_row
-                        else:
-                            # Single row
-                            selected_polymer_data = polymer_data
-                            selected_polymer_index = 0
-                            if 'Name' in polymer_data.columns:
-                                selected_polymer_name = polymer_data['Name'].iloc[0] if pd.notna(polymer_data['Name'].iloc[0]) else str(polymer_data.iloc[0, 0])
-                            else:
-                                selected_polymer_name = str(polymer_data.iloc[0, 0]) if pd.notna(polymer_data.iloc[0, 0]) else "Row 1"
-                else:
-                    st.selectbox("", ["No Polymer datasets available"], disabled=True, key=f"{prefix}_polymer_placeholder")
-            
-            # Column 2: Target Profile Data (Input Data Selection - Part 2)
-            with col2:
-                st.markdown("**Target Profile Data**")
-                
-                # Initialize target selection variables
-                selected_target_data = None
-                selected_target_name = None
-                
-                if current_job.has_target_data():
-                    target_data = current_job.target_profile_dataset
-                    
-                    # Add Type filter for target selection
-                    # Extract all unique types from target profiles
+                    # Type filter for target profiles
                     available_types = set()
-                    for profile_name, profile_df in target_data.items():
-                        if 'Type' in profile_df.columns:
-                            profile_type = profile_df.iloc[0]['Type']
+                    for profile_name, profile_data in target_profiles.items():
+                        if 'formulation_data' in profile_data and 'Type' in profile_data['formulation_data'].columns:
+                            profile_type = profile_data['formulation_data'].iloc[0]['Type']
                             if pd.notna(profile_type) and str(profile_type).strip():
                                 available_types.add(str(profile_type).strip())
                         else:
                             available_types.add("Not specified")
                     
-                    # Type filter for calculation
+                    # Type filter
                     if available_types:
                         filter_options = ["All"] + sorted(list(available_types))
                         selected_type_filter = st.selectbox(
                             "Filter by Type:",
                             filter_options,
-                            key=f"{prefix}_target_type_filter"
+                            key=f"{prefix}_target_profile_type_filter"
                         )
                         
-                        # Filter targets based on type
+                        # Filter target profiles based on type
                         if selected_type_filter == "All":
-                            filtered_targets = target_data
+                            filtered_profiles = target_profiles
                         else:
-                            filtered_targets = {}
-                            for profile_name, profile_df in target_data.items():
-                                if 'Type' in profile_df.columns:
-                                    profile_type = str(profile_df.iloc[0]['Type']).strip()
+                            filtered_profiles = {}
+                            for profile_name, profile_data in target_profiles.items():
+                                if 'formulation_data' in profile_data and 'Type' in profile_data['formulation_data'].columns:
+                                    profile_type = str(profile_data['formulation_data'].iloc[0]['Type']).strip()
                                 else:
                                     profile_type = "Not specified"
                                 
                                 if profile_type == selected_type_filter:
-                                    filtered_targets[profile_name] = profile_df
+                                    filtered_profiles[profile_name] = profile_data
                     else:
-                        filtered_targets = target_data
+                        filtered_profiles = target_profiles
                         selected_type_filter = "All"
                     
-                    # Target Profile Data Selection
-                    if filtered_targets:
-                        target_names = list(filtered_targets.keys())
-                        selected_target_name = st.selectbox(
-                            "Select Target Dataset",
-                            target_names,
-                            key=f"{prefix}_target_select"
+                    # Target Profile Selection
+                    if filtered_profiles:
+                        profile_names = list(filtered_profiles.keys())
+                        selected_target_profile_name = st.selectbox(
+                            "Select Target Profile:",
+                            profile_names,
+                            key=f"{prefix}_target_profile_select"
                         )
                         
-                        if selected_target_name:
-                            selected_target_data = filtered_targets[selected_target_name]
+                        if selected_target_profile_name:
+                            selected_target_profile = filtered_profiles[selected_target_profile_name]
+                            
+                            # Show profile components summary
+                            with st.expander(f"📄 Target Profile Details: {selected_target_profile_name}", expanded=False):
+                                # API Data
+                                if 'api_data' in selected_target_profile and selected_target_profile['api_data'] is not None:
+                                    st.markdown("**API Data:**")
+                                    st.dataframe(selected_target_profile['api_data'], use_container_width=True)
+                                else:
+                                    st.warning("⚠️ No API data in this profile")
+                                
+                                # Polymer Data
+                                if 'polymer_data' in selected_target_profile and selected_target_profile['polymer_data'] is not None:
+                                    st.markdown("**Hydrogel Polymer Data:**")
+                                    st.dataframe(selected_target_profile['polymer_data'], use_container_width=True)
+                                else:
+                                    st.warning("⚠️ No Polymer data in this profile")
+                                
+                                # Formulation Data
+                                if 'formulation_data' in selected_target_profile and selected_target_profile['formulation_data'] is not None:
+                                    st.markdown("**Formulation Data:**")
+                                    formulation_data = selected_target_profile['formulation_data']
+                                    st.dataframe(formulation_data, use_container_width=True)
+                                    
+                                    # Show Type
+                                    if 'Type' in formulation_data.columns:
+                                        formulation_type = formulation_data.iloc[0]['Type']
+                                        st.markdown(f"**Type:** {formulation_type}")
+                                else:
+                                    st.warning("⚠️ No Formulation data in this profile")
                     else:
-                        st.warning(f"❌ No targets of type '{selected_type_filter}' found")
-                        selected_target_name = None
+                        st.warning(f"❌ No target profiles of type '{selected_type_filter}' found")
+                        selected_target_profile_name = None
                 else:
-                    st.error("❌ No target data in current job")
-                    st.info("💡 Add target profiles in Input Target → Target Profile")
-                    selected_target_name = None
+                    st.error("❌ No complete target profiles in current job")
+                    st.info("💡 Create complete target profiles in 'Manage target profile' → 'Create target profile'")
+                    selected_target_profile_name = None
             
-            # Column 3: Model Selection
-            with col3:
+            # Column 2: Model Selection
+            with col_model:
                 st.markdown("**Model Selection**")
                 
-                # Compact model import
-                if not current_job.has_model_data():
-                    uploaded = st.file_uploader(
-                        "Import Model (CSV)",
-                        type=["csv"],
-                        key=f"{prefix}_import",
-                        label_visibility="collapsed"
-                    )
-                    if uploaded:
-                        try:
-                            df = pd.read_csv(uploaded)
-                            
-                            if 'Name' not in df.columns or len(df) == 0:
-                                st.error("❌ Invalid model file")
-                            else:
-                                # Create separate model datasets for each row
-                                model_datasets = {}
-                                for index, row in df.iterrows():
-                                    model_name = str(row['Name']).strip()
-                                    if model_name:
-                                        model_df = pd.DataFrame([row])
-                                        model_datasets[model_name] = model_df
-                                
-                                if model_datasets:
-                                    current_job.model_dataset = model_datasets
-                                    st.session_state.jobs[current_job_name] = current_job
-                                    st.rerun()
-                                
-                        except Exception as e:
-                            st.error("❌ Error reading file")
-
-                # Model selection at same level as other selectboxes
-                if current_job.has_model_data():
-                    model_data = current_job.model_dataset
-                    model_names = list(model_data.keys())           
+                # Predefined model options
+                model_options = [
+                    "",
+                    "MLP Model",
+                    "Group Method Model", 
+                    "GNN Model"
+                ]
+                
+                selected_model = st.selectbox(
+                    "Select Model:",
+                    model_options,
+                    key=f"{prefix}_model_select"
+                )
+                
+                # Show model description based on selection
+                if selected_model:
+                    model_descriptions = {
+                        "MLP Model": "Multi-Layer Perceptron neural network model for nonlinear pattern recognition",
+                        "Group Method Model": "Group method of data handling for complex system modeling",
+                        "GNN Model": "Graph Neural Network model for molecular structure analysis"
+                    }
                     
-                    selected = st.selectbox(
-                        "Select Model",
-                        model_names,
-                        key=f"{prefix}_select"
-                    )
-                    
-                    # Compact clear button
-                    if st.button(f"🗑️ Clear", key=f"clear_model_{prefix}"):
-                        current_job.model_dataset = None
-                        st.session_state.jobs[current_job_name] = current_job
-                        st.rerun()
-                else:
-                    selected = None
-                    # Placeholder to maintain height
-                    st.selectbox(
-                        "Select Model",
-                        ["No models available"],
-                        disabled=True,
-                        key=f"{prefix}_select_placeholder"
-                    )
+                    with st.expander(f"ℹ️ About {selected_model}", expanded=False):
+                        st.write(model_descriptions.get(selected_model, "Model description not available"))
 
             st.divider()
 
             # Calculate section
             st.subheader("Input Review and Submit Job")
             
-            # Show four separate tables with full values
-            col1, col2, col3, col4 = st.columns(4)
+            # Show selected target profile and model summary
+            col_profile_summary, col_model_summary = st.columns(2)
             
-            with col1:
-                st.markdown("**Selected API Data**")
-                if selected_api_data is not None and selected_api_name is not None:
-                    st.markdown(f"*{selected_api_name}*")
-                    st.dataframe(selected_api_data, use_container_width=True)
-                else:
-                    st.info("No API data selected")
-            
-            with col2:
-                st.markdown("**Selected Polymer Data**")
-                if selected_polymer_data is not None and selected_polymer_name is not None:
-                    st.dataframe(selected_polymer_data, use_container_width=True)
-                else:
-                    st.info("No Polymer data selected")
-            
-            with col3:
+            with col_profile_summary:
                 st.markdown("**Selected Target Profile**")
-                if selected_target_data is not None:
-                    # Show type information if available
-                    if 'Type' in selected_target_data.columns:
-                        target_type = selected_target_data.iloc[0]['Type']
-                        st.markdown(f"*{selected_target_name}* (Type: {target_type})")
-                    else:
-                        st.markdown(f"*{selected_target_name}*")
-                    st.dataframe(selected_target_data, use_container_width=True)
+                if selected_target_profile and selected_target_profile_name:
+                    st.markdown(f"*{selected_target_profile_name}*")
+                    
+                    # Quick summary of profile components
+                    api_status = "✅" if selected_target_profile.get('api_data') is not None else "❌"
+                    polymer_status = "✅" if selected_target_profile.get('polymer_data') is not None else "❌"
+                    formulation_status = "✅" if selected_target_profile.get('formulation_data') is not None else "❌"
+                    
+                    st.markdown(f"• API Data: {api_status}")
+                    st.markdown(f"• Polymer Data: {polymer_status}")
+                    st.markdown(f"• Formulation Data: {formulation_status}")
+                    
+                    # Show type if available
+                    if (selected_target_profile.get('formulation_data') is not None and 
+                        'Type' in selected_target_profile['formulation_data'].columns):
+                        profile_type = selected_target_profile['formulation_data'].iloc[0]['Type']
+                        st.markdown(f"• **Type:** {profile_type}")
                 else:
-                    st.info("No target data selected")
+                    st.info("No target profile selected")
             
-            with col4:
+            with col_model_summary:
                 st.markdown("**Selected Model**")
-                if selected and current_job.get_model_status():
-                    st.markdown(f"*{selected}*")
-                    model_df = current_job.model_dataset[selected]
-                    st.dataframe(model_df, use_container_width=True)
+                if selected_model:
+                    st.markdown(f"*{selected_model}*")
+                    st.info("✅ Model ready for calculation")
                 else:
                     st.info("No model selected")
             
             # Submit button and Clear Results button
-            has_api_data = selected_api_data is not None and selected_api_name is not None
-            has_polymer_data = selected_polymer_data is not None and selected_polymer_name is not None
-            has_target_data = current_job.has_target_data() and selected_target_data is not None
-            has_model_data = current_job.get_model_status() and selected
-            can_submit = has_api_data and has_polymer_data and has_target_data and has_model_data
+            has_target_profile = selected_target_profile is not None and selected_target_profile_name is not None
+            has_model = selected_model is not None and selected_model != ""
+            
+            # Check if target profile is complete (has all three components)
+            profile_complete = False
+            if has_target_profile:
+                api_ok = selected_target_profile.get('api_data') is not None
+                polymer_ok = selected_target_profile.get('polymer_data') is not None
+                formulation_ok = selected_target_profile.get('formulation_data') is not None
+                profile_complete = api_ok and polymer_ok and formulation_ok
+            
+            can_submit = has_target_profile and has_model and profile_complete
             
             col_submit, col_clear = st.columns(2)
             
             with col_submit:
                 if st.button("Submit Job", key=f"{prefix}_run", disabled=not can_submit):
                     if not can_submit:
-                        st.error("Please ensure API data, Polymer data, target data, and model are all selected before submitting.")
+                        if not has_target_profile:
+                            st.error("Please select a target profile first.")
+                        elif not profile_complete:
+                            st.error("Selected target profile is incomplete. Please ensure it has API, Polymer, and Formulation data.")
+                        elif not has_model:
+                            st.error("Please select a model first.")
+                        else:
+                            st.error("Please ensure target profile and model are both selected before submitting.")
                     else:
                         progress = st.progress(0)
                         for i in range(101):
@@ -366,28 +259,25 @@ def show():
                             for v in performance_metrics["values"]
                         ]
                         
-                        # Generate performance trend data for all 3 formulations
-                        # Get Release Time from target data (handle Type column)
-                        if len(selected_target_data.columns) >= 4:
-                            # Find release time column (should be 3rd data column, considering Type might be last)
-                            if 'Type' in selected_target_data.columns:
-                                # Type column exists, find release time in data columns
-                                data_columns = [col for col in selected_target_data.columns if col not in ['Name', 'Type']]
+                        # Get Release Time from target profile formulation data
+                        release_time_value = 10  # Default fallback
+                        if (selected_target_profile.get('formulation_data') is not None and 
+                            len(selected_target_profile['formulation_data'].columns) >= 4):
+                            formulation_data = selected_target_profile['formulation_data']
+                            
+                            # Find release time column
+                            if 'Type' in formulation_data.columns:
+                                data_columns = [col for col in formulation_data.columns if col not in ['Name', 'Type']]
                                 if len(data_columns) >= 3:
-                                    release_time_value = selected_target_data.iloc[0][data_columns[2]]  # Third data column
-                                else:
-                                    release_time_value = 10  # fallback
+                                    release_time_value = formulation_data.iloc[0][data_columns[2]]  # Third data column
                             else:
-                                # No Type column, use 4th column (index 3)
-                                release_time_value = selected_target_data.iloc[0, 3]
+                                release_time_value = formulation_data.iloc[0, 3]  # Fourth column
                             
                             # Convert to numeric if it's a string with units
                             if isinstance(release_time_value, str):
                                 release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
                             elif not isinstance(release_time_value, (int, float)):
                                 release_time_value = float(release_time_value)
-                        else:
-                            release_time_value = 10  # Default fallback
                         
                         # Generate fixed performance trend data for all 3 formulations
                         performance_trends = {}
@@ -395,7 +285,7 @@ def show():
                         x_values = np.linspace(0, release_time_value, x_points).tolist()
                         
                         # Set seed for reproducible results within this job
-                        np.random.seed(hash(current_job_name + selected_api_name + selected_target_name) % 2147483647)
+                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_model) % 2147483647)
                         
                         start_values = [0.1, 0.15, 0.08]
                         end_values = [0.85, 0.92, 0.88]
@@ -417,8 +307,7 @@ def show():
                             }
                         
                         # Generate evaluation diagrams data for each formulation
-                        # Set seed for consistent evaluation results per job
-                        np.random.seed(hash(current_job_name + selected_api_name + selected_target_name + "evaluation") % 2147483647)
+                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_model + "evaluation") % 2147483647)
                         
                         evaluation_diagrams_data = {}
                         
@@ -449,31 +338,23 @@ def show():
                         # Create comprehensive result data with all generated datasets
                         result_data = {
                             "type": prefix,
-                            "model_name": selected,
-                            "selected_api_data": selected_api_data,
-                            "selected_api_name": selected_api_name,
-                            "selected_api_row": selected_api_index if selected_api_index is not None else 0,
-                            "selected_polymer_data": selected_polymer_data,
-                            "selected_polymer_name": selected_polymer_name,
-                            "selected_polymer_row": selected_polymer_index if selected_polymer_index is not None else 0,
-                            "selected_target_data": selected_target_data,
-                            "selected_target_name": selected_target_name,
-                            "selected_target_type": selected_target_data.iloc[0]['Type'] if 'Type' in selected_target_data.columns else "Not specified",
+                            "model_name": selected_model,
+                            "selected_target_profile": selected_target_profile,
+                            "selected_target_profile_name": selected_target_profile_name,
                             "target_type_filter": selected_type_filter if 'selected_type_filter' in locals() else "All",
-                            "model_data": current_job.model_dataset[selected] if selected else None,
                             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "status": "completed",
                             
                             # Generated result datasets
                             "composition_results": composition_results,
                             "performance_metrics": performance_metrics,
-                            "performance_trends": performance_trends,  # Fixed performance trend data
-                            "evaluation_diagrams": evaluation_diagrams_data  # Evaluation diagrams data
+                            "performance_trends": performance_trends,
+                            "evaluation_diagrams": evaluation_diagrams_data
                         }
                         
                         current_job.result_dataset = result_data
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Results with datasets generated and saved to job '{current_job_name}'")
+                        st.success(f"Results generated using {selected_model} with target profile '{selected_target_profile_name}'")
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
