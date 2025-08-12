@@ -187,6 +187,13 @@ def show():
     if current_job_name and current_job_name in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[current_job_name]
         
+        # Import the ensure_job_attributes function from app
+        from app import ensure_job_attributes
+        current_job = ensure_job_attributes(current_job)
+        
+        # Update the job in session state
+        st.session_state.jobs[current_job_name] = current_job
+        
         # Show job status
         col_info1, col_info2, col_info3 = st.columns(3)
         with col_info1:
@@ -234,11 +241,14 @@ def show():
                     current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
                 
                 # Import Job class from app
-                from app import Job
+                from app import Job, ensure_job_attributes
                 
                 import datetime
                 st.session_state.current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_job = Job(job_name)
+                
+                # Ensure all attributes are properly initialized
+                new_job = ensure_job_attributes(new_job)
                 
                 # Initialize jobs dict if needed
                 if "jobs" not in st.session_state:
@@ -309,6 +319,10 @@ def show():
                         loaded_job, saved_time = load_job_from_file(selected_job_file["filepath"])
                         
                         if loaded_job:
+                            # Import the ensure_job_attributes function
+                            from app import ensure_job_attributes
+                            loaded_job = ensure_job_attributes(loaded_job)
+                            
                             # Initialize jobs dict if needed
                             if "jobs" not in st.session_state:
                                 st.session_state.jobs = {}
