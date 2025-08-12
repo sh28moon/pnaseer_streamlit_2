@@ -202,7 +202,7 @@ def show():
         saved_jobs = get_saved_jobs()
         
         if saved_jobs:
-            st.markdown(f"### 📂 Load Jobs)")
+            st.markdown(f"### 📂 Load Jobs")
             
             # Load saved job section
             job_options = [""] + [f"{job['name']} ({job['modified']})" for job in saved_jobs]
