@@ -170,16 +170,16 @@ def get_saved_jobs():
 
 def show():
     st.header("Job Management")
-
-
+    
     st.divider()
-
+    
+    st.markdown("## 🏗️ Create & Manage Jobs")
+    
     # Two-column layout for job management
     col_left, col_right = st.columns(2)
 
     # ═══ LEFT COLUMN: Create & Manage Jobs ══════════════════════════════════
-    with col_left:
-        st.markdown("## 🏗️ Create & Manage Jobs")
+    with col_left:       
         
         # Create new job section
         st.markdown("### ➕ Create New Job")
@@ -224,7 +224,7 @@ def show():
                     st.error("❌ Job name already exists!")
                 else:
                     st.error("❌ Please enter a job name!")
-        if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
+        if st.button("💾 Save Job to Cloud", key="save_current_job", help="Save this job permanently"):
             success, result = save_job_to_file(current_job, st.session_state.current_job)
             if success:
                 st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
@@ -233,13 +233,11 @@ def show():
 
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
-    with col_right:
-        st.markdown("## 💾 Saved Jobs")
-        
+    with col_right:        
         saved_jobs = get_saved_jobs()
         
         if saved_jobs:
-            st.markdown(f"### 📂 Available Saved Jobs ({len(saved_jobs)})")
+            st.markdown(f"### 📂 Load Saved Jobs")
             
             # Load saved job section
             job_options = [""] + [f"{job['name']} ({job['modified']})" for job in saved_jobs]
