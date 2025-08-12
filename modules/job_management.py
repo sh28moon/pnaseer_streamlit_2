@@ -22,8 +22,27 @@ def save_job_to_file(job, job_name):
             "target_profile_dataset": {k: v.to_dict('records') for k, v in job.target_profile_dataset.items()} if job.target_profile_dataset is not None else None,
             "model_dataset": {k: v.to_dict('records') for k, v in job.model_dataset.items()} if job.model_dataset is not None else None,
             "result_dataset": job.result_dataset,
-            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            
+            # Include database data for persistence
+            "common_api_datasets": {k: v.to_dict('records') for k, v in job.common_api_datasets.items()} if job.common_api_datasets else {},
+            "polymer_datasets": {k: v.to_dict('records') for k, v in job.polymer_datasets.items()} if job.polymer_datasets else {},
         }
+        
+        # Handle complete_target_profiles with DataFrame serialization
+        if hasattr(job, 'complete_target_profiles') and job.complete_target_profiles:
+            serialized_profiles = {}
+            for profile_name, profile_data in job.complete_target_profiles.items():
+                serialized_profile = {}
+                for key, value in profile_data.items():
+                    if hasattr(value, 'to_dict'):  # It's a DataFrame
+                        serialized_profile[key] = value.to_dict('records')
+                    else:
+                        serialized_profile[key] = value
+                serialized_profiles[profile_name] = serialized_profile
+            job_data["complete_target_profiles"] = serialized_profiles
+        else:
+            job_data["complete_target_profiles"] = {}
         
         # Handle pandas DataFrames in result_dataset
         if job_data["result_dataset"] is not None:
@@ -70,6 +89,26 @@ def load_job_from_file(filename):
             
         if job_data["model_dataset"] is not None:
             job.model_dataset = {k: pd.DataFrame(v) for k, v in job_data["model_dataset"].items()}
+        
+        # Restore database data
+        if "common_api_datasets" in job_data:
+            job.common_api_datasets = {k: pd.DataFrame(v) for k, v in job_data["common_api_datasets"].items()}
+        
+        if "polymer_datasets" in job_data:
+            job.polymer_datasets = {k: pd.DataFrame(v) for k, v in job_data["polymer_datasets"].items()}
+        
+        # Restore complete target profiles
+        if "complete_target_profiles" in job_data:
+            restored_profiles = {}
+            for profile_name, profile_data in job_data["complete_target_profiles"].items():
+                restored_profile = {}
+                for key, value in profile_data.items():
+                    if key in ['api_data', 'polymer_data', 'formulation_data'] and value is not None:
+                        restored_profile[key] = pd.DataFrame(value)
+                    else:
+                        restored_profile[key] = value
+                restored_profiles[profile_name] = restored_profile
+            job.complete_target_profiles = restored_profiles
         
         # Restore result dataset
         if job_data["result_dataset"] is not None:
@@ -126,17 +165,27 @@ def show():
         
         st.markdown(f"## Current Job Status")
         st.markdown(f"**Name:** {st.session_state.current_job}")
-        st.markdown(f"**Created:** {current_job.created_at}") 
-                
-        st.divider()   
-    
-    st.markdown("## 🏗️ Create & Manage Jobs")
-    
+        st.markdown(f"**Created:** {current_job.created_at}")
+        
+        # Save job to cloud section
+        st.markdown("### 💾 Save job to cloud")
+
+        if st.button("💾 Save Job Permanently", key="save_current_job", help="Save this job permanently"):
+            success, result = save_job_to_file(current_job, st.session_state.current_job)
+            if success:
+                st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
+            else:
+                st.error(f"❌ Failed to save job: {result}")
+
+    st.divider()
+
     # Two-column layout for job management
     col_left, col_right = st.columns(2)
 
     # ═══ LEFT COLUMN: Create & Manage Jobs ══════════════════════════════════
-    with col_left:    
+    with col_left:
+        st.markdown("## 🏗️ Create & Manage Jobs")
+        
         # Create new job section
         st.markdown("### ➕ Create New Job")
         job_name = st.text_input("Job Name", placeholder="Enter a descriptive job name", key="new_job_name")
@@ -145,6 +194,12 @@ def show():
         with col_create:
             if st.button("➕ Create Job", key="create_job"):
                 if job_name and job_name not in st.session_state.get("jobs", {}):
+                    # Save current job's databases before switching
+                    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
+                        current_job = st.session_state.jobs[st.session_state.current_job]
+                        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                    
                     # Import Job class from app
                     from app import Job
                     
@@ -158,51 +213,61 @@ def show():
                     
                     st.session_state.jobs[job_name] = new_job
                     st.session_state.current_job = job_name
+                    
+                    # Initialize databases for new job
+                    st.session_state["common_api_datasets"] = {}
+                    st.session_state["polymer_datasets"] = {}
+                    
                     st.success(f"✅ Job '{job_name}' created and activated!")
                     st.rerun()
                 elif job_name in st.session_state.get("jobs", {}):
                     st.error("❌ Job name already exists!")
                 else:
                     st.error("❌ Please enter a job name!")
-
-                    # Save job to cloud section
-        
-            if st.button("💾 Save Job", key="save_current_job", help="Save this job to the cloud server"):
-                success, result = save_job_to_file(current_job, st.session_state.current_job)
-                if success:
-                    st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
-                else:
-                    st.error(f"❌ Failed to save job: {result}")
         
         # Select existing job section
-        # st.markdown("### 🔄 Switch Active Job")
-        # jobs = st.session_state.get("jobs", {})
-        # job_names = list(jobs.keys())
+        st.markdown("### 🔄 Switch Active Job")
+        jobs = st.session_state.get("jobs", {})
+        job_names = list(jobs.keys())
         
-        # if job_names:
-        #     current_selection = st.session_state.get("current_job", "")
-        #     current_index = job_names.index(current_selection) if current_selection in job_names else -1
+        if job_names:
+            current_selection = st.session_state.get("current_job", "")
+            current_index = job_names.index(current_selection) if current_selection in job_names else -1
             
-        #     selected_job = st.selectbox(
-        #         "Select Job",
-        #         job_names,
-        #         index=current_index if current_index >= 0 else 0,
-        #         key="job_selector_main"
-        #     )
+            selected_job = st.selectbox(
+                "Select Job",
+                job_names,
+                index=current_index if current_index >= 0 else 0,
+                key="job_selector_main"
+            )
             
-        #     if st.button("🔄 Switch to This Job", key="switch_job"):
-        #         if selected_job != st.session_state.get("current_job"):
-        #             st.session_state.current_job = selected_job
-        #             st.success(f"✅ Switched to job: {selected_job}")
-        #             st.rerun()
+            if st.button("🔄 Switch to This Job", key="switch_job"):
+                if selected_job != st.session_state.get("current_job"):
+                    # Save current job's databases before switching
+                    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.jobs:
+                        current_job = st.session_state.jobs[st.session_state.current_job]
+                        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                    
+                    # Switch to new job
+                    st.session_state.current_job = selected_job
+                    
+                    # Load new job's databases
+                    new_job = st.session_state.jobs[selected_job]
+                    st.session_state["common_api_datasets"] = new_job.common_api_datasets
+                    st.session_state["polymer_datasets"] = new_job.polymer_datasets
+                    
+                    st.success(f"✅ Switched to job: {selected_job}")
+                    st.rerun()
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
     with col_right:
+        st.markdown("## 💾 Saved Jobs")
         
         saved_jobs = get_saved_jobs()
         
         if saved_jobs:
-            st.markdown(f"### 📂 Load Jobs")
+            st.markdown(f"### 📂 Available Saved Jobs ({len(saved_jobs)})")
             
             # Load saved job section
             job_options = [""] + [f"{job['name']} ({job['modified']})" for job in saved_jobs]
@@ -236,6 +301,10 @@ def show():
                             # Add loaded job to session
                             st.session_state.jobs[loaded_job.name] = loaded_job
                             st.session_state.current_job = loaded_job.name
+                            
+                            # Sync databases from loaded job to session state
+                            st.session_state["common_api_datasets"] = loaded_job.common_api_datasets
+                            st.session_state["polymer_datasets"] = loaded_job.polymer_datasets
                             
                             st.success(f"✅ Job '{loaded_job.name}' loaded and activated!")
                             st.rerun()
