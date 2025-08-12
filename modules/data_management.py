@@ -146,6 +146,12 @@ def show():
                         if success:
                             st.success(f"✅ Saved '{dataset_name}' permanently!")
                             
+                            # Save databases to current job for persistence
+                            if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
+                                current_job = st.session_state.jobs[st.session_state.current_job]
+                                current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                                current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                            
                             # Clear temporary data
                             if f"{session_key}_temp_dataset" in st.session_state:
                                 del st.session_state[f"{session_key}_temp_dataset"]
@@ -202,6 +208,13 @@ def show():
                                     if loaded_datasets is not None:
                                         # Replace current datasets with loaded ones
                                         st.session_state[session_key] = loaded_datasets
+                                        
+                                        # Save databases to current job for persistence
+                                        if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
+                                            current_job = st.session_state.jobs[st.session_state.current_job]
+                                            current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
+                                            current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                                        
                                         st.success(f"✅ Loaded '{selected_save_name}' database with {count} dataset(s)!")
                                         st.rerun()
                         
