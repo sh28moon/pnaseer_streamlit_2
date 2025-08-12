@@ -167,7 +167,7 @@ def show():
 
                     # Save job to cloud section
         
-            if st.button("💾 Save Job to Cloud", key="save_current_job", help="Save this job to the cloud server"):
+            if st.button("💾 Save Job", key="save_current_job", help="Save this job to the cloud server"):
                 success, result = save_job_to_file(current_job, st.session_state.current_job)
                 if success:
                     st.success(f"✅ Job '{st.session_state.current_job}' saved permanently!")
