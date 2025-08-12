@@ -305,7 +305,7 @@ def show():
                         total_processed = 0
                         
                         for idx, (_, formulation_row) in enumerate(formulation_data.iterrows()):
-                        composition_results = []
+                            composition_results = []
                         for i in range(3):  # Create 3 candidates
                             buffer_pct = random.randint(80, 95)  # Buffer between 80-95%
                             remaining_pct = 100 - buffer_pct
