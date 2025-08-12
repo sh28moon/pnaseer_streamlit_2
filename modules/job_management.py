@@ -185,7 +185,7 @@ def show():
         st.markdown("### ➕ Create New Job")
         job_name = st.text_input("Job Name", placeholder="Enter a descriptive job name", key="new_job_name")
         
-        col_create, col_select = st.columns(2)
+        col_create, col_save = st.columns(2)
         with col_create:
             if st.button("➕ Create Job", key="create_job"):
                 if job_name and job_name not in st.session_state.get("jobs", {}):
@@ -224,12 +224,25 @@ def show():
                     st.error("❌ Job name already exists!")
                 else:
                     st.error("❌ Please enter a job name!")
-        if st.button("💾 Save Job to Cloud", key="save_current_job", help="Save this job to cloud"):
-            success, result = save_job_to_file(current_job, st.session_state.current_job)
-            if success:
-                st.success(f"✅ Job '{st.session_state.current_job}' saved!")
-            else:
-                st.error(f"❌ Failed to save job: {result}")
+        
+        with col_save:
+            # Save Job button - only enabled if current job exists
+            current_job_name = st.session_state.get("current_job")
+            has_current_job = (current_job_name and 
+                             current_job_name in st.session_state.get("jobs", {}))
+            
+            if st.button("💾 Save Job to Cloud", key="save_current_job", 
+                        disabled=not has_current_job,
+                        help="Save current job to cloud"):
+                if has_current_job:
+                    current_job = st.session_state.jobs[current_job_name]
+                    success, result = save_job_to_file(current_job, current_job_name)
+                    if success:
+                        st.success(f"✅ Job '{current_job_name}' saved!")
+                    else:
+                        st.error(f"❌ Failed to save job: {result}")
+                else:
+                    st.error("❌ No current job to save!")
 
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
@@ -294,3 +307,6 @@ def show():
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Failed to remove: {str(e)}")
+        else:
+            st.markdown("### 📂 Load Saved Jobs")
+            st.info("No saved jobs found. Create and save jobs to see them here.")
