@@ -179,6 +179,18 @@ def get_saved_jobs():
     except Exception:
         return []
 
+def ensure_job_attributes(job):
+    """Ensure all required attributes exist on a job object"""
+    if not hasattr(job, 'common_api_datasets'):
+        job.common_api_datasets = {}
+    if not hasattr(job, 'polymer_datasets'):
+        job.polymer_datasets = {}
+    if not hasattr(job, 'complete_target_profiles'):
+        job.complete_target_profiles = {}
+    if not hasattr(job, 'formulation_results'):
+        job.formulation_results = {}
+    return job
+
 def show():
     st.header("Job Management")
     
@@ -187,8 +199,6 @@ def show():
     if current_job_name and current_job_name in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[current_job_name]
         
-        # Import the ensure_job_attributes function from app
-        from app import ensure_job_attributes
         current_job = ensure_job_attributes(current_job)
         
         # Update the job in session state
@@ -241,7 +251,7 @@ def show():
                     current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
                 
                 # Import Job class from app
-                from app import Job, ensure_job_attributes
+                from app import Job
                 
                 import datetime
                 st.session_state.current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -319,8 +329,7 @@ def show():
                         loaded_job, saved_time = load_job_from_file(selected_job_file["filepath"])
                         
                         if loaded_job:
-                            # Import the ensure_job_attributes function
-                            from app import ensure_job_attributes
+                            # Ensure job attributes are properly initialized
                             loaded_job = ensure_job_attributes(loaded_job)
                             
                             # Initialize jobs dict if needed
