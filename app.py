@@ -63,6 +63,14 @@ def sync_databases_with_job():
     if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
         current_job = st.session_state.jobs[st.session_state.current_job]
         
+        # Initialize new attributes for existing jobs if they don't exist
+        if not hasattr(current_job, 'common_api_datasets'):
+            current_job.common_api_datasets = {}
+        if not hasattr(current_job, 'polymer_datasets'):
+            current_job.polymer_datasets = {}
+        if not hasattr(current_job, 'complete_target_profiles'):
+            current_job.complete_target_profiles = {}
+        
         # Sync databases from job to session state (for UI access)
         st.session_state["common_api_datasets"] = current_job.common_api_datasets
         st.session_state["polymer_datasets"] = current_job.polymer_datasets
@@ -77,6 +85,14 @@ def save_databases_to_job():
     """Save database data from session state to current job for persistence"""
     if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
         current_job = st.session_state.jobs[st.session_state.current_job]
+        
+        # Initialize new attributes for existing jobs if they don't exist
+        if not hasattr(current_job, 'common_api_datasets'):
+            current_job.common_api_datasets = {}
+        if not hasattr(current_job, 'polymer_datasets'):
+            current_job.polymer_datasets = {}
+        if not hasattr(current_job, 'complete_target_profiles'):
+            current_job.complete_target_profiles = {}
         
         # Save databases from session state to job
         if "common_api_datasets" in st.session_state:
