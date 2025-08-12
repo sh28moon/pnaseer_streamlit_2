@@ -4,12 +4,53 @@ import pandas as pd
 import time
 import random
 import numpy as np
+import json
+import os
+from datetime import datetime
 
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
+def save_progress_to_file(job, job_name, target_profile, target_profile_name, atps_model, drug_release_model):
+    """Save optimization progress to JSON file"""
+    try:
+        # Create saved_progress directory if it doesn't exist
+        os.makedirs("saved_progress", exist_ok=True)
+        
+        # Create progress data structure
+        progress_data = {
+            "job_name": job_name,
+            "target_profile_name": target_profile_name,
+            "atps_model": atps_model,
+            "drug_release_model": drug_release_model,
+            "target_profile": target_profile,
+            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Convert DataFrames to serializable format
+        if target_profile:
+            serializable_profile = {}
+            for key, value in target_profile.items():
+                if hasattr(value, 'to_dict'):  # It's a DataFrame
+                    serializable_profile[key] = value.to_dict('records')
+                else:
+                    serializable_profile[key] = value
+            progress_data["target_profile"] = serializable_profile
+        
+        # Save to file
+        filename = f"saved_progress/{job_name}_optimization_progress.json"
+        with open(filename, 'w') as f:
+            json.dump(progress_data, f, indent=2)
+        
+        st.success(f"✅ Optimization progress saved permanently!")
+        st.info(f"📁 Saved to: {filename}")
+        return True, filename
+    except Exception as e:
+        st.error(f"❌ Failed to save progress: {str(e)}")
+        return False, str(e)
+
 def show():
-    st.header("Calculation")
+    st.header("Modeling Optimization")
 
     # Check if a job is selected
     current_job_name = st.session_state.get("current_job")
@@ -25,7 +66,7 @@ def show():
     def render_model_tab(prefix, tab):
         with tab:
             # Two-column layout: Target Profile Selection (2 cols) + Model Selection (1 col)
-            st.markdown('<p class="font-medium"><b>Target Profile Selection & Model Selection</b></p>', unsafe_allow_html=True)
+            st.markdown('<p class="font-medium"><b>Select Model Inputs</b></p>', unsafe_allow_html=True)
             
             col_target, col_model = st.columns([2, 1])
             
@@ -129,30 +170,57 @@ def show():
             with col_model:
                 st.markdown("**Model Selection**")
                 
-                # Predefined model options
-                model_options = [
+                # ATPS Model Selection
+                st.markdown("**Select ATPS Model**")
+                atps_model_options = [
                     "",
                     "MLP Model",
                     "Group Method Model", 
                     "GNN Model"
                 ]
                 
-                selected_model = st.selectbox(
-                    "Select Model:",
-                    model_options,
-                    key=f"{prefix}_model_select"
+                selected_atps_model = st.selectbox(
+                    "ATPS Model:",
+                    atps_model_options,
+                    key=f"{prefix}_atps_model_select",
+                    label_visibility="collapsed"
                 )
                 
-                # Show model description based on selection
-                if selected_model:
-                    model_descriptions = {
+                # Show ATPS model description based on selection
+                if selected_atps_model:
+                    atps_model_descriptions = {
                         "MLP Model": "Multi-Layer Perceptron neural network model for nonlinear pattern recognition",
                         "Group Method Model": "Group method of data handling for complex system modeling",
                         "GNN Model": "Graph Neural Network model for molecular structure analysis"
                     }
                     
-                    with st.expander(f"ℹ️ About {selected_model}", expanded=False):
-                        st.write(model_descriptions.get(selected_model, "Model description not available"))
+                    with st.expander(f"ℹ️ About {selected_atps_model}", expanded=False):
+                        st.write(atps_model_descriptions.get(selected_atps_model, "Model description not available"))
+                
+                # Drug Release Model Selection
+                st.markdown("**Drug Release Model Selection**")
+                drug_release_model_options = [
+                    "",
+                    "Diffusion Model",
+                    "Particle Kinetics Model"
+                ]
+                
+                selected_drug_release_model = st.selectbox(
+                    "Drug Release Model:",
+                    drug_release_model_options,
+                    key=f"{prefix}_drug_release_model_select",
+                    label_visibility="collapsed"
+                )
+                
+                # Show Drug Release model description based on selection
+                if selected_drug_release_model:
+                    drug_release_model_descriptions = {
+                        "Diffusion Model": "Mathematical model based on Fick's laws of diffusion for drug release kinetics",
+                        "Particle Kinetics Model": "Kinetic model analyzing particle dissolution and drug release mechanisms"
+                    }
+                    
+                    with st.expander(f"ℹ️ About {selected_drug_release_model}", expanded=False):
+                        st.write(drug_release_model_descriptions.get(selected_drug_release_model, "Model description not available"))
 
             st.divider()
 
@@ -185,15 +253,22 @@ def show():
                     selected_target_profile_name = None
             
             with col_model_summary:
-                st.markdown("**Selected Model**")
-                if selected_model:
-                    st.markdown(f"*{selected_model}*")
+                st.markdown("**Selected Models**")
+                if selected_atps_model:
+                    st.markdown(f"*ATPS: {selected_atps_model}*")
+                if selected_drug_release_model:
+                    st.markdown(f"*Drug Release: {selected_drug_release_model}*")
+                
+                if selected_atps_model and selected_drug_release_model:
+                    pass  # Both models selected
                 else:
-                    selected_model = None
+                    selected_atps_model = None
+                    selected_drug_release_model = None
             
             # Submit button and Clear Results button
             has_target_profile = selected_target_profile is not None and selected_target_profile_name is not None
-            has_model = selected_model is not None and selected_model != ""
+            has_atps_model = selected_atps_model is not None and selected_atps_model != ""
+            has_drug_release_model = selected_drug_release_model is not None and selected_drug_release_model != ""
             
             # Check if target profile is complete (has all three components)
             profile_complete = False
@@ -203,9 +278,9 @@ def show():
                 formulation_ok = selected_target_profile.get('formulation_data') is not None
                 profile_complete = api_ok and polymer_ok and formulation_ok
             
-            can_submit = has_target_profile and has_model and profile_complete
+            can_submit = has_target_profile and has_atps_model and has_drug_release_model and profile_complete
             
-            col_submit, col_clear = st.columns(2)
+            col_submit, col_save, col_clear = st.columns(3)
             
             with col_submit:
                 if st.button("Submit Job", key=f"{prefix}_run", disabled=not can_submit):
@@ -214,10 +289,12 @@ def show():
                             st.error("Please select a target profile first.")
                         elif not profile_complete:
                             st.error("Selected target profile is incomplete. Please ensure it has API, Polymer, and Formulation data.")
-                        elif not has_model:
-                            st.error("Please select a model first.")
+                        elif not has_atps_model:
+                            st.error("Please select an ATPS model first.")
+                        elif not has_drug_release_model:
+                            st.error("Please select a Drug Release model first.")
                         else:
-                            st.error("Please ensure target profile and model are both selected before submitting.")
+                            st.error("Please ensure target profile and both models are selected before submitting.")
                     else:
                         progress = st.progress(0)
                         for i in range(101):
@@ -283,7 +360,7 @@ def show():
                         x_values = np.linspace(0, release_time_value, x_points).tolist()
                         
                         # Set seed for reproducible results within this job
-                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_model) % 2147483647)
+                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_atps_model + selected_drug_release_model) % 2147483647)
                         
                         start_values = [0.1, 0.15, 0.08]
                         end_values = [0.85, 0.92, 0.88]
@@ -305,7 +382,7 @@ def show():
                             }
                         
                         # Generate evaluation diagrams data for each formulation
-                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_model + "evaluation") % 2147483647)
+                        np.random.seed(hash(current_job_name + selected_target_profile_name + selected_atps_model + selected_drug_release_model + "evaluation") % 2147483647)
                         
                         evaluation_diagrams_data = {}
                         
@@ -336,7 +413,8 @@ def show():
                         # Create comprehensive result data with all generated datasets
                         result_data = {
                             "type": prefix,
-                            "model_name": selected_model,
+                            "atps_model_name": selected_atps_model,
+                            "drug_release_model_name": selected_drug_release_model,
                             "selected_target_profile": selected_target_profile,
                             "selected_target_profile_name": selected_target_profile_name,
                             "target_type_filter": selected_type_filter if 'selected_type_filter' in locals() else "All",
@@ -352,7 +430,12 @@ def show():
                         
                         current_job.result_dataset = result_data
                         st.session_state.jobs[current_job_name] = current_job
-                        st.success(f"Results generated using {selected_model} with target profile '{selected_target_profile_name}'")
+                        st.success(f"Results generated using ATPS: {selected_atps_model}, Drug Release: {selected_drug_release_model}")
+            
+            with col_save:
+                # Save Progress button - saves the current optimization setup
+                if st.button("Save Progress", key=f"{prefix}_save_progress", help="Save current optimization setup permanently"):
+                    save_progress_to_file(current_job, current_job_name, selected_target_profile, selected_target_profile_name, selected_atps_model, selected_drug_release_model)
             
             with col_clear:
                 # Clear Results button - only enabled if results exist
