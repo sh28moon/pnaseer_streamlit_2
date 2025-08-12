@@ -175,26 +175,26 @@ def show():
                     st.error(f"❌ Failed to save job: {result}")
         
         # Select existing job section
-        st.markdown("### 🔄 Switch Active Job")
-        jobs = st.session_state.get("jobs", {})
-        job_names = list(jobs.keys())
+        # st.markdown("### 🔄 Switch Active Job")
+        # jobs = st.session_state.get("jobs", {})
+        # job_names = list(jobs.keys())
         
-        if job_names:
-            current_selection = st.session_state.get("current_job", "")
-            current_index = job_names.index(current_selection) if current_selection in job_names else -1
+        # if job_names:
+        #     current_selection = st.session_state.get("current_job", "")
+        #     current_index = job_names.index(current_selection) if current_selection in job_names else -1
             
-            selected_job = st.selectbox(
-                "Select Job",
-                job_names,
-                index=current_index if current_index >= 0 else 0,
-                key="job_selector_main"
-            )
+        #     selected_job = st.selectbox(
+        #         "Select Job",
+        #         job_names,
+        #         index=current_index if current_index >= 0 else 0,
+        #         key="job_selector_main"
+        #     )
             
-            if st.button("🔄 Switch to This Job", key="switch_job"):
-                if selected_job != st.session_state.get("current_job"):
-                    st.session_state.current_job = selected_job
-                    st.success(f"✅ Switched to job: {selected_job}")
-                    st.rerun()
+        #     if st.button("🔄 Switch to This Job", key="switch_job"):
+        #         if selected_job != st.session_state.get("current_job"):
+        #             st.session_state.current_job = selected_job
+        #             st.success(f"✅ Switched to job: {selected_job}")
+        #             st.rerun()
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
     with col_right:
