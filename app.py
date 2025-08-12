@@ -171,29 +171,32 @@ def main():
     st.sidebar.markdown("---")
     if st.session_state.get("jobs"):
         job_names = list(st.session_state.jobs.keys())
-        if st.session_state.current_job in job_names:
+        if st.session_state.current_job and st.session_state.current_job in job_names:
             current_index = job_names.index(st.session_state.current_job)
         else:
-            current_index = 0
+            current_index = 0 if job_names else None
             
-        selected_job = st.sidebar.selectbox(
-            "**Active Job:**",
-            job_names,
-            index=current_index,
-            key="job_switcher"
-        )
-        
-        # Switch job if selection changed
-        if selected_job != st.session_state.current_job:
-            # Save current job data before switching
-            save_databases_to_job()
+        if job_names:
+            selected_job = st.sidebar.selectbox(
+                "**Active Job:**",
+                job_names,
+                index=current_index,
+                key="job_switcher"
+            )
             
-            # Switch to new job
-            st.session_state.current_job = selected_job
-            
-            # Sync new job data to session state
-            sync_databases_with_job()
-            st.rerun()
+            # Switch job if selection changed
+            if selected_job != st.session_state.current_job:
+                # Save current job data before switching
+                save_databases_to_job()
+                
+                # Switch to new job
+                st.session_state.current_job = selected_job
+                
+                # Sync new job data to session state
+                sync_databases_with_job()
+                st.rerun()
+        else:
+            st.sidebar.markdown("**No Jobs Available**")
     else:
         st.sidebar.markdown("**No Jobs Available**")
 
