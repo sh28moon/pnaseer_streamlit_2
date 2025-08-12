@@ -1,4 +1,4 @@
-# pages/inputs.py
+# modules/inputs.py
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -95,7 +95,7 @@ def show():
                     if 'selected_api_data' in locals() and selected_api_data is not None:
                         st.session_state.temp_profile_creation["api_data"] = selected_api_data
                         # Save API name for display
-                        api_name = selected_api_data['Name'].iloc[0] if 'Name' in selected_api_data.columns else "Unnamed API"
+                        api_name = selected_api_data['Name'].iloc[0] if 'Name' in selected_api_data.columns and len(selected_api_data) > 0 else "Unnamed API"
                         st.session_state.temp_profile_creation["api_name"] = api_name
                         st.success("API saved to profile!")
                     else:
@@ -162,7 +162,7 @@ def show():
                     if 'selected_polymer_data' in locals() and selected_polymer_data is not None:
                         st.session_state.temp_profile_creation["polymer_data"] = selected_polymer_data
                         # Save Polymer name for display
-                        polymer_name = selected_polymer_data['Name'].iloc[0] if 'Name' in selected_polymer_data.columns else "Unnamed Polymer"
+                        polymer_name = selected_polymer_data['Name'].iloc[0] if 'Name' in selected_polymer_data.columns and len(selected_polymer_data) > 0 else "Unnamed Polymer"
                         st.session_state.temp_profile_creation["polymer_name"] = polymer_name
                         st.success("Polymer saved to profile!")
                     else:
@@ -374,18 +374,19 @@ def show():
                     if 'formulation_data' in selected_profile and selected_profile['formulation_data'] is not None:
                         formulation_data = selected_profile['formulation_data']
                         
-                        # Formulation selection via togglebox (if multiple formulations in future)
-                        formulation_name = formulation_data.iloc[0]['Name'] if 'Name' in formulation_data.columns else "Formulation 1"
-                        st.selectbox(
-                            "Formulation togglebox:",
-                            [formulation_name],
-                            key="summary_formulation_select"
-                        )
+                        # Show profile creation timestamp
+                        created_time = selected_profile.get('created_timestamp', 'Unknown')
+                        st.markdown(f"**Created:** {created_time}")
                         
-                        # Show formulation type if available
+                        # Show formulation count
+                        formulation_count = len(formulation_data)
+                        st.markdown(f"**Formulations:** {formulation_count}")
+                        
+                        # Show formulation types if available
                         if 'Type' in formulation_data.columns:
-                            formulation_type = formulation_data.iloc[0]['Type']
-                            st.markdown(f"**Type:** {formulation_type}")
+                            unique_types = formulation_data['Type'].unique()
+                            type_str = ", ".join(unique_types) if len(unique_types) <= 3 else f"{len(unique_types)} types"
+                            st.markdown(f"**Types:** {type_str}")
                         
                         # Profile management buttons
                         if st.button(f"🗑️ Remove Profile", key="remove_complete_profile"):
