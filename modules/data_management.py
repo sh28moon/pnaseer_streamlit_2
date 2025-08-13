@@ -1,3 +1,36 @@
+# modules/data_management.py
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+
+# FIXED: Import the correct function names from storage_utils
+try:
+    from modules.storage_utils import (
+        save_data_to_file,           # Was: save_database_to_file
+        load_data_from_file,         # Was: load_database_from_file  
+        get_saved_data_list,         # Was: get_saved_databases_list
+        get_saved_datasets_by_type,  # ADDED: This was missing
+        delete_saved_data,           # Was: delete_database_file
+        save_progress_to_job,
+        clear_progress_from_job
+    )
+except ImportError:
+    # Fallback if storage_utils not available yet
+    def save_data_to_file(data, data_type, save_name):
+        return False, "Storage utilities not available"
+    def load_data_from_file(filepath, data_type):
+        return None, "Storage utilities not available", 0
+    def get_saved_data_list(data_type):
+        return []
+    def get_saved_datasets_by_type(dataset_type):
+        return []
+    def delete_saved_data(filepath):
+        return False, "Storage utilities not available"
+    def save_progress_to_job(job):
+        return False, "Storage utilities not available"
+    def clear_progress_from_job(job):
+        return False, "Storage utilities not available"
+
 def initialize_global_databases():
     """Initialize global database storage independent of jobs"""
     if "global_api_databases" not in st.session_state:
