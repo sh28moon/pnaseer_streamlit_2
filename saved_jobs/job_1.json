@@ -1,15 +1,163 @@
 {
   "name": "job_1",
   "created_at": "2025-08-13 02:52:49",
-  "saved_timestamp": "2025-08-13 02:52:51",
+  "saved_timestamp": "2025-08-13 02:54:28",
   "api_dataset": null,
   "target_profile_dataset": null,
   "model_dataset": null,
   "result_dataset": null,
-  "common_api_datasets": {},
-  "polymer_datasets": {},
+  "common_api_datasets": {
+    "api_2": [
+      {
+        "Name": "Memantine",
+        "Type": "Small Molecule",
+        "indication": "alzheimer",
+        "Formula": "C12H21N",
+        "Molecular Weight[Da]": 179.3,
+        "Water Solubility[mg/mL]": 0.0455,
+        "LogP": 3.28,
+        "pKa": 10.27
+      },
+      {
+        "Name": "Lidocaine",
+        "Type": "Small Molecule",
+        "indication": "alzheimer",
+        "Formula": "C14H22N2O",
+        "Molecular Weight[Da]": 234.3,
+        "Water Solubility[mg/mL]": 0.593,
+        "LogP": 2.44,
+        "pKa": 8.01
+      },
+      {
+        "Name": "Acetaminophen",
+        "Type": "Small Molecule",
+        "indication": "painkiller",
+        "Formula": "C8H9NO2",
+        "Molecular Weight[Da]": 151.2,
+        "Water Solubility[mg/mL]": 4.15,
+        "LogP": 0.46,
+        "pKa": 9.46
+      },
+      {
+        "Name": "Acetylsalicylic acid",
+        "Type": "Small Molecule",
+        "indication": "painkiller",
+        "Formula": "C9H8O4",
+        "Molecular Weight[Da]": 180.1574,
+        "Water Solubility[mg/mL]": 10.0,
+        "LogP": 1.18,
+        "pKa": 3.5
+      },
+      {
+        "Name": "Afatinib",
+        "Type": "Small Molecule",
+        "indication": "lung cancer",
+        "Formula": "C24H25ClFN5O3",
+        "Molecular Weight[Da]": 485.938,
+        "Water Solubility[mg/mL]": 0.0128,
+        "LogP": 3.77,
+        "pKa": 12.49
+      }
+    ]
+  },
+  "polymer_datasets": {
+    "polymer_1": [
+      {
+        "Name": "Hyaluronic Acid",
+        "Formula(Monomer)": "C14H21NO12",
+        "Molecular Weight(Monomer)": 395.3,
+        "Solubility in Water[mg/mL]": 5.0,
+        "LogP": -6.62,
+        "pKa": 4.0
+      },
+      {
+        "Name": "Polymethyl methacrylate",
+        "Formula(Monomer)": "C5H8O2",
+        "Molecular Weight(Monomer)": 100.1,
+        "Solubility in Water[mg/mL]": 0.015,
+        "LogP": 1.38,
+        "pKa": 4.65
+      },
+      {
+        "Name": "Polyethylene glycol",
+        "Formula(Monomer)": "OCH2CH2",
+        "Molecular Weight(Monomer)": 44.05,
+        "Solubility in Water[mg/mL]": 3.84,
+        "LogP": -2.0,
+        "pKa": 4.45
+      }
+    ]
+  },
   "formulation_results": {},
   "optimization_progress": {},
   "current_optimization_progress": null,
-  "complete_target_profiles": {}
+  "complete_target_profiles": {
+    "t1": {
+      "api_data": [
+        {
+          "Name": "Memantine",
+          "Type": "Small Molecule",
+          "indication": "alzheimer",
+          "Formula": "C12H21N",
+          "Molecular Weight[Da]": 179.3,
+          "Water Solubility[mg/mL]": 0.0455,
+          "LogP": 3.28,
+          "pKa": 10.27
+        }
+      ],
+      "polymer_data": [
+        {
+          "Name": "Hyaluronic Acid",
+          "Formula(Monomer)": "C14H21NO12",
+          "Molecular Weight(Monomer)": 395.3,
+          "Solubility in Water[mg/mL]": 5.0,
+          "LogP": -6.62,
+          "pKa": 4.0
+        }
+      ],
+      "formulation_data": [
+        {
+          "Name": "Target #1",
+          "Modulus[Mpa]": 0.5,
+          "Encapsulation Ratio": 0.65,
+          "Release Time(Week)": 2.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Powder"
+        },
+        {
+          "Name": "Target #2",
+          "Modulus[Mpa]": 0.2,
+          "Encapsulation Ratio": 0.75,
+          "Release Time(Week)": 1.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Powder"
+        },
+        {
+          "Name": "Target #3",
+          "Modulus[Mpa]": 1.0,
+          "Encapsulation Ratio": 0.8,
+          "Release Time(Week)": 1.5,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Gel"
+        },
+        {
+          "Name": "Target #4",
+          "Modulus[Mpa]": 0.7,
+          "Encapsulation Ratio": 0.5,
+          "Release Time(Week)": 1.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Powder"
+        },
+        {
+          "Name": "Target #5",
+          "Modulus[Mpa]": 0.85,
+          "Encapsulation Ratio": 0.6,
+          "Release Time(Week)": 3.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Gel"
+        }
+      ],
+      "created_timestamp": "2025-08-13 02:54:23"
+    }
+  }
 }
