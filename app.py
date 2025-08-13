@@ -124,18 +124,25 @@ def sync_all_data_with_job():
         # Ensure all attributes exist
         current_job = ensure_job_attributes(current_job)
         
-        # 1. Sync databases from job to session state (for UI access)
-        # Only sync if session state is empty but job has data
-        if not st.session_state.get("common_api_datasets") and current_job.common_api_datasets:
+        # 1. FORCE sync databases from job to session state - this is the key fix for refresh persistence
+        if current_job.common_api_datasets:
             st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
-        if not st.session_state.get("polymer_datasets") and current_job.polymer_datasets:
-            st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
-        
-        # Ensure session state databases exist (even if empty)
-        if "common_api_datasets" not in st.session_state:
+        elif "common_api_datasets" not in st.session_state:
             st.session_state["common_api_datasets"] = {}
-        if "polymer_datasets" not in st.session_state:
+            
+        if current_job.polymer_datasets:
+            st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
+        elif "polymer_datasets" not in st.session_state:
             st.session_state["polymer_datasets"] = {}
+        
+        # 2. Target profiles, optimization progress, and results are accessed directly from job
+        # No session state sync needed since modules access current_job directly
+        
+        # DEBUG: Add session state debug info (can be removed later)
+        if "debug_sync_count" not in st.session_state:
+            st.session_state.debug_sync_count = 0
+        st.session_state.debug_sync_count += 1
+        st.session_state.debug_last_sync = f"Sync #{st.session_state.debug_sync_count}: Job={current_job.name}, Profiles={len(current_job.complete_target_profiles)}, Progress={'Yes' if current_job.current_optimization_progress else 'No'}"
         
         # Update the job in session state
         st.session_state.jobs[st.session_state.current_job] = current_job
@@ -149,19 +156,16 @@ def save_all_data_to_job():
         # Ensure all attributes exist
         current_job = ensure_job_attributes(current_job)
         
-        # 1. Save databases from session state to job (ALWAYS sync)
+        # 1. FORCE save databases from session state to job (ALWAYS sync)
         if "common_api_datasets" in st.session_state:
             current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
         if "polymer_datasets" in st.session_state:
             current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
         
-        # 2. Target profiles are already saved directly to job in inputs.py
-        # No additional sync needed as they're stored directly in job.complete_target_profiles
+        # 2. Target profiles, optimization progress, and results are already saved directly to job
+        # But ensure the job reference in session state is current
         
-        # 3. Optimization progress is already saved directly to job in optimization.py  
-        # No additional sync needed as it's stored directly in job.current_optimization_progress
-        
-        # Update the job in session state to ensure it's current
+        # 3. FORCE update the job in session state to ensure persistence
         st.session_state.jobs[st.session_state.current_job] = current_job
 
 
@@ -201,11 +205,30 @@ def main():
     if "current_tab" not in st.session_state:
         st.session_state.current_tab = "Manage Job"
     
+    # DEBUG: Add debug session state tracking
+    if "app_refresh_count" not in st.session_state:
+        st.session_state.app_refresh_count = 0
+    st.session_state.app_refresh_count += 1
+    
     # Sync ALL data with current job for persistence (COMPREHENSIVE SYNC)
     sync_all_data_with_job()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
     st.sidebar.title("Pnaseer DDS Optimization")
+    
+    # DEBUG: Show app state info
+    with st.sidebar.expander("🔍 Debug App State", expanded=False):
+        st.write(f"**App Refresh Count:** {st.session_state.app_refresh_count}")
+        if st.session_state.get("debug_last_sync"):
+            st.write(f"**Last Sync:** {st.session_state.debug_last_sync}")
+        if st.session_state.get("current_job"):
+            current_job = st.session_state.jobs.get(st.session_state.current_job)
+            if current_job:
+                st.write(f"**Current Job:** {current_job.name}")
+                st.write(f"**Target Profiles:** {len(current_job.complete_target_profiles)}")
+                st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
+                st.write(f"**API Datasets:** {len(current_job.common_api_datasets)}")
+                st.write(f"**Session API:** {len(st.session_state.get('common_api_datasets', {}))}")
     
     # Main navigation
     st.sidebar.markdown("### Main Menu")
