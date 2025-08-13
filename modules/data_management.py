@@ -71,7 +71,7 @@ def auto_load_all_databases():
         pass
 
 def show():
-    st.header("Database Management")
+    st.header("Database Managements")
     
     # Initialize global database storage WITH auto-loading
     initialize_global_databases()
