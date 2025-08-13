@@ -8,7 +8,7 @@ try:
     from modules.storage_utils import (
         save_data_to_file, 
         load_data_from_file, 
-        get_saved_data_list, 
+        get_saved_datasets_by_type, 
         delete_saved_data,
         save_progress_to_job,
         clear_progress_from_job
@@ -19,7 +19,7 @@ except ImportError:
         return False, "Storage utilities not available"
     def load_data_from_file(filepath, data_type):
         return None, "Storage utilities not available", 0
-    def get_saved_data_list(data_type):
+    def get_saved_datasets_by_type(dataset_type):
         return []
     def delete_saved_data(filepath):
         return False, "Storage utilities not available"
@@ -138,14 +138,12 @@ def show():
             with col_load:
                 st.markdown("**Load database from cloud**")
                 
-                # Get saved datasets using unified function
-                saved_datasets = get_saved_data_list("datasets")
-                # Filter for this dataset type
-                filtered_datasets = [ds for ds in saved_datasets if ds["save_name"].startswith(f"{dataset_type}_")]
+                # Get saved datasets using unified function with filtering
+                saved_datasets = get_saved_datasets_by_type(dataset_type)
                 
-                if filtered_datasets:
+                if saved_datasets:
                     # Create options for selectbox (toggle box of saved databases)
-                    dataset_options = [""] + [f"{ds['save_name'].replace(f'{dataset_type}_', '')} ({ds['modified']})" for ds in filtered_datasets]
+                    dataset_options = [""] + [f"{ds['display_name']} ({ds['modified']})" for ds in saved_datasets]
                     selected_saved = st.selectbox(
                         "Toggle box of saved databases:",
                         dataset_options,
@@ -155,12 +153,11 @@ def show():
                     if selected_saved and selected_saved != "":
                         # Extract save name from selection
                         selected_display_name = selected_saved.split(" (")[0]
-                        selected_save_name = f"{dataset_type}_{selected_display_name}"
                         
                         # Find the corresponding file
                         selected_file = None
-                        for ds in filtered_datasets:
-                            if ds["save_name"] == selected_save_name:
+                        for ds in saved_datasets:
+                            if ds["display_name"] == selected_display_name:
                                 selected_file = ds
                                 break
                         
@@ -171,9 +168,7 @@ def show():
                             if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
                                 if selected_file:
                                     # Load using unified function
-                                    loaded_datasets, saved_time, count = load_data_from_file(
-                                        selected_file["filepath"], "datasets"
-                                    )
+                                    loaded_datasets, saved_time, count = load_data_from_file(selected_file["filepath"], "datasets")
                                     
                                     if loaded_datasets is not None:
                                         # Replace current datasets with loaded ones
