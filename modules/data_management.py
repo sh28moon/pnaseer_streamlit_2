@@ -89,7 +89,7 @@ def show():
                     st.dataframe(df.head(), use_container_width=True)
                     st.caption(f"Shape: {df.shape[0]} rows × {df.shape[1]} columns")
             
-            # Right Column: Save database to cloud
+# Right Column: Save database to cloud
             with col_save:
                 st.markdown("**Save database to cloud**")
                 
@@ -100,7 +100,7 @@ def show():
                     key=f"{database_type}_new_save_name"
                 )
                 
-                # Save button
+                # Save button - now includes progress saving functionality (same as "Save Progress")
                 save_disabled = f"{database_type}_temp_dataset" not in st.session_state
                 if st.button("Save", key=f"{database_type}_new_save_btn", disabled=save_disabled):
                     if save_name.strip() and f"{database_type}_temp_dataset" in st.session_state:
@@ -114,7 +114,7 @@ def show():
                             dataset_name = save_name.strip()
                             st.session_state[global_db_key][dataset_name] = temp_df
                             
-                            # Save permanently using unified storage function
+                            # 1. Save individual database file
                             datasets_to_save = {dataset_name: temp_df}
                             success, result = save_data_to_file(
                                 datasets_to_save, 
@@ -122,6 +122,10 @@ def show():
                                 f"{database_type}_{dataset_name}"
                             )
                             
+                            # 2. Save global database progress (same function as "Save Progress" button)
+                            progress_success, progress_result = save_progress_to_job(None)  # None = no job, save global state
+                            
+                            # Show results
                             if success:
                                 # Clear temporary data
                                 if f"{database_type}_temp_dataset" in st.session_state:
@@ -130,6 +134,13 @@ def show():
                                     del st.session_state[f"{database_type}_temp_filename"]
                                 
                                 st.success(f"✅ Database '{dataset_name}' saved successfully!")
+                                
+                                # Show progress save status (same as "Save Progress" button)
+                                if progress_success:
+                                    st.success(f"✅ Global database progress saved!")
+                                else:
+                                    st.warning(f"⚠️ Database saved but progress save failed: {progress_result}")
+                                
                                 st.rerun()
                             else:
                                 st.error(f"❌ Failed to save: {result}")
@@ -271,70 +282,8 @@ def show():
                         else:
                             st.info("All databases already loaded")
             
-            st.divider()
-            
-            # ── 3rd Row: Save Progress and Clear Progress buttons ─────────────────────────
-            st.subheader("Progress Management")
-            
-            col_save_progress, col_clear_progress = st.columns(2)
-            
-            # Get current job
-            current_job_name = st.session_state.get("current_job")
-            current_job = None
-            if current_job_name and current_job_name in st.session_state.get("jobs", {}):
-                current_job = st.session_state.jobs[current_job_name]
-            
-            with col_save_progress:
-                st.markdown("**Save Progress**")
-                if st.button("💾 Save Progress", key=f"{database_type}_save_progress", 
-                           disabled=not current_job,
-                           help="Save current job progress to cloud"):
-                    if current_job:
-                        success, result = save_progress_to_job(current_job)
-                        if success:
-                            st.success(f"✅ Progress saved successfully!")
-                        else:
-                            st.error(f"❌ Failed to save progress: {result}")
-                    else:
-                        st.error("❌ No current job to save!")
-            
-            with col_clear_progress:
-                st.markdown("**Clear Progress**")
-                if st.button("🗑️ Clear Progress", key=f"{database_type}_clear_progress",
-                           disabled=not current_job,
-                           help="Clear optimization progress"):
-                    if current_job:
-                        success, result = clear_progress_from_job(current_job)
-                        if success:
-                            # Update job in session state
-                            st.session_state.jobs[current_job_name] = current_job
-                            st.success(f"✅ Progress cleared successfully!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Failed to clear progress: {result}")
-                    else:
-                        st.error("❌ No current job to clear!")
+            st.divider()            
 
     # Render each subpage with independent database management
     render_subpage(tab_api, "api", "API")
     render_subpage(tab_polymer, "polymer", "Polymers")
-    
-    # Show global database status
-    st.divider()
-    st.markdown("## 📊 Global Database Status")
-    
-    col_api_status, col_polymer_status = st.columns(2)
-    
-    with col_api_status:
-        api_count = len(st.session_state.get("global_api_databases", {}))
-        st.metric("API Databases", api_count)
-        if api_count > 0:
-            api_names = list(st.session_state["global_api_databases"].keys())
-            st.caption(f"Available: {', '.join(api_names[:3])}{'...' if len(api_names) > 3 else ''}")
-    
-    with col_polymer_status:
-        polymer_count = len(st.session_state.get("global_polymer_databases", {}))
-        st.metric("Polymer Databases", polymer_count)
-        if polymer_count > 0:
-            polymer_names = list(st.session_state["global_polymer_databases"].keys())
-            st.caption(f"Available: {', '.join(polymer_names[:3])}{'...' if len(polymer_names) > 3 else ''}")
