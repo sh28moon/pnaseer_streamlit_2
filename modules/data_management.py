@@ -140,76 +140,14 @@ def show():
             
             st.divider()
             
-            # ── 2nd Row: Manage existing database ─────────────────────────────────────────
+# ── 2nd Row: Manage existing database ─────────────────────────────────────────
             st.subheader("Manage existing database")
             
-            col_load, col_summary = st.columns(2)
+            col_select, col_summary = st.columns(2)
             
-            # Left Column: Load database from cloud
-            with col_load:
-                st.markdown("**Load database from cloud**")
-                
-                # Get saved databases using the correct function name
-                saved_databases = get_saved_datasets_by_type(database_type)
-                
-                if saved_databases:
-                    # Create options for selectbox (toggle box of saved databases)
-                    database_options = [""] + [f"{ds['display_name']} ({ds['modified']})" for ds in saved_databases]
-                    selected_saved = st.selectbox(
-                        "Toggle box of saved databases:",
-                        database_options,
-                        key=f"{database_type}_load_database_select"
-                    )
-                    
-                    if selected_saved and selected_saved != "":
-                        # Extract save name from selection
-                        selected_display_name = selected_saved.split(" (")[0]
-                        
-                        # Find the corresponding file
-                        selected_file = None
-                        for ds in saved_databases:
-                            if ds["display_name"] == selected_display_name:
-                                selected_file = ds
-                                break
-                        
-                        # Load and Remove buttons
-                        col_load_btn, col_remove_btn = st.columns(2)
-                        
-                        with col_load_btn:
-                            if st.button("📂 Load", key=f"{database_type}_load_database_btn"):
-                                if selected_file:
-                                    # Load using the correct function name
-                                    loaded_databases, saved_time, count = load_data_from_file(selected_file["filepath"], "datasets")
-                                    
-                                    if loaded_databases is not None:
-                                        # Add to global database storage (merge, don't replace)
-                                        for db_name, db_data in loaded_databases.items():
-                                            st.session_state[global_db_key][db_name] = db_data
-                                        
-                                        st.success(f"✅ Loaded {count} database(s) successfully!")
-                                        st.rerun()
-                        
-                        with col_remove_btn:
-                            if st.button("🗑️ Remove", key=f"{database_type}_remove_database_btn"):
-                                if selected_file:
-                                    # Use the correct function name
-                                    success, message = delete_saved_data(selected_file["filepath"])
-                                    if success:
-                                        st.success(f"✅ Removed database file successfully")
-                                        st.rerun()
-                                    else:
-                                        st.error(f"❌ Failed to remove: {message}")
-                else:
-                    st.selectbox(
-                        "Toggle box of saved databases:",
-                        ["No saved databases available"],
-                        disabled=True,
-                        key=f"{database_type}_no_databases"
-                    )
-            
-            # Right Column: Database Summary
-            with col_summary:
-                st.markdown("**Database Summary**")
+            # Left Column: Database Selection (moved from right column)
+            with col_select:
+                st.markdown("**Select Database to View**")
                 
                 # Show current loaded databases in global storage
                 if global_db_key in st.session_state and st.session_state[global_db_key]:
@@ -217,7 +155,7 @@ def show():
                     
                     st.markdown(f"**📂 Currently Loaded ({len(current_databases)}):**")
                     
-                    # Dataset selector
+                    # Dataset selector (moved from right column)
                     database_names = list(current_databases.keys())
                     if database_names:
                         selected_database = st.selectbox(
@@ -226,12 +164,8 @@ def show():
                             key=f"{database_type}_summary_select"
                         )
                         
+                        # Add remove from memory button
                         if selected_database:
-                            database_df = current_databases[selected_database]
-                            st.dataframe(database_df, use_container_width=True)
-                            st.caption(f"Shape: {database_df.shape[0]} rows × {database_df.shape[1]} columns")
-                            
-                            # Add remove from memory button
                             if st.button(f"🗑️ Remove '{selected_database}' from Memory", 
                                        key=f"{database_type}_remove_from_memory",
                                        help="Remove from memory only (keeps saved file)"):
@@ -239,7 +173,64 @@ def show():
                                 st.success(f"✅ Removed '{selected_database}' from memory")
                                 st.rerun()
                     else:
+                        selected_database = None
                         st.info("No databases loaded in memory")
+                else:
+                    selected_database = None
+                    st.info("No databases loaded in memory")
+                
+                st.divider()
+                
+                # Show summary statistics
+                total_loaded = len(st.session_state.get(global_db_key, {}))
+                total_saved = len(get_saved_datasets_by_type(database_type))
+                
+                col_stat1, col_stat2 = st.columns(2)
+                with col_stat1:
+                    st.metric("📂 Loaded", total_loaded, help="Currently in memory")
+                with col_stat2:
+                    st.metric("💾 Saved", total_saved, help="Available files")
+                
+                # Quick load all button if there are unloaded databases
+                if total_saved > total_loaded:
+                    unloaded_count = total_saved - total_loaded
+                    if st.button(f"⚡ Load All Available ({unloaded_count})", 
+                               key=f"{database_type}_load_all",
+                               help="Load all saved databases into memory"):
+                        saved_databases = get_saved_datasets_by_type(database_type)
+                        loaded_count = 0
+                        
+                        for ds in saved_databases:
+                            display_name = ds['display_name']
+                            # Only load if not already loaded
+                            if display_name not in st.session_state.get(global_db_key, {}):
+                                loaded_databases, _, _ = load_data_from_file(ds["filepath"], "datasets")
+                                if loaded_databases:
+                                    for db_name, db_data in loaded_databases.items():
+                                        st.session_state[global_db_key][db_name] = db_data
+                                        loaded_count += 1
+                        
+                        if loaded_count > 0:
+                            st.success(f"✅ Loaded {loaded_count} additional database(s)!")
+                            st.rerun()
+                        else:
+                            st.info("All databases already loaded")
+            
+            # Right Column: Database Table Display (kept in right column)
+            with col_summary:
+                st.markdown("**Database Table**")
+                
+                # Show the selected database table
+                if ('selected_database' in locals() and selected_database and 
+                    global_db_key in st.session_state and 
+                    selected_database in st.session_state[global_db_key]):
+                    
+                    database_df = st.session_state[global_db_key][selected_database]
+                    st.dataframe(database_df, use_container_width=True)
+                    st.caption(f"Shape: {database_df.shape[0]} rows × {database_df.shape[1]} columns")
+                    
+                elif global_db_key in st.session_state and st.session_state[global_db_key]:
+                    st.info("Select a database from the left to view its contents")
                 else:
                     st.info("No databases loaded in memory")
                 
