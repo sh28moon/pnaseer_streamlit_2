@@ -130,7 +130,7 @@ def save_data_to_file(data, data_type, save_name):
                 save_data["dataset_type"] = "unknown"
             
         elif data_type == "jobs":
-            # For jobs: data is a Job object
+            # For jobs: data is a Job object (no longer includes databases)
             job = data
             save_data.update({
                 "name": job.name,
@@ -141,18 +141,7 @@ def save_data_to_file(data, data_type, save_name):
                 "result_dataset": serialize_complex_data(job.result_dataset),
             })
             
-            # Handle database data
-            save_data["common_api_datasets"] = {}
-            if hasattr(job, 'common_api_datasets') and job.common_api_datasets:
-                for k, v in job.common_api_datasets.items():
-                    save_data["common_api_datasets"][k] = serialize_complex_data(v)
-            
-            save_data["polymer_datasets"] = {}
-            if hasattr(job, 'polymer_datasets') and job.polymer_datasets:
-                for k, v in job.polymer_datasets.items():
-                    save_data["polymer_datasets"][k] = serialize_complex_data(v)
-            
-            # Handle complete target profiles
+            # Handle complete target profiles (these reference global databases but don't own them)
             save_data["complete_target_profiles"] = {}
             if hasattr(job, 'complete_target_profiles') and job.complete_target_profiles:
                 for profile_name, profile_data in job.complete_target_profiles.items():
