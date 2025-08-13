@@ -39,6 +39,56 @@ def get_github_config():
     except:
         return None
 
+def save_current_job_to_github():
+    """Save the currently active job to GitHub (or local storage if GitHub not configured)."""
+    current_job_name = st.session_state.get("current_job")
+    if not current_job_name or current_job_name not in st.session_state.get("jobs", {}):
+        return False, "No active job to save"
+    current_job = st.session_state.jobs[current_job_name]
+    # Ensure latest session-state data (datasets) is synced into the job object
+    if "common_api_datasets" in st.session_state:
+        current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
+    if "polymer_datasets" in st.session_state:
+        current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
+    st.session_state.jobs[current_job_name] = current_job  # update session state
+    
+    # Build job_data dict for serialization
+    current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    job_data = {
+        "name": current_job.name,
+        "created_at": current_job.created_at,
+        "saved_timestamp": current_timestamp,
+        "api_dataset": serialize_dataframe(current_job.api_dataset),
+        "target_profile_dataset": serialize_dataframe(current_job.target_profile_dataset) if current_job.target_profile_dataset else None,
+        "model_dataset": serialize_dataframe(current_job.model_dataset) if current_job.model_dataset else None,
+        "result_dataset": None,  # will be filled below if data exists
+        "common_api_datasets": {k: serialize_dataframe(v) for k, v in current_job.common_api_datasets.items()} if current_job.common_api_datasets else {},
+        "polymer_datasets": {k: serialize_dataframe(v) for k, v in current_job.polymer_datasets.items()} if current_job.polymer_datasets else {},
+        "formulation_results": current_job.formulation_results if hasattr(current_job, 'formulation_results') else {},
+        "optimization_progress": current_job.optimization_progress if hasattr(current_job, 'optimization_progress') else {},
+        "current_optimization_progress": current_job.current_optimization_progress if hasattr(current_job, 'current_optimization_progress') else None
+    }
+    # Serialize result_dataset (if any results exist)
+    if current_job.result_dataset:
+        result_serialized = {key: serialize_dataframe(value) for key, value in current_job.result_dataset.items()}
+        job_data["result_dataset"] = result_serialized
+    else:
+        job_data["result_dataset"] = None
+    # Serialize complete_target_profiles (include all nested DataFrames)
+    if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
+        serialized_profiles = {}
+        for profile_name, profile_data in current_job.complete_target_profiles.items():
+            serialized_profile = { key: serialize_dataframe(val) for key, val in profile_data.items() }
+            serialized_profiles[profile_name] = serialized_profile
+        job_data["complete_target_profiles"] = serialized_profiles
+    else:
+        job_data["complete_target_profiles"] = {}
+    
+    # Save to GitHub (or local) using existing function
+    success, result = save_job_to_github(job_data, current_job_name)
+    return success, result
+
+
 def save_job_to_github(job_data, job_name):
     """Save job to GitHub repository"""
     config = get_github_config()
