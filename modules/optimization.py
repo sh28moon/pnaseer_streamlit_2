@@ -9,6 +9,16 @@ from datetime import datetime
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
+# Import unified storage functions
+try:
+    from modules.storage_utils import save_progress_to_job, clear_progress_from_job
+except ImportError:
+    # Fallback if storage_utils not available yet
+    def save_progress_to_job(job):
+        return False, "Storage utilities not available"
+    def clear_progress_from_job(job):
+        return False, "Storage utilities not available"
+
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
     if not hasattr(job, 'common_api_datasets'):
@@ -89,10 +99,21 @@ def show():
     st.session_state.jobs[current_job_name] = current_job
 
     # Get saved optimization selections for persistence across page changes
-    saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)    
+    saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)
+    
+    # DEBUG: Show optimization progress data state
+    with st.expander("🔍 Debug Optimization Data", expanded=False):
+        st.write(f"**Job Name:** {current_job.name}")
+        st.write(f"**Target Profiles Available:** {len(current_job.complete_target_profiles)}")
+        if current_job.complete_target_profiles:
+            st.write(f"**Available Profiles:** {list(current_job.complete_target_profiles.keys())}")
+        st.write(f"**Saved Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
+        if current_job.current_optimization_progress:
+            st.json(current_job.current_optimization_progress)
+        st.write(f"**Retrieved Saved Selections:** Target='{saved_target_profile}', ATPS='{saved_atps_model}', Drug='{saved_drug_release_model}'")
 
     # Top-level tabs
-    tab_version_1 = st.tabs(["Version 1"])[0]
+    tab_atps = st.tabs(["ATPS Partition"])[0]
 
     def render_model_tab(prefix, tab):
         with tab:
@@ -261,6 +282,27 @@ def show():
                             current_job.current_optimization_progress = None
                             st.session_state.jobs[current_job_name] = current_job
                             st.rerun()
+            
+            # Debug section (can be removed later)
+            with st.expander("🔍 Debug Optimization Progress", expanded=False):
+                if current_job.current_optimization_progress:
+                    st.write("**Current Optimization Progress:**")
+                    st.json(current_job.current_optimization_progress)
+                else:
+                    st.write("No optimization progress saved yet")
+                
+                # Manual test save button
+                if st.button("🧪 Test Save Progress", key="test_save_progress"):
+                    test_progress = {
+                        "target_profile_name": "Test Profile",
+                        "atps_model": "Test ATPS Model", 
+                        "drug_release_model": "Test Drug Release Model",
+                        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "status": "test"
+                    }
+                    current_job.current_optimization_progress = test_progress
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success("Test progress saved!")
             
             # Show selected target profile and model summary
             col_profile_summary, col_model_summary = st.columns(2)
@@ -528,4 +570,46 @@ def show():
                     st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
 
     # Render each tab
-    render_model_tab("atps", tab_version_1)
+    render_model_tab("atps", tab_atps)
+    
+    st.divider()
+    
+    # ── Progress Management Section ─────────────────────────────────────────
+    st.markdown("## 💾 Progress Management")
+    
+    col_save_progress, col_clear_progress = st.columns(2)
+    
+    with col_save_progress:
+        st.markdown("### Save Progress")
+        st.markdown("Save current optimization progress to cloud")
+        
+        if st.button("💾 Save Progress", key="optimization_save_progress", 
+                   disabled=not current_job,
+                   help="Save current progress to cloud"):
+            if current_job:
+                success, result = save_progress_to_job(current_job)
+                if success:
+                    st.success(f"✅ Progress saved successfully!")
+                else:
+                    st.error(f"❌ Failed to save progress: {result}")
+            else:
+                st.error("❌ No current job to save!")
+    
+    with col_clear_progress:
+        st.markdown("### Clear Progress")
+        st.markdown("Clear optimization progress data")
+        
+        if st.button("🗑️ Clear Progress", key="optimization_clear_progress",
+                   disabled=not current_job,
+                   help="Clear optimization progress"):
+            if current_job:
+                success, result = clear_progress_from_job(current_job)
+                if success:
+                    # Update job in session state
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success(f"✅ Progress cleared successfully!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Failed to clear progress: {result}")
+            else:
+                st.error("❌ No current job to clear!")
