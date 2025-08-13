@@ -7,6 +7,16 @@ import numpy as np
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
+# Import unified storage functions
+try:
+    from modules.storage_utils import save_progress_to_job, clear_progress_from_job
+except ImportError:
+    # Fallback if storage_utils not available yet
+    def save_progress_to_job(job):
+        return False, "Storage utilities not available"
+    def clear_progress_from_job(job):
+        return False, "Storage utilities not available"
+
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
     if not hasattr(job, 'common_api_datasets'):
@@ -57,7 +67,18 @@ def show():
     ensure_databases_synced(current_job)
     
     # Update the job in session state
-    st.session_state.jobs[current_job_name] = current_job    
+    st.session_state.jobs[current_job_name] = current_job
+    
+    # DEBUG: Show target profile data state
+    with st.expander("🔍 Debug Target Profile Data", expanded=False):
+        st.write(f"**Job Name:** {current_job.name}")
+        st.write(f"**Target Profiles Count:** {len(current_job.complete_target_profiles)}")
+        if current_job.complete_target_profiles:
+            st.write(f"**Profile Names:** {list(current_job.complete_target_profiles.keys())}")
+        else:
+            st.write("**No target profiles found in job**")
+        st.write(f"**API Datasets:** {len(current_job.common_api_datasets)} in job, {len(st.session_state.get('common_api_datasets', {}))} in session")
+        st.write(f"**Polymer Datasets:** {len(current_job.polymer_datasets)} in job, {len(st.session_state.get('polymer_datasets', {}))} in session")
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
@@ -136,7 +157,7 @@ def show():
                         api_name = selected_api_data['Name'].iloc[0] if 'Name' in selected_api_data.columns and len(selected_api_data) > 0 else "Unnamed API"
                         st.session_state.temp_profile_creation["api_name"] = api_name
                     else:
-                        st.error("Please select API data first.")                
+                        st.error("Please select API data first.")
         else:
             st.warning("⚠️ No API datasets available. Please import datasets in Database Management first, or load a job that contains datasets.")
 
@@ -358,7 +379,6 @@ def show():
                             
                             st.success(f"✅ Complete target profile '{profile_name.strip()}' saved successfully!")
                             st.rerun()
-                    
             else:
                 st.warning("Complete all three components above to create target profile.")
 
@@ -440,9 +460,45 @@ def show():
                         st.info("No formulation properties to display")
         else:
             st.info("No complete target profiles found. Create profiles in 'Create New Profile' tab.")
-
-
-
-
-
-
+    
+    st.divider()
+    
+    # ── Progress Management Section ─────────────────────────────────────────
+    st.markdown("## 💾 Progress Management")
+    
+    col_save_progress, col_clear_progress = st.columns(2)
+    
+    with col_save_progress:
+        st.markdown("### Save Progress")
+        st.markdown("Save current job progress to cloud")
+        
+        if st.button("💾 Save Progress", key="inputs_save_progress", 
+                   disabled=not current_job,
+                   help="Save current progress to cloud"):
+            if current_job:
+                success, result = save_progress_to_job(current_job)
+                if success:
+                    st.success(f"✅ Progress saved successfully!")
+                else:
+                    st.error(f"❌ Failed to save progress: {result}")
+            else:
+                st.error("❌ No current job to save!")
+    
+    with col_clear_progress:
+        st.markdown("### Clear Progress")
+        st.markdown("Clear optimization progress data")
+        
+        if st.button("🗑️ Clear Progress", key="inputs_clear_progress",
+                   disabled=not current_job,
+                   help="Clear optimization progress"):
+            if current_job:
+                success, result = clear_progress_from_job(current_job)
+                if success:
+                    # Update job in session state
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success(f"✅ Progress cleared successfully!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Failed to clear progress: {result}")
+            else:
+                st.error("❌ No current job to clear!")
