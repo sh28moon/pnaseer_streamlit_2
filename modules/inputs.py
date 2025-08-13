@@ -21,25 +21,23 @@ def ensure_job_attributes(job):
 
 def ensure_databases_synced(current_job):
     """Ensure databases are properly synced between job and session state"""
-    # If session state doesn't have databases but job does, sync from job to session state
-    if ("common_api_datasets" not in st.session_state or not st.session_state["common_api_datasets"]) and current_job.common_api_datasets:
+    # FORCE sync from job to session state - this is the key fix
+    if current_job.common_api_datasets:
         st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
+    elif "common_api_datasets" not in st.session_state:
+        st.session_state["common_api_datasets"] = {}
     
-    if ("polymer_datasets" not in st.session_state or not st.session_state["polymer_datasets"]) and current_job.polymer_datasets:
+    if current_job.polymer_datasets:
         st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
+    elif "polymer_datasets" not in st.session_state:
+        st.session_state["polymer_datasets"] = {}
     
-    # If session state has databases but job doesn't, sync from session state to job  
+    # Also sync from session state to job if session state has data but job doesn't  
     if st.session_state.get("common_api_datasets") and not current_job.common_api_datasets:
         current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
     
     if st.session_state.get("polymer_datasets") and not current_job.polymer_datasets:
         current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
-    
-    # Ensure session state databases exist even if empty
-    if "common_api_datasets" not in st.session_state:
-        st.session_state["common_api_datasets"] = {}
-    if "polymer_datasets" not in st.session_state:
-        st.session_state["polymer_datasets"] = {}
 
 def show():
     st.markdown('<p class="font-large"><b>Manage Target Profile</b></p>', unsafe_allow_html=True)
@@ -60,6 +58,17 @@ def show():
     
     # Update the job in session state
     st.session_state.jobs[current_job_name] = current_job
+    
+    # DEBUG: Show target profile data state
+    with st.expander("🔍 Debug Target Profile Data", expanded=False):
+        st.write(f"**Job Name:** {current_job.name}")
+        st.write(f"**Target Profiles Count:** {len(current_job.complete_target_profiles)}")
+        if current_job.complete_target_profiles:
+            st.write(f"**Profile Names:** {list(current_job.complete_target_profiles.keys())}")
+        else:
+            st.write("**No target profiles found in job**")
+        st.write(f"**API Datasets:** {len(current_job.common_api_datasets)} in job, {len(st.session_state.get('common_api_datasets', {}))} in session")
+        st.write(f"**Polymer Datasets:** {len(current_job.polymer_datasets)} in job, {len(st.session_state.get('polymer_datasets', {}))} in session")
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
@@ -345,6 +354,8 @@ def show():
                             }
                             
                             current_job.complete_target_profiles[profile_name.strip()] = complete_profile
+                            
+                            # FORCE IMMEDIATE SAVE to session state jobs  
                             st.session_state.jobs[current_job_name] = current_job
                             
                             # Clear temporary data
@@ -356,6 +367,7 @@ def show():
                                 "formulation_data": None
                             }
                             
+                            st.success(f"✅ Complete target profile '{profile_name.strip()}' saved successfully!")
                             st.rerun()
             else:
                 st.warning("Complete all three components above to create target profile.")
