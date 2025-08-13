@@ -78,6 +78,24 @@ def get_saved_datasets(dataset_type):
     except Exception:
         return []
 
+def sync_datasets_with_current_job():
+    """Sync datasets with current job for comprehensive persistence"""
+    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
+        current_job = st.session_state.jobs[st.session_state.current_job]
+        
+        # Ensure job has dataset attributes
+        if not hasattr(current_job, 'common_api_datasets'):
+            current_job.common_api_datasets = {}
+        if not hasattr(current_job, 'polymer_datasets'):
+            current_job.polymer_datasets = {}
+        
+        # Sync session state changes to job
+        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {}).copy()
+        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {}).copy()
+        
+        # Update job in session state
+        st.session_state.jobs[st.session_state.current_job] = current_job
+
 def show():
     st.header("Database Management")
 
@@ -112,7 +130,6 @@ def show():
                     # Store temporarily for preview and saving
                     st.session_state[f"{session_key}_temp_dataset"] = df
                     st.session_state[f"{session_key}_temp_filename"] = uploaded.name
-                    st.success(f"Loaded: {uploaded.name}")
             
             # Right Column: Save database to cloud
             with col_save:
@@ -144,13 +161,8 @@ def show():
                         )
                         
                         if success:
-                            st.success(f"✅ Saved '{dataset_name}' permanently!")
-                            
-                            # Save databases to current job for persistence
-                            if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
-                                current_job = st.session_state.jobs[st.session_state.current_job]
-                                current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
-                                current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                            # COMPREHENSIVE SYNC: Save to current job for persistence
+                            sync_datasets_with_current_job()
                             
                             # Clear temporary data
                             if f"{session_key}_temp_dataset" in st.session_state:
@@ -209,13 +221,9 @@ def show():
                                         # Replace current datasets with loaded ones
                                         st.session_state[session_key] = loaded_datasets
                                         
-                                        # Save databases to current job for persistence
-                                        if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
-                                            current_job = st.session_state.jobs[st.session_state.current_job]
-                                            current_job.common_api_datasets = st.session_state.get("common_api_datasets", {})
-                                            current_job.polymer_datasets = st.session_state.get("polymer_datasets", {})
+                                        # COMPREHENSIVE SYNC: Save to current job for persistence
+                                        sync_datasets_with_current_job()
                                         
-                                        st.success(f"✅ Loaded '{selected_save_name}' database with {count} dataset(s)!")
                                         st.rerun()
                         
                         with col_remove_btn:
@@ -223,7 +231,6 @@ def show():
                                 if selected_file:
                                     try:
                                         os.remove(selected_file["filepath"])
-                                        st.success(f"✅ Removed '{selected_save_name}' database")
                                         st.rerun()
                                     except Exception as e:
                                         st.error(f"❌ Failed to remove: {str(e)}")
