@@ -211,6 +211,8 @@ def show():
                 if global_db_key in st.session_state and st.session_state[global_db_key]:
                     current_databases = st.session_state[global_db_key]
                     
+                    st.markdown(f"**📂 Currently Loaded ({len(current_databases)}):**")
+                    
                     # Dataset selector
                     database_names = list(current_databases.keys())
                     if database_names:
@@ -226,7 +228,9 @@ def show():
                             st.caption(f"Shape: {database_df.shape[0]} rows × {database_df.shape[1]} columns")
                             
                             # Add remove from memory button
-                            if st.button(f"🗑️ Remove '{selected_database}' from Memory", key=f"{database_type}_remove_from_memory"):
+                            if st.button(f"🗑️ Remove '{selected_database}' from Memory", 
+                                       key=f"{database_type}_remove_from_memory",
+                                       help="Remove from memory only (keeps saved file)"):
                                 del st.session_state[global_db_key][selected_database]
                                 st.success(f"✅ Removed '{selected_database}' from memory")
                                 st.rerun()
@@ -235,9 +239,42 @@ def show():
                 else:
                     st.info("No databases loaded in memory")
                 
-                # Show total databases loaded
-                total_count = len(st.session_state.get(global_db_key, {}))
-                st.markdown(f"**Total {tab_name} databases in memory:** {total_count}")
+                st.divider()
+                
+                # Show summary statistics
+                total_loaded = len(st.session_state.get(global_db_key, {}))
+                total_saved = len(get_saved_datasets_by_type(database_type))
+                
+                col_stat1, col_stat2 = st.columns(2)
+                with col_stat1:
+                    st.metric("📂 Loaded", total_loaded, help="Currently in memory")
+                with col_stat2:
+                    st.metric("💾 Saved", total_saved, help="Available files")
+                
+                # Quick load all button if there are unloaded databases
+                if total_saved > total_loaded:
+                    unloaded_count = total_saved - total_loaded
+                    if st.button(f"⚡ Load All Available ({unloaded_count})", 
+                               key=f"{database_type}_load_all",
+                               help="Load all saved databases into memory"):
+                        saved_databases = get_saved_datasets_by_type(database_type)
+                        loaded_count = 0
+                        
+                        for ds in saved_databases:
+                            display_name = ds['display_name']
+                            # Only load if not already loaded
+                            if display_name not in st.session_state.get(global_db_key, {}):
+                                loaded_databases, _, _ = load_data_from_file(ds["filepath"], "datasets")
+                                if loaded_databases:
+                                    for db_name, db_data in loaded_databases.items():
+                                        st.session_state[global_db_key][db_name] = db_data
+                                        loaded_count += 1
+                        
+                        if loaded_count > 0:
+                            st.success(f"✅ Loaded {loaded_count} additional database(s)!")
+                            st.rerun()
+                        else:
+                            st.info("All databases already loaded")
             
             st.divider()
             
