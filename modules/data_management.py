@@ -3,25 +3,28 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Import SEPARATE database storage functions (completely independent from jobs)
+# FIXED: Import the correct function names from storage_utils
 try:
     from modules.storage_utils import (
-        save_database_to_file,
-        load_database_from_file, 
-        get_saved_databases_list,
-        delete_database_file,
+        save_data_to_file,           # Was: save_database_to_file
+        load_data_from_file,         # Was: load_database_from_file  
+        get_saved_data_list,         # Was: get_saved_databases_list
+        get_saved_datasets_by_type,  # ADDED: This was missing
+        delete_saved_data,           # Was: delete_database_file
         save_progress_to_job,
         clear_progress_from_job
     )
 except ImportError:
     # Fallback if storage_utils not available yet
-    def save_database_to_file(database_dict, database_type, save_name):
+    def save_data_to_file(data, data_type, save_name):
         return False, "Storage utilities not available"
-    def load_database_from_file(filepath):
+    def load_data_from_file(filepath, data_type):
         return None, "Storage utilities not available", 0
-    def get_saved_databases_list(database_type):
+    def get_saved_data_list(data_type):
         return []
-    def delete_database_file(filepath):
+    def get_saved_datasets_by_type(dataset_type):
+        return []
+    def delete_saved_data(filepath):
         return False, "Storage utilities not available"
     def save_progress_to_job(job):
         return False, "Storage utilities not available"
@@ -146,7 +149,7 @@ def show():
             with col_load:
                 st.markdown("**Load database from cloud**")
                 
-                # Get saved databases using unified function with filtering
+                # Get saved databases using the correct function name
                 saved_databases = get_saved_datasets_by_type(database_type)
                 
                 if saved_databases:
@@ -175,7 +178,7 @@ def show():
                         with col_load_btn:
                             if st.button("📂 Load", key=f"{database_type}_load_database_btn"):
                                 if selected_file:
-                                    # Load using unified function
+                                    # Load using the correct function name
                                     loaded_databases, saved_time, count = load_data_from_file(selected_file["filepath"], "datasets")
                                     
                                     if loaded_databases is not None:
@@ -189,6 +192,7 @@ def show():
                         with col_remove_btn:
                             if st.button("🗑️ Remove", key=f"{database_type}_remove_database_btn"):
                                 if selected_file:
+                                    # Use the correct function name
                                     success, message = delete_saved_data(selected_file["filepath"])
                                     if success:
                                         st.success(f"✅ Removed database file successfully")
