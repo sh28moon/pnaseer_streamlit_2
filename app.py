@@ -30,6 +30,10 @@ class Job:
         
         # Add formulation-specific results storage
         self.formulation_results = {}  # {profile_name: {formulation_name: result_data}}
+        
+        # Add optimization progress storage (NEW)
+        self.optimization_progress = {}  # {progress_id: progress_data}
+        self.current_optimization_progress = None  # Active optimization progress
     
     def has_api_data(self):
         return self.api_dataset is not None
@@ -41,7 +45,7 @@ class Job:
         return self.model_dataset is not None
     
     def has_result_data(self):
-        return self.result_dataset is not None or bool(self.formulation_results)
+        return self.result_dataset is not None or bool(self.formulation_results) or bool(self.optimization_progress)
     
     def has_evaluation_diagrams(self):
         """Check if evaluation diagrams data exists in results"""
@@ -76,6 +80,23 @@ class Job:
         """Check if specific formulation has results"""
         return (profile_name in self.formulation_results and 
                 formulation_name in self.formulation_results[profile_name])
+    
+    # NEW: Optimization Progress Methods
+    def save_optimization_progress(self, progress_data):
+        """Save current optimization progress"""
+        self.current_optimization_progress = progress_data
+    
+    def get_optimization_progress(self):
+        """Get current optimization progress"""
+        return self.current_optimization_progress
+    
+    def clear_optimization_progress(self):
+        """Clear current optimization progress"""
+        self.current_optimization_progress = None
+    
+    def has_optimization_progress(self):
+        """Check if there is saved optimization progress"""
+        return self.current_optimization_progress is not None
 
 
 def sync_databases_with_job():
@@ -92,6 +113,10 @@ def sync_databases_with_job():
             current_job.complete_target_profiles = {}
         if not hasattr(current_job, 'formulation_results'):
             current_job.formulation_results = {}
+        if not hasattr(current_job, 'optimization_progress'):
+            current_job.optimization_progress = {}
+        if not hasattr(current_job, 'current_optimization_progress'):
+            current_job.current_optimization_progress = None
         
         # Sync databases from job to session state (for UI access)
         st.session_state["common_api_datasets"] = current_job.common_api_datasets
@@ -117,6 +142,10 @@ def save_databases_to_job():
             current_job.complete_target_profiles = {}
         if not hasattr(current_job, 'formulation_results'):
             current_job.formulation_results = {}
+        if not hasattr(current_job, 'optimization_progress'):
+            current_job.optimization_progress = {}
+        if not hasattr(current_job, 'current_optimization_progress'):
+            current_job.current_optimization_progress = None
         
         # Save databases from session state to job
         if "common_api_datasets" in st.session_state:
