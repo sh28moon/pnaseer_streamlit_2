@@ -205,30 +205,11 @@ def main():
     if "current_tab" not in st.session_state:
         st.session_state.current_tab = "Manage Job"
     
-    # DEBUG: Add debug session state tracking
-    if "app_refresh_count" not in st.session_state:
-        st.session_state.app_refresh_count = 0
-    st.session_state.app_refresh_count += 1
-    
     # Sync ALL data with current job for persistence (COMPREHENSIVE SYNC)
     sync_all_data_with_job()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("Pnaseer DDS Optimization")
-    
-    # DEBUG: Show app state info
-    with st.sidebar.expander("🔍 Debug App State", expanded=False):
-        st.write(f"**App Refresh Count:** {st.session_state.app_refresh_count}")
-        if st.session_state.get("debug_last_sync"):
-            st.write(f"**Last Sync:** {st.session_state.debug_last_sync}")
-        if st.session_state.get("current_job"):
-            current_job = st.session_state.jobs.get(st.session_state.current_job)
-            if current_job:
-                st.write(f"**Current Job:** {current_job.name}")
-                st.write(f"**Target Profiles:** {len(current_job.complete_target_profiles)}")
-                st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
-                st.write(f"**API Datasets:** {len(current_job.common_api_datasets)}")
-                st.write(f"**Session API:** {len(st.session_state.get('common_api_datasets', {}))}")
+    st.sidebar.title("Pnaseer DDS Optimization") 
     
     # Main navigation
     st.sidebar.markdown("### Main Menu")
@@ -294,3 +275,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
