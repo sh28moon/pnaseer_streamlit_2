@@ -233,6 +233,3 @@ def show():
             st.info("No saved jobs found. Create and save jobs to see them here.")
     
     st.divider()
-    
-            else:
-                st.error("❌ No current job to clear!")
