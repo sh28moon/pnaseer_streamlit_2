@@ -20,6 +20,74 @@ def deserialize_dataframe(data):
         return pd.DataFrame(data)
     return data
 
+def serialize_complex_data(data):
+    """Recursively serialize complex data structures including nested DataFrames"""
+    if data is None:
+        return None
+    
+    # Handle pandas DataFrame
+    if hasattr(data, 'to_dict'):
+        return {"__dataframe__": data.to_dict('records')}
+    
+    # Handle dictionaries
+    if isinstance(data, dict):
+        serialized_dict = {}
+        for key, value in data.items():
+            serialized_dict[key] = serialize_complex_data(value)
+        return serialized_dict
+    
+    # Handle lists
+    if isinstance(data, list):
+        return [serialize_complex_data(item) for item in data]
+    
+    # Handle tuples
+    if isinstance(data, tuple):
+        return {"__tuple__": [serialize_complex_data(item) for item in data]}
+    
+    # Handle numpy arrays
+    if hasattr(data, 'tolist'):
+        return {"__numpy_array__": data.tolist()}
+    
+    # Handle other types that might not be JSON serializable
+    try:
+        import json
+        json.dumps(data)  # Test if it's JSON serializable
+        return data
+    except (TypeError, ValueError):
+        # If not serializable, convert to string representation
+        return {"__string_repr__": str(data)}
+
+def deserialize_complex_data(data):
+    """Recursively deserialize complex data structures including nested DataFrames"""
+    if data is None:
+        return None
+    
+    # Handle dictionaries
+    if isinstance(data, dict):
+        # Check for special markers
+        if "__dataframe__" in data:
+            return pd.DataFrame(data["__dataframe__"])
+        elif "__tuple__" in data:
+            return tuple(deserialize_complex_data(item) for item in data["__tuple__"])
+        elif "__numpy_array__" in data:
+            import numpy as np
+            return np.array(data["__numpy_array__"])
+        elif "__string_repr__" in data:
+            return data["__string_repr__"]  # Return as string, can't reconstruct original object
+        else:
+            # Regular dictionary
+            deserialized_dict = {}
+            for key, value in data.items():
+                deserialized_dict[key] = deserialize_complex_data(value)
+            return deserialized_dict
+    
+    # Handle lists
+    if isinstance(data, list):
+        return [deserialize_complex_data(item) for item in data]
+    
+    # Return as-is for basic types
+    return data
+
 def save_data_to_file(data, data_type, save_name):
     """Generic function to save any data to JSON file
     
@@ -48,7 +116,7 @@ def save_data_to_file(data, data_type, save_name):
             # For datasets: data is a dict of DataFrames, save_name format: "dataset_type_name"
             dataset_data = {}
             for name, df in data.items():
-                dataset_data[name] = serialize_dataframe(df)
+                dataset_data[name] = serialize_complex_data(df)
             save_data["datasets"] = dataset_data
             save_data["dataset_count"] = len(dataset_data)
             
@@ -67,36 +135,33 @@ def save_data_to_file(data, data_type, save_name):
             save_data.update({
                 "name": job.name,
                 "created_at": job.created_at,
-                "api_dataset": serialize_dataframe(job.api_dataset),
-                "target_profile_dataset": serialize_dataframe(job.target_profile_dataset) if job.target_profile_dataset else None,
-                "model_dataset": serialize_dataframe(job.model_dataset) if job.model_dataset else None,
-                "result_dataset": job.result_dataset,
+                "api_dataset": serialize_complex_data(job.api_dataset),
+                "target_profile_dataset": serialize_complex_data(job.target_profile_dataset),
+                "model_dataset": serialize_complex_data(job.model_dataset),
+                "result_dataset": serialize_complex_data(job.result_dataset),
             })
             
             # Handle database data
             save_data["common_api_datasets"] = {}
             if hasattr(job, 'common_api_datasets') and job.common_api_datasets:
                 for k, v in job.common_api_datasets.items():
-                    save_data["common_api_datasets"][k] = serialize_dataframe(v)
+                    save_data["common_api_datasets"][k] = serialize_complex_data(v)
             
             save_data["polymer_datasets"] = {}
             if hasattr(job, 'polymer_datasets') and job.polymer_datasets:
                 for k, v in job.polymer_datasets.items():
-                    save_data["polymer_datasets"][k] = serialize_dataframe(v)
+                    save_data["polymer_datasets"][k] = serialize_complex_data(v)
             
             # Handle complete target profiles
             save_data["complete_target_profiles"] = {}
             if hasattr(job, 'complete_target_profiles') and job.complete_target_profiles:
                 for profile_name, profile_data in job.complete_target_profiles.items():
-                    serialized_profile = {}
-                    for key, value in profile_data.items():
-                        serialized_profile[key] = serialize_dataframe(value)
-                    save_data["complete_target_profiles"][profile_name] = serialized_profile
+                    save_data["complete_target_profiles"][profile_name] = serialize_complex_data(profile_data)
             
-            # Handle results and optimization progress
-            save_data["formulation_results"] = getattr(job, 'formulation_results', {})
-            save_data["optimization_progress"] = getattr(job, 'optimization_progress', {})
-            save_data["current_optimization_progress"] = getattr(job, 'current_optimization_progress', None)
+            # Handle results and optimization progress - use complex serialization for results
+            save_data["formulation_results"] = serialize_complex_data(getattr(job, 'formulation_results', {}))
+            save_data["optimization_progress"] = serialize_complex_data(getattr(job, 'optimization_progress', {}))
+            save_data["current_optimization_progress"] = serialize_complex_data(getattr(job, 'current_optimization_progress', None))
         
         # Save to file
         filename = f"{directory}/{data_type}_{save_name}.json"
@@ -127,7 +192,7 @@ def load_data_from_file(filepath, data_type):
             # Return datasets dict
             loaded_datasets = {}
             for name, records in save_data["datasets"].items():
-                loaded_datasets[name] = deserialize_dataframe(records)
+                loaded_datasets[name] = deserialize_complex_data(records)
             return loaded_datasets, saved_timestamp, save_data.get("dataset_count", 0)
             
         elif data_type == "jobs":
@@ -137,36 +202,33 @@ def load_data_from_file(filepath, data_type):
             job = Job(save_data["name"])
             job.created_at = save_data["created_at"]
             
-            # Restore basic datasets
-            job.api_dataset = deserialize_dataframe(save_data.get("api_dataset"))
-            job.target_profile_dataset = deserialize_dataframe(save_data.get("target_profile_dataset"))
-            job.model_dataset = deserialize_dataframe(save_data.get("model_dataset"))
-            job.result_dataset = save_data.get("result_dataset")
+            # Restore basic datasets using complex deserialization
+            job.api_dataset = deserialize_complex_data(save_data.get("api_dataset"))
+            job.target_profile_dataset = deserialize_complex_data(save_data.get("target_profile_dataset"))
+            job.model_dataset = deserialize_complex_data(save_data.get("model_dataset"))
+            job.result_dataset = deserialize_complex_data(save_data.get("result_dataset"))
             
             # Restore database data
             job.common_api_datasets = {}
             if save_data.get("common_api_datasets"):
                 for k, v in save_data["common_api_datasets"].items():
-                    job.common_api_datasets[k] = deserialize_dataframe(v)
+                    job.common_api_datasets[k] = deserialize_complex_data(v)
             
             job.polymer_datasets = {}
             if save_data.get("polymer_datasets"):
                 for k, v in save_data["polymer_datasets"].items():
-                    job.polymer_datasets[k] = deserialize_dataframe(v)
+                    job.polymer_datasets[k] = deserialize_complex_data(v)
             
             # Restore complete target profiles
             job.complete_target_profiles = {}
             if save_data.get("complete_target_profiles"):
                 for profile_name, profile_data in save_data["complete_target_profiles"].items():
-                    restored_profile = {}
-                    for key, value in profile_data.items():
-                        restored_profile[key] = deserialize_dataframe(value)
-                    job.complete_target_profiles[profile_name] = restored_profile
+                    job.complete_target_profiles[profile_name] = deserialize_complex_data(profile_data)
             
-            # Restore results and optimization progress
-            job.formulation_results = save_data.get("formulation_results", {})
-            job.optimization_progress = save_data.get("optimization_progress", {})
-            job.current_optimization_progress = save_data.get("current_optimization_progress")
+            # Restore results and optimization progress using complex deserialization
+            job.formulation_results = deserialize_complex_data(save_data.get("formulation_results", {}))
+            job.optimization_progress = deserialize_complex_data(save_data.get("optimization_progress", {}))
+            job.current_optimization_progress = deserialize_complex_data(save_data.get("current_optimization_progress"))
             
             return job, saved_timestamp, len(job.complete_target_profiles)
         
