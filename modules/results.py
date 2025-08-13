@@ -8,6 +8,16 @@ import random
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
+# Import unified storage functions
+try:
+    from modules.storage_utils import save_progress_to_job, clear_progress_from_job
+except ImportError:
+    # Fallback if storage_utils not available yet
+    def save_progress_to_job(job):
+        return False, "Storage utilities not available"
+    def clear_progress_from_job(job):
+        return False, "Storage utilities not available"
+
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
     if not hasattr(job, 'common_api_datasets'):
@@ -43,8 +53,18 @@ def show():
     
     # Initialize formulation_results if it doesn't exist
     if not hasattr(current_job, 'formulation_results'):
-        current_job.formulation_results = {}   
-
+        current_job.formulation_results = {}
+    
+    # DEBUG: Show results data state
+    with st.expander("🔍 Debug Results Data", expanded=False):
+        st.write(f"**Job Name:** {current_job.name}")
+        st.write(f"**Old Results:** {'Yes' if current_job.result_dataset else 'No'}")
+        st.write(f"**Formulation Results:** {len(current_job.formulation_results)} profiles")
+        if current_job.formulation_results:
+            for profile_name, formulations in current_job.formulation_results.items():
+                st.write(f"  - {profile_name}: {len(formulations)} formulations")
+        st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
+    
     # Check if current job has results (either old format or new formulation-specific format)
     has_old_results = current_job.result_dataset is not None
     has_formulation_results = bool(current_job.formulation_results)
@@ -587,3 +607,45 @@ def show():
                 st.warning("No candidates available for evaluation")
         else:
             st.info("Please select a formulation with results in the Summary tab first to view evaluation data.")
+    
+    st.divider()
+    
+    # ── Progress Management Section ─────────────────────────────────────────
+    st.markdown("## 💾 Progress Management")
+    
+    col_save_progress, col_clear_progress = st.columns(2)
+    
+    with col_save_progress:
+        st.markdown("### Save Progress")
+        st.markdown("Save current job progress to cloud")
+        
+        if st.button("💾 Save Progress", key="results_save_progress", 
+                   disabled=not current_job,
+                   help="Save current progress to cloud"):
+            if current_job:
+                success, result = save_progress_to_job(current_job)
+                if success:
+                    st.success(f"✅ Progress saved successfully!")
+                else:
+                    st.error(f"❌ Failed to save progress: {result}")
+            else:
+                st.error("❌ No current job to save!")
+    
+    with col_clear_progress:
+        st.markdown("### Clear Progress")
+        st.markdown("Clear optimization progress data")
+        
+        if st.button("🗑️ Clear Progress", key="results_clear_progress",
+                   disabled=not current_job,
+                   help="Clear optimization progress"):
+            if current_job:
+                success, result = clear_progress_from_job(current_job)
+                if success:
+                    # Update job in session state
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success(f"✅ Progress cleared successfully!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Failed to clear progress: {result}")
+            else:
+                st.error("❌ No current job to clear!")
