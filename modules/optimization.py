@@ -19,7 +19,34 @@ def ensure_job_attributes(job):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
         job.formulation_results = {}
+    # NEW: Ensure optimization progress attributes exist
+    if not hasattr(job, 'optimization_progress'):
+        job.optimization_progress = {}
+    if not hasattr(job, 'current_optimization_progress'):
+        job.current_optimization_progress = None
     return job
+
+def save_optimization_selections_to_job(current_job, target_profile_name, atps_model, drug_release_model):
+    """Save current optimization selections to job for persistence"""
+    progress_data = {
+        "target_profile_name": target_profile_name,
+        "atps_model": atps_model,
+        "drug_release_model": drug_release_model,
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "status": "in_progress"
+    }
+    current_job.save_optimization_progress(progress_data)
+
+def get_saved_optimization_selections(current_job):
+    """Get saved optimization selections from job"""
+    progress = current_job.get_optimization_progress()
+    if progress:
+        return (
+            progress.get("target_profile_name", ""),
+            progress.get("atps_model", ""),
+            progress.get("drug_release_model", "")
+        )
+    return "", "", ""
 
 def show():
     st.header("Modeling Optimization")
@@ -37,6 +64,9 @@ def show():
     
     # Update the job in session state
     st.session_state.jobs[current_job_name] = current_job
+
+    # Get saved optimization selections for persistence across page changes
+    saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)
 
     # Top-level tabs
     tab_atps = st.tabs(["ATPS Partition"])[0]
@@ -60,13 +90,28 @@ def show():
                 if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
                     target_profiles = current_job.complete_target_profiles
                     
-                    # Target Profile Selection
+                    # Target Profile Selection with saved state restoration
                     profile_names = list(target_profiles.keys())
+                    
+                    # Find index of saved selection
+                    saved_index = 0
+                    if saved_target_profile and saved_target_profile in profile_names:
+                        saved_index = profile_names.index(saved_target_profile) + 1  # +1 for empty option
+                    
                     selected_target_profile_name = st.selectbox(
                         "Select Target Profile:",
                         [""] + profile_names,
+                        index=saved_index,
                         key=f"{prefix}_target_profile_select"
                     )
+                    
+                    # Save selection when it changes
+                    if selected_target_profile_name != saved_target_profile:
+                        # Get current model selections to preserve them
+                        current_atps = st.session_state.get(f"{prefix}_atps_model_select", saved_atps_model)
+                        current_drug_release = st.session_state.get(f"{prefix}_drug_release_model_select", saved_drug_release_model)
+                        save_optimization_selections_to_job(current_job, selected_target_profile_name, current_atps, current_drug_release)
+                        st.session_state.jobs[current_job_name] = current_job
                     
                     if selected_target_profile_name:
                         selected_target_profile = target_profiles[selected_target_profile_name]
@@ -109,7 +154,7 @@ def show():
             with col_model:
                 st.markdown("**Model Selection**")
                 
-                # ATPS Model Selection
+                # ATPS Model Selection with saved state restoration
                 st.markdown("**Select ATPS Model**")
                 atps_model_options = [
                     "",
@@ -118,14 +163,28 @@ def show():
                     "GNN Model"
                 ]
                 
+                # Find index of saved ATPS model
+                atps_saved_index = 0
+                if saved_atps_model and saved_atps_model in atps_model_options:
+                    atps_saved_index = atps_model_options.index(saved_atps_model)
+                
                 selected_atps_model = st.selectbox(
                     "ATPS Model:",
                     atps_model_options,
+                    index=atps_saved_index,
                     key=f"{prefix}_atps_model_select",
                     label_visibility="collapsed"
-                )              
+                )
                 
-                # Drug Release Model Selection
+                # Save ATPS model selection when it changes
+                if selected_atps_model != saved_atps_model:
+                    # Get current selections to preserve them
+                    current_target = st.session_state.get(f"{prefix}_target_profile_select", saved_target_profile)
+                    current_drug_release = st.session_state.get(f"{prefix}_drug_release_model_select", saved_drug_release_model)
+                    save_optimization_selections_to_job(current_job, current_target, selected_atps_model, current_drug_release)
+                    st.session_state.jobs[current_job_name] = current_job
+                
+                # Drug Release Model Selection with saved state restoration
                 st.markdown("**Drug Release Model Selection**")
                 drug_release_model_options = [
                     "",
@@ -133,12 +192,26 @@ def show():
                     "Particle Kinetics Model"
                 ]
                 
+                # Find index of saved Drug Release model
+                drug_saved_index = 0
+                if saved_drug_release_model and saved_drug_release_model in drug_release_model_options:
+                    drug_saved_index = drug_release_model_options.index(saved_drug_release_model)
+                
                 selected_drug_release_model = st.selectbox(
                     "Drug Release Model:",
                     drug_release_model_options,
+                    index=drug_saved_index,
                     key=f"{prefix}_drug_release_model_select",
                     label_visibility="collapsed"
-                )               
+                )
+                
+                # Save Drug Release model selection when it changes
+                if selected_drug_release_model != saved_drug_release_model:
+                    # Get current selections to preserve them
+                    current_target = st.session_state.get(f"{prefix}_target_profile_select", saved_target_profile)
+                    current_atps = st.session_state.get(f"{prefix}_atps_model_select", saved_atps_model)
+                    save_optimization_selections_to_job(current_job, current_target, current_atps, selected_drug_release_model)
+                    st.session_state.jobs[current_job_name] = current_job
 
             st.divider()
 
@@ -352,6 +425,14 @@ def show():
                             
                             current_job.set_formulation_result(selected_target_profile_name, formulation_name, formulation_result_data)
                         
+                        # Update optimization progress to mark as completed with results
+                        if current_job.get_optimization_progress():
+                            progress_data = current_job.get_optimization_progress()
+                            progress_data["status"] = "completed"
+                            progress_data["results_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            progress_data["formulation_count"] = formulation_count
+                            current_job.save_optimization_progress(progress_data)
+                        
                         # Ensure the job is updated in session state for persistence
                         st.session_state.jobs[current_job_name] = current_job
                         
@@ -373,6 +454,8 @@ def show():
                     clear_options.append(f"Clear '{selected_target_profile_name}' Results ({formulation_count} formulations)")
                 if has_any_results:
                     clear_options.append("Clear All Results")
+                if current_job.has_optimization_progress():
+                    clear_options.append("Clear Optimization Progress")
                 
                 if clear_options:
                     clear_choice = st.selectbox(
@@ -387,6 +470,9 @@ def show():
                             current_job.result_dataset = None
                             if hasattr(current_job, 'formulation_results'):
                                 current_job.formulation_results = {}
+                        elif clear_choice.startswith("Clear Optimization"):
+                            # Clear optimization progress
+                            current_job.clear_optimization_progress()
                         elif clear_choice.startswith("Clear") and selected_target_profile_name:
                             # Clear all formulation results for the selected profile
                             if (hasattr(current_job, 'formulation_results') and
