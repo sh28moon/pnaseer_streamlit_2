@@ -5,7 +5,7 @@ import json
 import os
 import requests
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
@@ -67,8 +67,9 @@ def save_job_to_github(job_data, job_name):
             pass
         
         # Create/update file
+        current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         payload = {
-            "message": f"Save job: {job_name} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "message": f"Save job: {job_name} - {current_timestamp}",
             "content": encoded_content,
             "branch": config["branch"]
         }
@@ -294,8 +295,9 @@ def delete_job_from_github(job_name):
         sha = get_response.json()["sha"]
         
         # Delete file
+        current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         payload = {
-            "message": f"Delete job: {job_name} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "message": f"Delete job: {job_name} - {current_timestamp}",
             "sha": sha,
             "branch": config["branch"]
         }
@@ -672,8 +674,8 @@ def show():
                 # Import Job class from app
                 from app import Job
                 
-                import datetime
-                st.session_state.current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                st.session_state.current_time = current_time
                 new_job = Job(job_name)
                 
                 # Ensure all attributes are properly initialized
@@ -717,10 +719,11 @@ def show():
                 st.session_state.jobs[current_job_name] = current_job
                 
                 # Serialize job data for saving
+                current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 job_data = {
                     "name": current_job.name,
                     "created_at": current_job.created_at,
-                    "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "saved_timestamp": current_timestamp,
                     "api_dataset": serialize_dataframe(current_job.api_dataset),
                     "target_profile_dataset": serialize_dataframe(current_job.target_profile_dataset) if current_job.target_profile_dataset else None,
                     "model_dataset": serialize_dataframe(current_job.model_dataset) if current_job.model_dataset else None,
