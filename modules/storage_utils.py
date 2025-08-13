@@ -1,0 +1,275 @@
+# modules/storage_utils.py
+import json
+import os
+import pandas as pd
+from datetime import datetime
+
+def serialize_dataframe(df):
+    """Safely serialize a DataFrame to dict"""
+    if df is None:
+        return None
+    if hasattr(df, 'to_dict'):
+        return df.to_dict('records')
+    return df
+
+def deserialize_dataframe(data):
+    """Safely deserialize dict to DataFrame"""
+    if data is None:
+        return None
+    if isinstance(data, list):
+        return pd.DataFrame(data)
+    return data
+
+def save_data_to_file(data, data_type, save_name):
+    """Generic function to save any data to JSON file
+    
+    Args:
+        data: Data to save (dict, job object, etc.)
+        data_type: Type of data ('datasets', 'jobs', etc.)
+        save_name: Name for the saved file
+    
+    Returns:
+        tuple: (success: bool, result: str)
+    """
+    try:
+        # Create directory if it doesn't exist
+        directory = f"saved_{data_type}"
+        os.makedirs(directory, exist_ok=True)
+        
+        # Prepare save data structure
+        save_data = {
+            "save_name": save_name,
+            "data_type": data_type,
+            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        
+        # Handle different data types
+        if data_type == "datasets":
+            # For datasets: data is a dict of DataFrames
+            dataset_data = {}
+            for name, df in data.items():
+                dataset_data[name] = serialize_dataframe(df)
+            save_data["datasets"] = dataset_data
+            save_data["dataset_count"] = len(dataset_data)
+            
+        elif data_type == "jobs":
+            # For jobs: data is a Job object
+            job = data
+            save_data.update({
+                "name": job.name,
+                "created_at": job.created_at,
+                "api_dataset": serialize_dataframe(job.api_dataset),
+                "target_profile_dataset": serialize_dataframe(job.target_profile_dataset) if job.target_profile_dataset else None,
+                "model_dataset": serialize_dataframe(job.model_dataset) if job.model_dataset else None,
+                "result_dataset": job.result_dataset,
+            })
+            
+            # Handle database data
+            save_data["common_api_datasets"] = {}
+            if hasattr(job, 'common_api_datasets') and job.common_api_datasets:
+                for k, v in job.common_api_datasets.items():
+                    save_data["common_api_datasets"][k] = serialize_dataframe(v)
+            
+            save_data["polymer_datasets"] = {}
+            if hasattr(job, 'polymer_datasets') and job.polymer_datasets:
+                for k, v in job.polymer_datasets.items():
+                    save_data["polymer_datasets"][k] = serialize_dataframe(v)
+            
+            # Handle complete target profiles
+            save_data["complete_target_profiles"] = {}
+            if hasattr(job, 'complete_target_profiles') and job.complete_target_profiles:
+                for profile_name, profile_data in job.complete_target_profiles.items():
+                    serialized_profile = {}
+                    for key, value in profile_data.items():
+                        serialized_profile[key] = serialize_dataframe(value)
+                    save_data["complete_target_profiles"][profile_name] = serialized_profile
+            
+            # Handle results and optimization progress
+            save_data["formulation_results"] = getattr(job, 'formulation_results', {})
+            save_data["optimization_progress"] = getattr(job, 'optimization_progress', {})
+            save_data["current_optimization_progress"] = getattr(job, 'current_optimization_progress', None)
+        
+        # Save to file
+        filename = f"{directory}/{data_type}_{save_name}.json"
+        with open(filename, 'w') as f:
+            json.dump(save_data, f, indent=2)
+        
+        return True, filename
+    except Exception as e:
+        return False, str(e)
+
+def load_data_from_file(filepath, data_type):
+    """Generic function to load data from JSON file
+    
+    Args:
+        filepath: Path to the JSON file
+        data_type: Type of data ('datasets', 'jobs', etc.)
+    
+    Returns:
+        tuple: (loaded_data, timestamp, additional_info)
+    """
+    try:
+        with open(filepath, 'r') as f:
+            save_data = json.load(f)
+        
+        saved_timestamp = save_data.get("saved_timestamp", "Unknown")
+        
+        if data_type == "datasets":
+            # Return datasets dict
+            loaded_datasets = {}
+            for name, records in save_data["datasets"].items():
+                loaded_datasets[name] = deserialize_dataframe(records)
+            return loaded_datasets, saved_timestamp, save_data.get("dataset_count", 0)
+            
+        elif data_type == "jobs":
+            # Return Job object
+            from app import Job
+            
+            job = Job(save_data["name"])
+            job.created_at = save_data["created_at"]
+            
+            # Restore basic datasets
+            job.api_dataset = deserialize_dataframe(save_data.get("api_dataset"))
+            job.target_profile_dataset = deserialize_dataframe(save_data.get("target_profile_dataset"))
+            job.model_dataset = deserialize_dataframe(save_data.get("model_dataset"))
+            job.result_dataset = save_data.get("result_dataset")
+            
+            # Restore database data
+            job.common_api_datasets = {}
+            if save_data.get("common_api_datasets"):
+                for k, v in save_data["common_api_datasets"].items():
+                    job.common_api_datasets[k] = deserialize_dataframe(v)
+            
+            job.polymer_datasets = {}
+            if save_data.get("polymer_datasets"):
+                for k, v in save_data["polymer_datasets"].items():
+                    job.polymer_datasets[k] = deserialize_dataframe(v)
+            
+            # Restore complete target profiles
+            job.complete_target_profiles = {}
+            if save_data.get("complete_target_profiles"):
+                for profile_name, profile_data in save_data["complete_target_profiles"].items():
+                    restored_profile = {}
+                    for key, value in profile_data.items():
+                        restored_profile[key] = deserialize_dataframe(value)
+                    job.complete_target_profiles[profile_name] = restored_profile
+            
+            # Restore results and optimization progress
+            job.formulation_results = save_data.get("formulation_results", {})
+            job.optimization_progress = save_data.get("optimization_progress", {})
+            job.current_optimization_progress = save_data.get("current_optimization_progress")
+            
+            return job, saved_timestamp, len(job.complete_target_profiles)
+        
+        else:
+            return None, saved_timestamp, 0
+            
+    except Exception as e:
+        return None, str(e), 0
+
+def get_saved_data_list(data_type):
+    """Get list of saved data files for specific type
+    
+    Args:
+        data_type: Type of data ('datasets', 'jobs', etc.)
+    
+    Returns:
+        list: List of saved file info dicts
+    """
+    try:
+        directory = f"saved_{data_type}"
+        if not os.path.exists(directory):
+            return []
+        
+        saved_files = []
+        prefix = f"{data_type}_"
+        
+        for filename in os.listdir(directory):
+            if filename.startswith(prefix) and filename.endswith(".json"):
+                save_name = filename[len(prefix):-5]  # Remove prefix and .json
+                filepath = f"{directory}/{filename}"
+                
+                try:
+                    # Test if the file is valid JSON
+                    with open(filepath, 'r') as f:
+                        json.load(f)
+                    
+                    # Get file modification time
+                    mtime = os.path.getmtime(filepath)
+                    saved_files.append({
+                        "save_name": save_name,
+                        "filename": filename,
+                        "filepath": filepath,
+                        "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                except (json.JSONDecodeError, Exception):
+                    # Skip corrupted files
+                    continue
+        
+        # Sort by modification time (newest first)
+        saved_files.sort(key=lambda x: x["modified"], reverse=True)
+        return saved_files
+    except Exception:
+        return []
+
+def delete_saved_data(filepath):
+    """Delete a saved data file
+    
+    Args:
+        filepath: Path to the file to delete
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    try:
+        os.remove(filepath)
+        return True, "File deleted successfully"
+    except Exception as e:
+        return False, str(e)
+
+# Add "Save Progress" and "Clear Progress" button functions
+def save_progress_to_job(current_job):
+    """Save progress function that acts same as 'Save to Cloud' button in Job Management
+    
+    Args:
+        current_job: Current job object to save
+    
+    Returns:
+        tuple: (success: bool, result: str)
+    """
+    if not current_job:
+        return False, "No current job to save"
+    
+    try:
+        # Ensure all job attributes exist
+        from app import ensure_job_attributes
+        current_job = ensure_job_attributes(current_job)
+        
+        # Save job using unified storage
+        success, result = save_data_to_file(current_job, "jobs", current_job.name)
+        return success, result
+    except Exception as e:
+        return False, str(e)
+
+def clear_progress_from_job(current_job):
+    """Clear progress function to clear optimization progress
+    
+    Args:
+        current_job: Current job object to clear progress from
+    
+    Returns:
+        tuple: (success: bool, result: str)
+    """
+    if not current_job:
+        return False, "No current job to clear"
+    
+    try:
+        # Clear optimization progress
+        if hasattr(current_job, 'current_optimization_progress'):
+            current_job.current_optimization_progress = None
+        if hasattr(current_job, 'optimization_progress'):
+            current_job.optimization_progress = {}
+        
+        return True, "Progress cleared successfully"
+    except Exception as e:
+        return False, str(e)
