@@ -3,25 +3,25 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Import unified storage functions
+# Import SEPARATE database storage functions (completely independent from jobs)
 try:
     from modules.storage_utils import (
-        save_data_to_file, 
-        load_data_from_file, 
-        get_saved_datasets_by_type, 
-        delete_saved_data,
+        save_database_to_file,
+        load_database_from_file, 
+        get_saved_databases_list,
+        delete_database_file,
         save_progress_to_job,
         clear_progress_from_job
     )
 except ImportError:
     # Fallback if storage_utils not available yet
-    def save_data_to_file(data, data_type, save_name):
+    def save_database_to_file(database_dict, database_type, save_name):
         return False, "Storage utilities not available"
-    def load_data_from_file(filepath, data_type):
+    def load_database_from_file(filepath):
         return None, "Storage utilities not available", 0
-    def get_saved_datasets_by_type(dataset_type):
+    def get_saved_databases_list(database_type):
         return []
-    def delete_saved_data(filepath):
+    def delete_database_file(filepath):
         return False, "Storage utilities not available"
     def save_progress_to_job(job):
         return False, "Storage utilities not available"
