@@ -23,6 +23,10 @@ def save_job_to_file(job, job_name):
             job.complete_target_profiles = {}
         if not hasattr(job, 'formulation_results'):
             job.formulation_results = {}
+        if not hasattr(job, 'optimization_progress'):
+            job.optimization_progress = {}
+        if not hasattr(job, 'current_optimization_progress'):
+            job.current_optimization_progress = None
         
         # Convert job to serializable format
         job_data = {
@@ -39,7 +43,11 @@ def save_job_to_file(job, job_name):
             "polymer_datasets": {k: v.to_dict('records') for k, v in job.polymer_datasets.items()} if job.polymer_datasets else {},
             
             # Include formulation-specific results
-            "formulation_results": job.formulation_results if hasattr(job, 'formulation_results') else {}
+            "formulation_results": job.formulation_results if hasattr(job, 'formulation_results') else {},
+            
+            # Include optimization progress (NEW)
+            "optimization_progress": job.optimization_progress if hasattr(job, 'optimization_progress') else {},
+            "current_optimization_progress": job.current_optimization_progress if hasattr(job, 'current_optimization_progress') else None
         }
         
         # Handle complete_target_profiles with DataFrame serialization
@@ -135,6 +143,17 @@ def load_job_from_file(filename):
         else:
             job.formulation_results = {}
         
+        # Restore optimization progress (NEW)
+        if "optimization_progress" in job_data:
+            job.optimization_progress = job_data["optimization_progress"]
+        else:
+            job.optimization_progress = {}
+        
+        if "current_optimization_progress" in job_data:
+            job.current_optimization_progress = job_data["current_optimization_progress"]
+        else:
+            job.current_optimization_progress = None
+        
         # Restore result dataset
         if job_data["result_dataset"] is not None:
             result_data = job_data["result_dataset"].copy()
@@ -189,6 +208,10 @@ def ensure_job_attributes(job):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
         job.formulation_results = {}
+    if not hasattr(job, 'optimization_progress'):
+        job.optimization_progress = {}
+    if not hasattr(job, 'current_optimization_progress'):
+        job.current_optimization_progress = None
     return job
 
 def show():
@@ -222,6 +245,12 @@ def show():
             api_dataset_count = len(getattr(current_job, 'common_api_datasets', {}))
             polymer_dataset_count = len(getattr(current_job, 'polymer_datasets', {}))
             st.metric("Datasets", f"API: {api_dataset_count}, Polymer: {polymer_dataset_count}")
+        
+        # Show optimization progress status if available
+        if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
+            progress = current_job.current_optimization_progress
+            progress_status = progress.get('status', 'unknown')
+            st.info(f"🔬 Optimization Progress: {progress_status.title()} | Target Profile: {progress.get('target_profile_name', 'None')} | Models: {progress.get('atps_model', 'None')}, {progress.get('drug_release_model', 'None')}")
     
     st.divider()
     
@@ -271,7 +300,6 @@ def show():
                 st.session_state["common_api_datasets"] = {}
                 st.session_state["polymer_datasets"] = {}
                 
-                st.success(f"✅ Job '{job_name}' created and activated!")
                 st.rerun()
             elif job_name in st.session_state.get("jobs", {}):
                 st.error("❌ Job name already exists!")
@@ -290,7 +318,7 @@ def show():
                 current_job = st.session_state.jobs[current_job_name]
                 success, result = save_job_to_file(current_job, current_job_name)
                 if success:
-                    st.success(f"✅ Job '{current_job_name}' saved!")
+                    pass  # Remove notification as requested
                 else:
                     st.error(f"❌ Failed to save job: {result}")
             else:
@@ -349,6 +377,10 @@ def show():
                                 loaded_job.complete_target_profiles = {}
                             if not hasattr(loaded_job, 'formulation_results'):
                                 loaded_job.formulation_results = {}
+                            if not hasattr(loaded_job, 'optimization_progress'):
+                                loaded_job.optimization_progress = {}
+                            if not hasattr(loaded_job, 'current_optimization_progress'):
+                                loaded_job.current_optimization_progress = None
                             
                             st.session_state["common_api_datasets"] = loaded_job.common_api_datasets
                             st.session_state["polymer_datasets"] = loaded_job.polymer_datasets
@@ -363,13 +395,11 @@ def show():
                             for profile_results in loaded_job.formulation_results.values():
                                 formulation_result_count += len(profile_results)
                             
-                            st.success(f"""✅ Job '{loaded_job.name}' loaded and activated!
+                            # Check optimization progress
+                            optimization_status = "None"
+                            if hasattr(loaded_job, 'current_optimization_progress') and loaded_job.current_optimization_progress:
+                                optimization_status = loaded_job.current_optimization_progress.get('status', 'Unknown')
                             
-**Loaded Data:**
-- Target Profiles: {profile_count}
-- API Datasets: {api_count}
-- Polymer Datasets: {polymer_count}  
-- Formulation Results: {formulation_result_count}""")
                             st.rerun()
                         else:
                             st.error(f"❌ Failed to load job: {saved_time}")
@@ -378,7 +408,6 @@ def show():
                     if st.button("🗑️ Remove Job", key="remove_saved_job_main"):
                         try:
                             os.remove(selected_job_file["filepath"])
-                            st.success(f"✅ Removed '{selected_job_name}' from saved jobs")
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Failed to remove: {str(e)}")
