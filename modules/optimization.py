@@ -40,6 +40,10 @@ def save_optimization_selections_to_job(current_job, target_profile_name, atps_m
         "status": "in_progress"
     }
     current_job.current_optimization_progress = progress_data
+    
+    # FORCE IMMEDIATE SAVE to session state jobs
+    if st.session_state.get("current_job"):
+        st.session_state.jobs[st.session_state.current_job] = current_job
 
 def get_saved_optimization_selections(current_job):
     """Get saved optimization selections from job"""
@@ -130,7 +134,6 @@ def show():
                         current_atps = st.session_state.get(f"{prefix}_atps_model_select", saved_atps_model)
                         current_drug_release = st.session_state.get(f"{prefix}_drug_release_model_select", saved_drug_release_model)
                         save_optimization_selections_to_job(current_job, selected_target_profile_name, current_atps, current_drug_release)
-                        st.session_state.jobs[current_job_name] = current_job
                     
                     if selected_target_profile_name:
                         selected_target_profile = target_profiles[selected_target_profile_name]
@@ -201,7 +204,6 @@ def show():
                     current_target = selected_target_profile_name if selected_target_profile_name else saved_target_profile
                     current_drug_release = st.session_state.get(f"{prefix}_drug_release_model_select", saved_drug_release_model)
                     save_optimization_selections_to_job(current_job, current_target, selected_atps_model, current_drug_release)
-                    st.session_state.jobs[current_job_name] = current_job
                 
                 # Drug Release Model Selection with saved state restoration
                 st.markdown("**Drug Release Model Selection**")
@@ -230,12 +232,32 @@ def show():
                     current_target = selected_target_profile_name if selected_target_profile_name else saved_target_profile
                     current_atps = selected_atps_model if selected_atps_model else saved_atps_model
                     save_optimization_selections_to_job(current_job, current_target, current_atps, selected_drug_release_model)
-                    st.session_state.jobs[current_job_name] = current_job
 
             st.divider()
 
             # Calculate section
             st.subheader("Input Review and Submit Job")
+            
+            # Debug section (can be removed later)
+            with st.expander("🔍 Debug Optimization Progress", expanded=False):
+                if current_job.current_optimization_progress:
+                    st.write("**Current Optimization Progress:**")
+                    st.json(current_job.current_optimization_progress)
+                else:
+                    st.write("No optimization progress saved yet")
+                
+                # Manual test save button
+                if st.button("🧪 Test Save Progress", key="test_save_progress"):
+                    test_progress = {
+                        "target_profile_name": "Test Profile",
+                        "atps_model": "Test ATPS Model", 
+                        "drug_release_model": "Test Drug Release Model",
+                        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "status": "test"
+                    }
+                    current_job.current_optimization_progress = test_progress
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success("Test progress saved!")
             
             # Show selected target profile and model summary
             col_profile_summary, col_model_summary = st.columns(2)
