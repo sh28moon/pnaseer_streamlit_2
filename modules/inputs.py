@@ -19,6 +19,28 @@ def ensure_job_attributes(job):
         job.formulation_results = {}
     return job
 
+def ensure_databases_synced(current_job):
+    """Ensure databases are properly synced between job and session state"""
+    # If session state doesn't have databases but job does, sync from job to session state
+    if ("common_api_datasets" not in st.session_state or not st.session_state["common_api_datasets"]) and current_job.common_api_datasets:
+        st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
+    
+    if ("polymer_datasets" not in st.session_state or not st.session_state["polymer_datasets"]) and current_job.polymer_datasets:
+        st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
+    
+    # If session state has databases but job doesn't, sync from session state to job  
+    if st.session_state.get("common_api_datasets") and not current_job.common_api_datasets:
+        current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
+    
+    if st.session_state.get("polymer_datasets") and not current_job.polymer_datasets:
+        current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
+    
+    # Ensure session state databases exist even if empty
+    if "common_api_datasets" not in st.session_state:
+        st.session_state["common_api_datasets"] = {}
+    if "polymer_datasets" not in st.session_state:
+        st.session_state["polymer_datasets"] = {}
+
 def show():
     st.markdown('<p class="font-large"><b>Manage Target Profile</b></p>', unsafe_allow_html=True)
 
@@ -33,6 +55,9 @@ def show():
     # Ensure job has all required attributes
     current_job = ensure_job_attributes(current_job)
     
+    # Ensure databases are properly synced (IMPORTANT: This fixes the issue where datasets aren't available after job load)
+    ensure_databases_synced(current_job)
+    
     # Update the job in session state
     st.session_state.jobs[current_job_name] = current_job
 
@@ -41,11 +66,6 @@ def show():
 
     # ── Create New Profile Tab ───────────────────────────────────────────
     with tab_create:
-        # Ensure database stores exist
-        for key in ("common_api_datasets", "polymer_datasets"):
-            if key not in st.session_state:
-                st.session_state[key] = {}
-
         # Initialize temporary storage for profile creation
         if "temp_profile_creation" not in st.session_state:
             st.session_state.temp_profile_creation = {
@@ -59,8 +79,10 @@ def show():
         # ── 1st Row: Select API from database ─────────────────────────────────
         st.subheader("Select API from database")
         
-        if st.session_state.get("common_api_datasets"):
-            api_datasets = st.session_state["common_api_datasets"]
+        # Get API datasets from session state (which should now be synced)
+        api_datasets = st.session_state.get("common_api_datasets", {})
+        
+        if api_datasets:
             api_dataset_options = [""] + list(api_datasets.keys())
             
             col_dataset, col_row, col_save = st.columns([2, 2, 1])
@@ -115,19 +137,20 @@ def show():
                         # Save API name for display
                         api_name = selected_api_data['Name'].iloc[0] if 'Name' in selected_api_data.columns and len(selected_api_data) > 0 else "Unnamed API"
                         st.session_state.temp_profile_creation["api_name"] = api_name
-                        st.success("API saved to profile!")
                     else:
                         st.error("Please select API data first.")
         else:
-            st.warning("⚠️ No API datasets available. Please import datasets in Database Management first.")
+            st.warning("⚠️ No API datasets available. Please import datasets in Database Management first, or load a job that contains datasets.")
 
         st.divider()
 
         # ── 2nd Row: Select Gel Polymer from database ────────────────────────
         st.subheader("Select Gel Polymer from database")
         
-        if st.session_state.get("polymer_datasets"):
-            polymer_datasets = st.session_state["polymer_datasets"]
+        # Get Polymer datasets from session state (which should now be synced)
+        polymer_datasets = st.session_state.get("polymer_datasets", {})
+        
+        if polymer_datasets:
             polymer_dataset_options = [""] + list(polymer_datasets.keys())
             
             col_dataset, col_row, col_save = st.columns([2, 2, 1])
@@ -182,11 +205,10 @@ def show():
                         # Save Polymer name for display
                         polymer_name = selected_polymer_data['Name'].iloc[0] if 'Name' in selected_polymer_data.columns and len(selected_polymer_data) > 0 else "Unnamed Polymer"
                         st.session_state.temp_profile_creation["polymer_name"] = polymer_name
-                        st.success("Polymer saved to profile!")
                     else:
                         st.error("Please select polymer data first.")
         else:
-            st.warning("⚠️ No Polymer datasets available. Please import datasets in Database Management first.")
+            st.warning("⚠️ No Polymer datasets available. Please import datasets in Database Management first, or load a job that contains datasets.")
 
         st.divider()
 
@@ -215,12 +237,10 @@ def show():
                         st.error("❌ File is empty.")
                     else:
                         # Save all rows from CSV file
-                        st.success(f"✅ {len(df_formulation)} formulations loaded")
                         st.dataframe(df_formulation, use_container_width=True)
                         
                         if st.button("💾 Save All Formulations", key="save_imported_formulations_temp"):
                             st.session_state.temp_profile_creation["formulation_data"] = df_formulation
-                            st.success(f"All {len(df_formulation)} formulations saved to profile!")
                         
                 except Exception as e:
                     st.error(f"❌ Error reading file: {str(e)}")
@@ -263,11 +283,9 @@ def show():
                         existing_data = st.session_state.temp_profile_creation["formulation_data"]
                         combined_data = pd.concat([existing_data, new_formulation], ignore_index=True)
                         st.session_state.temp_profile_creation["formulation_data"] = combined_data
-                        st.success(f"Manual formulation added! Total formulations: {len(combined_data)}")
                     else:
                         # Create new formulation data
                         st.session_state.temp_profile_creation["formulation_data"] = new_formulation
-                        st.success("Manual formulation saved to profile!")
 
         st.divider()
 
@@ -314,10 +332,6 @@ def show():
                     if not profile_name.strip():
                         st.error("Please enter a profile name.")
                     else:
-                        # Initialize complete_target_profiles if it doesn't exist
-                        if not hasattr(current_job, 'complete_target_profiles'):
-                            current_job.complete_target_profiles = {}
-                        
                         # Check if profile name already exists
                         if profile_name.strip() in current_job.complete_target_profiles:
                             st.error(f"Profile '{profile_name.strip()}' already exists.")
@@ -342,7 +356,6 @@ def show():
                                 "formulation_data": None
                             }
                             
-                            st.success(f"✅ Complete target profile '{profile_name.strip()}' saved to cloud!")
                             st.rerun()
             else:
                 st.warning("Complete all three components above to create target profile.")
@@ -352,7 +365,7 @@ def show():
         # ── 1st Row: Select profile name (via togglebox) ──────────────────────
         st.subheader("Select profile name")
         
-        if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
+        if current_job.complete_target_profiles:
             profile_names = list(current_job.complete_target_profiles.keys())
             selected_profile_name = st.selectbox(
                 "Profile togglebox:",
@@ -412,7 +425,6 @@ def show():
                             if not current_job.complete_target_profiles:
                                 current_job.complete_target_profiles = {}
                             st.session_state.jobs[current_job_name] = current_job
-                            st.success(f"Profile '{selected_profile_name}' removed")
                             st.rerun()
                     else:
                         st.warning("No formulation data in this profile")
