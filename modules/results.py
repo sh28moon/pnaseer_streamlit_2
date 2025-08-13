@@ -18,6 +18,10 @@ def ensure_job_attributes(job):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
         job.formulation_results = {}
+    if not hasattr(job, 'optimization_progress'):
+        job.optimization_progress = {}
+    if not hasattr(job, 'current_optimization_progress'):
+        job.current_optimization_progress = None
     return job
 
 def show():
@@ -44,9 +48,21 @@ def show():
     # Check if current job has results (either old format or new formulation-specific format)
     has_old_results = current_job.result_dataset is not None
     has_formulation_results = bool(current_job.formulation_results)
+    has_optimization_progress = hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress is not None
     
     if not (has_old_results or has_formulation_results):
         st.info("No results available. Please run optimization first.")
+        
+        # Show optimization progress status if available
+        if has_optimization_progress:
+            progress = current_job.current_optimization_progress
+            progress_status = progress.get('status', 'unknown')
+            st.info(f"🔬 Current optimization progress: {progress_status.title()}")
+            if progress_status == 'in_progress':
+                st.markdown("**Optimization setup saved but not completed yet.**")
+                st.markdown(f"- Target Profile: {progress.get('target_profile_name', 'None')}")
+                st.markdown(f"- ATPS Model: {progress.get('atps_model', 'None')}")
+                st.markdown(f"- Drug Release Model: {progress.get('drug_release_model', 'None')}")
         
         # Show helpful guidance
         st.markdown("""
@@ -65,6 +81,19 @@ def show():
     # ── Summary Tab ──────────────────────────────────────────────────────────
     with tab_summary:
         st.subheader("Results Summary")
+        
+        # Show optimization progress info if available
+        if has_optimization_progress:
+            progress = current_job.current_optimization_progress
+            with st.expander("🔬 Optimization Progress Info", expanded=False):
+                st.markdown(f"**Status:** {progress.get('status', 'Unknown').title()}")
+                st.markdown(f"**Target Profile:** {progress.get('target_profile_name', 'Unknown')}")
+                st.markdown(f"**ATPS Model:** {progress.get('atps_model', 'Unknown')}")
+                st.markdown(f"**Drug Release Model:** {progress.get('drug_release_model', 'Unknown')}")
+                if 'results_generated' in progress:
+                    st.markdown(f"**Results Generated:** {progress.get('results_generated', 'Unknown')}")
+                if 'formulation_count' in progress:
+                    st.markdown(f"**Formulations Processed:** {progress.get('formulation_count', 0)}")
         
         # Formulation-specific results selection
         col_profile_sel, col_form_sel, col_clear = st.columns([2, 2, 1])
@@ -119,7 +148,6 @@ def show():
                     # Clean up empty profile entries
                     if not current_job.formulation_results[selected_profile_for_results]:
                         del current_job.formulation_results[selected_profile_for_results]
-                    st.success(f"Results cleared for '{selected_formulation_for_results}'")
                     st.rerun()
             else:
                 st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
