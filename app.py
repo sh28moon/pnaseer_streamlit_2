@@ -118,43 +118,38 @@ def ensure_job_attributes(job):
 
 def sync_all_data_with_job():
     """Sync ALL data between session state and current job for persistence after browser refresh"""
-    if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
+    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[st.session_state.current_job]
         
         # Ensure all attributes exist
         current_job = ensure_job_attributes(current_job)
         
         # 1. Sync databases from job to session state (for UI access)
-        st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
-        st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
+        # Only sync if session state is empty but job has data
+        if not st.session_state.get("common_api_datasets") and current_job.common_api_datasets:
+            st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
+        if not st.session_state.get("polymer_datasets") and current_job.polymer_datasets:
+            st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
         
-        # 2. Sync target profiles from job to session state (NEW)
-        # Target profiles are accessed directly from job, but we ensure they exist
-        # No separate session state needed as modules access job directly
-        
-        # 3. Sync optimization progress from job to session state (NEW)
-        # Optimization progress is accessed directly from job, but we ensure it exists
-        # No separate session state needed as optimization module accesses job directly
-        
-        # Update the job in session state
-        st.session_state.jobs[st.session_state.current_job] = current_job
-        
-        # Ensure session state databases exist
+        # Ensure session state databases exist (even if empty)
         if "common_api_datasets" not in st.session_state:
             st.session_state["common_api_datasets"] = {}
         if "polymer_datasets" not in st.session_state:
             st.session_state["polymer_datasets"] = {}
+        
+        # Update the job in session state
+        st.session_state.jobs[st.session_state.current_job] = current_job
 
 
 def save_all_data_to_job():
     """Save ALL data from session state to current job for persistence"""
-    if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
+    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[st.session_state.current_job]
         
         # Ensure all attributes exist
         current_job = ensure_job_attributes(current_job)
         
-        # 1. Save databases from session state to job
+        # 1. Save databases from session state to job (ALWAYS sync)
         if "common_api_datasets" in st.session_state:
             current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
         if "polymer_datasets" in st.session_state:
