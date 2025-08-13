@@ -230,15 +230,6 @@ def show():
                 
                 st.divider()
                 
-                # Show summary statistics
-                total_loaded = len(st.session_state.get(global_db_key, {}))
-                total_saved = len(get_saved_datasets_by_type(database_type))
-                
-                col_stat1, col_stat2 = st.columns(2)
-                with col_stat1:
-                    st.metric("📂 Loaded", total_loaded, help="Currently in memory")
-                with col_stat2:
-                    st.metric("💾 Saved", total_saved, help="Available files")
             
             # Right Column: Database Table Display
             with col_summary:
@@ -260,24 +251,4 @@ def show():
 
     # Render each subpage with independent database management
     render_subpage(tab_api, "api", "API")
-    render_subpage(tab_polymer, "polymer", "Polymers")
-    
-    # Show global database status
-    st.divider()
-    st.markdown("## 📊 Global Database Status")
-    
-    col_api_status, col_polymer_status = st.columns(2)
-    
-    with col_api_status:
-        api_count = len(st.session_state.get("global_api_databases", {}))
-        st.metric("API Databases", api_count)
-        if api_count > 0:
-            api_names = list(st.session_state["global_api_databases"].keys())
-            st.caption(f"Available: {', '.join(api_names[:3])}{'...' if len(api_names) > 3 else ''}")
-    
-    with col_polymer_status:
-        polymer_count = len(st.session_state.get("global_polymer_databases", {}))
-        st.metric("Polymer Databases", polymer_count)
-        if polymer_count > 0:
-            polymer_names = list(st.session_state["global_polymer_databases"].keys())
-            st.caption(f"Available: {', '.join(polymer_names[:3])}{'...' if len(polymer_names) > 3 else ''}")
+    render_subpage(tab_polymer, "polymer", "Polymers")    
