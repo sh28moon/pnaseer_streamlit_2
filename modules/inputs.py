@@ -57,18 +57,7 @@ def show():
     ensure_databases_synced(current_job)
     
     # Update the job in session state
-    st.session_state.jobs[current_job_name] = current_job
-    
-    # DEBUG: Show target profile data state
-    with st.expander("🔍 Debug Target Profile Data", expanded=False):
-        st.write(f"**Job Name:** {current_job.name}")
-        st.write(f"**Target Profiles Count:** {len(current_job.complete_target_profiles)}")
-        if current_job.complete_target_profiles:
-            st.write(f"**Profile Names:** {list(current_job.complete_target_profiles.keys())}")
-        else:
-            st.write("**No target profiles found in job**")
-        st.write(f"**API Datasets:** {len(current_job.common_api_datasets)} in job, {len(st.session_state.get('common_api_datasets', {}))} in session")
-        st.write(f"**Polymer Datasets:** {len(current_job.polymer_datasets)} in job, {len(st.session_state.get('polymer_datasets', {}))} in session")
+    st.session_state.jobs[current_job_name] = current_job    
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
@@ -450,3 +439,4 @@ def show():
                         st.info("No formulation properties to display")
         else:
             st.info("No complete target profiles found. Create profiles in 'Create New Profile' tab.")
+
