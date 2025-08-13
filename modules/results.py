@@ -38,12 +38,22 @@ def show():
     # Ensure job has all required attributes
     current_job = ensure_job_attributes(current_job)
     
-    # Update the job in session state
+    # Update the job in session state (ensures all data is current)
     st.session_state.jobs[current_job_name] = current_job
     
     # Initialize formulation_results if it doesn't exist
     if not hasattr(current_job, 'formulation_results'):
         current_job.formulation_results = {}
+    
+    # DEBUG: Show results data state
+    with st.expander("🔍 Debug Results Data", expanded=False):
+        st.write(f"**Job Name:** {current_job.name}")
+        st.write(f"**Old Results:** {'Yes' if current_job.result_dataset else 'No'}")
+        st.write(f"**Formulation Results:** {len(current_job.formulation_results)} profiles")
+        if current_job.formulation_results:
+            for profile_name, formulations in current_job.formulation_results.items():
+                st.write(f"  - {profile_name}: {len(formulations)} formulations")
+        st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
     
     # Check if current job has results (either old format or new formulation-specific format)
     has_old_results = current_job.result_dataset is not None
