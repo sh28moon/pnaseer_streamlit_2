@@ -137,6 +137,17 @@ def show():
                         st.session_state.temp_profile_creation["api_name"] = api_name
                     else:
                         st.error("Please select API data first.")
+                if has_api and has_polymer and has_formulation:
+                    profile_name = st.text_input("Profile Name", placeholder="Enter target profile name", key="complete_profile_name")
+                    # Two buttons: one to finalize profile in job, one to save job to JSON
+                
+                    if st.button("💾 Save to JSON", key="save_job_from_input"):
+                        success, result = job_management.save_current_job_to_github()
+                        if success:
+                                st.success(f"✅ Job '{current_job_name}' saved successfully! {result}")
+                        else:
+                            st.error(f"❌ Failed to save job: {result}")
+                
         else:
             st.warning("⚠️ No API datasets available. Please import datasets in Database Management first, or load a job that contains datasets.")
 
@@ -439,4 +450,5 @@ def show():
                         st.info("No formulation properties to display")
         else:
             st.info("No complete target profiles found. Create profiles in 'Create New Profile' tab.")
+
 
