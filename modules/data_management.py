@@ -152,7 +152,7 @@ def show():
                                     del st.session_state[f"{database_type}_temp_filename"]
                                 
                                 # EXACT SAME SUCCESS MESSAGE AS JOB MANAGEMENT
-                                st.success(f"✅ Database '{dataset_name}' saved successfully.}")
+                                st.success(f"✅ Database '{dataset_name}' saved successfully.")
                                 st.rerun()
                             else:
                                 # EXACT SAME ERROR MESSAGE AS JOB MANAGEMENT
