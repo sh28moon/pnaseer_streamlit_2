@@ -89,21 +89,10 @@ def show():
     st.session_state.jobs[current_job_name] = current_job
 
     # Get saved optimization selections for persistence across page changes
-    saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)
-    
-    # DEBUG: Show optimization progress data state
-    with st.expander("🔍 Debug Optimization Data", expanded=False):
-        st.write(f"**Job Name:** {current_job.name}")
-        st.write(f"**Target Profiles Available:** {len(current_job.complete_target_profiles)}")
-        if current_job.complete_target_profiles:
-            st.write(f"**Available Profiles:** {list(current_job.complete_target_profiles.keys())}")
-        st.write(f"**Saved Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
-        if current_job.current_optimization_progress:
-            st.json(current_job.current_optimization_progress)
-        st.write(f"**Retrieved Saved Selections:** Target='{saved_target_profile}', ATPS='{saved_atps_model}', Drug='{saved_drug_release_model}'")
+    saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)    
 
     # Top-level tabs
-    tab_atps = st.tabs(["ATPS Partition"])[0]
+    tab_version_1 = st.tabs(["Version 1"])[0]
 
     def render_model_tab(prefix, tab):
         with tab:
@@ -272,27 +261,6 @@ def show():
                             current_job.current_optimization_progress = None
                             st.session_state.jobs[current_job_name] = current_job
                             st.rerun()
-            
-            # Debug section (can be removed later)
-            with st.expander("🔍 Debug Optimization Progress", expanded=False):
-                if current_job.current_optimization_progress:
-                    st.write("**Current Optimization Progress:**")
-                    st.json(current_job.current_optimization_progress)
-                else:
-                    st.write("No optimization progress saved yet")
-                
-                # Manual test save button
-                if st.button("🧪 Test Save Progress", key="test_save_progress"):
-                    test_progress = {
-                        "target_profile_name": "Test Profile",
-                        "atps_model": "Test ATPS Model", 
-                        "drug_release_model": "Test Drug Release Model",
-                        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "status": "test"
-                    }
-                    current_job.current_optimization_progress = test_progress
-                    st.session_state.jobs[current_job_name] = current_job
-                    st.success("Test progress saved!")
             
             # Show selected target profile and model summary
             col_profile_summary, col_model_summary = st.columns(2)
@@ -560,4 +528,4 @@ def show():
                     st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
 
     # Render each tab
-    render_model_tab("atps", tab_atps)
+    render_model_tab("atps", tab_version_1)
