@@ -90,6 +90,17 @@ def show():
 
     # Get saved optimization selections for persistence across page changes
     saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)
+    
+    # DEBUG: Show optimization progress data state
+    with st.expander("🔍 Debug Optimization Data", expanded=False):
+        st.write(f"**Job Name:** {current_job.name}")
+        st.write(f"**Target Profiles Available:** {len(current_job.complete_target_profiles)}")
+        if current_job.complete_target_profiles:
+            st.write(f"**Available Profiles:** {list(current_job.complete_target_profiles.keys())}")
+        st.write(f"**Saved Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
+        if current_job.current_optimization_progress:
+            st.json(current_job.current_optimization_progress)
+        st.write(f"**Retrieved Saved Selections:** Target='{saved_target_profile}', ATPS='{saved_atps_model}', Drug='{saved_drug_release_model}'")
 
     # Top-level tabs
     tab_atps = st.tabs(["ATPS Partition"])[0]
@@ -237,6 +248,30 @@ def show():
 
             # Calculate section
             st.subheader("Input Review and Submit Job")
+            
+            # Add Optimization Progress Selection (NEW)
+            if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
+                with st.expander("🔄 Load Previous Optimization Progress", expanded=False):
+                    progress = current_job.current_optimization_progress
+                    st.markdown("**Saved Optimization Setup:**")
+                    st.markdown(f"- **Target Profile:** {progress.get('target_profile_name', 'None')}")
+                    st.markdown(f"- **ATPS Model:** {progress.get('atps_model', 'None')}")
+                    st.markdown(f"- **Drug Release Model:** {progress.get('drug_release_model', 'None')}")
+                    st.markdown(f"- **Status:** {progress.get('status', 'Unknown')}")
+                    st.markdown(f"- **Last Updated:** {progress.get('last_updated', 'Unknown')}")
+                    
+                    col_load_progress, col_clear_progress = st.columns(2)
+                    with col_load_progress:
+                        if st.button("📂 Load This Setup", key="load_saved_optimization_progress"):
+                            # Force load the saved selections by clearing session state and rerunning
+                            # This will cause the selectboxes to use the saved values
+                            st.rerun()
+                    
+                    with col_clear_progress:
+                        if st.button("🗑️ Clear Setup", key="clear_saved_optimization_progress"):
+                            current_job.current_optimization_progress = None
+                            st.session_state.jobs[current_job_name] = current_job
+                            st.rerun()
             
             # Debug section (can be removed later)
             with st.expander("🔍 Debug Optimization Progress", expanded=False):
