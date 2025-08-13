@@ -18,10 +18,6 @@ from modules.storage_utils import (
 
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
-    if not hasattr(job, 'common_api_datasets'):
-        job.common_api_datasets = {}
-    if not hasattr(job, 'polymer_datasets'):
-        job.polymer_datasets = {}
     if not hasattr(job, 'complete_target_profiles'):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
@@ -32,23 +28,21 @@ def ensure_job_attributes(job):
         job.current_optimization_progress = None
     return job
 
-def force_sync_job_to_session_state(job):
-    """Force comprehensive sync of job data to session state"""
-    # Ensure session state has all required keys
-    if "common_api_datasets" not in st.session_state:
-        st.session_state["common_api_datasets"] = {}
-    if "polymer_datasets" not in st.session_state:
-        st.session_state["polymer_datasets"] = {}
-    
-    # Sync all data from job to session state
-    st.session_state["common_api_datasets"] = job.common_api_datasets.copy() if job.common_api_datasets else {}
-    st.session_state["polymer_datasets"] = job.polymer_datasets.copy() if job.polymer_datasets else {}
+def initialize_global_databases():
+    """Initialize global database storage independent of jobs"""
+    if "global_api_databases" not in st.session_state:
+        st.session_state["global_api_databases"] = {}
+    if "global_polymer_databases" not in st.session_state:
+        st.session_state["global_polymer_databases"] = {}
 
 def show():
     st.header("Job Management")
     
-    # Simplified storage info (no GitHub complexity)
-    st.info("🏠 **Local Storage**: Jobs and databases are saved to the same location for consistency")
+    # Initialize global database storage
+    initialize_global_databases()
+    
+    # Simplified storage info (no database dependency)
+    st.info("🏠 **Separated Storage**: Jobs and databases are managed independently")
     
     # Display current job information if available
     current_job_name = st.session_state.get("current_job")
@@ -75,9 +69,10 @@ def show():
             st.metric("Formulation Results", formulation_result_count)
         
         with col_info3:
-            api_dataset_count = len(getattr(current_job, 'common_api_datasets', {}))
-            polymer_dataset_count = len(getattr(current_job, 'polymer_datasets', {}))
-            st.metric("Datasets", f"API: {api_dataset_count}, Polymer: {polymer_dataset_count}")
+            # Show global database status (independent of job)
+            api_dataset_count = len(st.session_state.get("global_api_databases", {}))
+            polymer_dataset_count = len(st.session_state.get("global_polymer_databases", {}))
+            st.metric("Global Databases", f"API: {api_dataset_count}, Polymer: {polymer_dataset_count}")
         
         # Show optimization progress status if available
         if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
@@ -88,15 +83,13 @@ def show():
         # Debug section (optional - can be removed later)
         with st.expander("🔍 Debug Job Data", expanded=False):
             st.write("**Current Job Data:**")
-            st.write(f"- API Datasets: {list(current_job.common_api_datasets.keys()) if current_job.common_api_datasets else 'None'}")
-            st.write(f"- Polymer Datasets: {list(current_job.polymer_datasets.keys()) if current_job.polymer_datasets else 'None'}")
             st.write(f"- Target Profiles: {list(current_job.complete_target_profiles.keys()) if current_job.complete_target_profiles else 'None'}")
             st.write(f"- Optimization Progress: {'Yes' if current_job.current_optimization_progress else 'None'}")
             st.write(f"- Formulation Results: {len(current_job.formulation_results)} profiles" if current_job.formulation_results else "- Formulation Results: None")
             
-            st.write("**Session State Databases:**")
-            st.write(f"- API: {list(st.session_state.get('common_api_datasets', {}).keys())}")
-            st.write(f"- Polymer: {list(st.session_state.get('polymer_datasets', {}).keys())}")
+            st.write("**Global Database Status (Independent):**")
+            st.write(f"- API: {list(st.session_state.get('global_api_databases', {}).keys())}")
+            st.write(f"- Polymer: {list(st.session_state.get('global_polymer_databases', {}).keys())}")
     
     st.divider()
     
@@ -152,12 +145,7 @@ def show():
             if has_current_job:
                 current_job = st.session_state.jobs[current_job_name]
                 
-                # Ensure current data is synced to job before saving
-                if "common_api_datasets" in st.session_state:
-                    current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
-                if "polymer_datasets" in st.session_state:
-                    current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
-                
+                # Jobs save their own data only (no database syncing needed)
                 # Update job in session state
                 st.session_state.jobs[current_job_name] = current_job
                 
@@ -219,12 +207,8 @@ def show():
                                 st.session_state.jobs[loaded_job.name] = loaded_job
                                 st.session_state.current_job = loaded_job.name
                                 
-                                # FORCE COMPREHENSIVE SYNC: Ensure ALL data is immediately available
-                                force_sync_job_to_session_state(loaded_job)
-                                
-                                # Show loaded data summary
-                                api_count = len(loaded_job.common_api_datasets)
-                                polymer_count = len(loaded_job.polymer_datasets)
+                                # Show loaded data summary (no database sync needed)
+                                profile_count = len(loaded_job.complete_target_profiles)
                                 
                                 # Count formulation results
                                 formulation_result_count = 0
@@ -240,10 +224,10 @@ def show():
                                 
 **Loaded Data:**
 - Target Profiles: {profile_count}
-- API Datasets: {api_count}
-- Polymer Datasets: {polymer_count}  
 - Formulation Results: {formulation_result_count}
-- Optimization Status: {optimization_status}""")
+- Optimization Status: {optimization_status}
+
+**Note:** Databases are managed independently. Import databases via Database Management if needed.""")
                                 
                                 st.rerun()
                             else:
