@@ -15,7 +15,18 @@ try:
     )
 except ImportError:
     # Fallback if storage_utils not available yet
-    st.error("Storage utilities not found. Please ensure storage_utils.py is in the modules folder.")
+    def save_data_to_file(data, data_type, save_name):
+        return False, "Storage utilities not available"
+    def load_data_from_file(filepath, data_type):
+        return None, "Storage utilities not available", 0
+    def get_saved_data_list(data_type):
+        return []
+    def delete_saved_data(filepath):
+        return False, "Storage utilities not available"
+    def save_progress_to_job(job):
+        return False, "Storage utilities not available"
+    def clear_progress_from_job(job):
+        return False, "Storage utilities not available"
 
 def sync_datasets_with_current_job():
     """Sync datasets with current job for comprehensive persistence"""
@@ -91,7 +102,7 @@ def show():
                         dataset_name = save_name.strip()
                         st.session_state[session_key][dataset_name] = temp_df
                         
-                        # Save using unified storage function
+                        # Also save permanently using unified storage function
                         datasets_to_save = {dataset_name: temp_df}
                         success, result = save_data_to_file(
                             datasets_to_save, 
