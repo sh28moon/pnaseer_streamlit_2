@@ -99,28 +99,45 @@ class Job:
         return self.current_optimization_progress is not None
 
 
-def sync_databases_with_job():
-    """Sync database data between session state and current job for persistence"""
+def ensure_job_attributes(job):
+    """Ensure all required attributes exist on a job object"""
+    if not hasattr(job, 'common_api_datasets'):
+        job.common_api_datasets = {}
+    if not hasattr(job, 'polymer_datasets'):
+        job.polymer_datasets = {}
+    if not hasattr(job, 'complete_target_profiles'):
+        job.complete_target_profiles = {}
+    if not hasattr(job, 'formulation_results'):
+        job.formulation_results = {}
+    if not hasattr(job, 'optimization_progress'):
+        job.optimization_progress = {}
+    if not hasattr(job, 'current_optimization_progress'):
+        job.current_optimization_progress = None
+    return job
+
+
+def sync_all_data_with_job():
+    """Sync ALL data between session state and current job for persistence after browser refresh"""
     if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
         current_job = st.session_state.jobs[st.session_state.current_job]
         
-        # Initialize new attributes for existing jobs if they don't exist
-        if not hasattr(current_job, 'common_api_datasets'):
-            current_job.common_api_datasets = {}
-        if not hasattr(current_job, 'polymer_datasets'):
-            current_job.polymer_datasets = {}
-        if not hasattr(current_job, 'complete_target_profiles'):
-            current_job.complete_target_profiles = {}
-        if not hasattr(current_job, 'formulation_results'):
-            current_job.formulation_results = {}
-        if not hasattr(current_job, 'optimization_progress'):
-            current_job.optimization_progress = {}
-        if not hasattr(current_job, 'current_optimization_progress'):
-            current_job.current_optimization_progress = None
+        # Ensure all attributes exist
+        current_job = ensure_job_attributes(current_job)
         
-        # Sync databases from job to session state (for UI access)
-        st.session_state["common_api_datasets"] = current_job.common_api_datasets
-        st.session_state["polymer_datasets"] = current_job.polymer_datasets
+        # 1. Sync databases from job to session state (for UI access)
+        st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
+        st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
+        
+        # 2. Sync target profiles from job to session state (NEW)
+        # Target profiles are accessed directly from job, but we ensure they exist
+        # No separate session state needed as modules access job directly
+        
+        # 3. Sync optimization progress from job to session state (NEW)
+        # Optimization progress is accessed directly from job, but we ensure it exists
+        # No separate session state needed as optimization module accesses job directly
+        
+        # Update the job in session state
+        st.session_state.jobs[st.session_state.current_job] = current_job
         
         # Ensure session state databases exist
         if "common_api_datasets" not in st.session_state:
@@ -128,33 +145,42 @@ def sync_databases_with_job():
         if "polymer_datasets" not in st.session_state:
             st.session_state["polymer_datasets"] = {}
 
-def save_databases_to_job():
-    """Save database data from session state to current job for persistence"""
+
+def save_all_data_to_job():
+    """Save ALL data from session state to current job for persistence"""
     if st.session_state.current_job and st.session_state.current_job in st.session_state.jobs:
         current_job = st.session_state.jobs[st.session_state.current_job]
         
-        # Initialize new attributes for existing jobs if they don't exist
-        if not hasattr(current_job, 'common_api_datasets'):
-            current_job.common_api_datasets = {}
-        if not hasattr(current_job, 'polymer_datasets'):
-            current_job.polymer_datasets = {}
-        if not hasattr(current_job, 'complete_target_profiles'):
-            current_job.complete_target_profiles = {}
-        if not hasattr(current_job, 'formulation_results'):
-            current_job.formulation_results = {}
-        if not hasattr(current_job, 'optimization_progress'):
-            current_job.optimization_progress = {}
-        if not hasattr(current_job, 'current_optimization_progress'):
-            current_job.current_optimization_progress = None
+        # Ensure all attributes exist
+        current_job = ensure_job_attributes(current_job)
         
-        # Save databases from session state to job
+        # 1. Save databases from session state to job
         if "common_api_datasets" in st.session_state:
-            current_job.common_api_datasets = st.session_state["common_api_datasets"]
+            current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
         if "polymer_datasets" in st.session_state:
-            current_job.polymer_datasets = st.session_state["polymer_datasets"]
+            current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
+        
+        # 2. Target profiles are already saved directly to job in inputs.py
+        # No additional sync needed as they're stored directly in job.complete_target_profiles
+        
+        # 3. Optimization progress is already saved directly to job in optimization.py  
+        # No additional sync needed as it's stored directly in job.current_optimization_progress
         
         # Update the job in session state to ensure it's current
         st.session_state.jobs[st.session_state.current_job] = current_job
+
+
+def sync_databases_with_job():
+    """LEGACY: Sync database data between session state and current job for persistence"""
+    # This function is kept for backward compatibility but now calls the comprehensive sync
+    sync_all_data_with_job()
+
+
+def save_databases_to_job():
+    """LEGACY: Save database data from session state to current job for persistence"""  
+    # This function is kept for backward compatibility but now calls the comprehensive save
+    save_all_data_to_job()
+
 
 def main(): 
     # uniform sidebar button height
@@ -180,8 +206,8 @@ def main():
     if "current_tab" not in st.session_state:
         st.session_state.current_tab = "Manage Job"
     
-    # Sync databases with current job for persistence
-    sync_databases_with_job()
+    # Sync ALL data with current job for persistence (COMPREHENSIVE SYNC)
+    sync_all_data_with_job()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
     st.sidebar.title("Pnaseer DDS Optimization")
@@ -218,14 +244,14 @@ def main():
             
             # Switch job if selection changed
             if selected_job != st.session_state.current_job:
-                # Save current job data before switching
-                save_databases_to_job()
+                # Save current job data before switching (COMPREHENSIVE SAVE)
+                save_all_data_to_job()
                 
                 # Switch to new job
                 st.session_state.current_job = selected_job
                 
-                # Sync new job data to session state
-                sync_databases_with_job()
+                # Sync new job data to session state (COMPREHENSIVE SYNC)
+                sync_all_data_with_job()
                 st.rerun()
         else:
             st.sidebar.markdown("**No Jobs Available**")
@@ -233,8 +259,8 @@ def main():
         st.sidebar.markdown("**No Jobs Available**")
 
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
-    # Save databases to job before rendering pages
-    save_databases_to_job()
+    # Save ALL data to job before rendering pages (COMPREHENSIVE SAVE)
+    save_all_data_to_job()
     
     tab = st.session_state.current_tab
     if tab == "Manage Job":
