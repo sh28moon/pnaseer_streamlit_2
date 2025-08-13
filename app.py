@@ -10,8 +10,14 @@ from modules.inputs import show as show_input
 from modules.optimization import show as show_optimization
 from modules.results import show as show_results
 from modules.data_management import show as show_data_management
-from modules.job_management import show as show_job_management
 
+# Import the new job management with unified storage
+try:
+    from modules.job_management import show as show_job_management
+except ImportError:
+    # Fallback if the new job_management is not available
+    def show_job_management():
+        st.error("Updated Job Management module not found. Please ensure all storage utilities are properly installed.")
 
 class Job:
     """Job class to manage datasets for each analysis job"""
@@ -31,7 +37,7 @@ class Job:
         # Add formulation-specific results storage
         self.formulation_results = {}  # {profile_name: {formulation_name: result_data}}
         
-        # Add optimization progress storage (NEW)
+        # Add optimization progress storage
         self.optimization_progress = {}  # {progress_id: progress_data}
         self.current_optimization_progress = None  # Active optimization progress
     
@@ -81,7 +87,7 @@ class Job:
         return (profile_name in self.formulation_results and 
                 formulation_name in self.formulation_results[profile_name])
     
-    # NEW: Optimization Progress Methods
+    # Optimization Progress Methods
     def save_optimization_progress(self, progress_data):
         """Save current optimization progress"""
         self.current_optimization_progress = progress_data
@@ -205,11 +211,35 @@ def main():
     if "current_tab" not in st.session_state:
         st.session_state.current_tab = "Manage Job"
     
+    # DEBUG: Add debug session state tracking
+    if "app_refresh_count" not in st.session_state:
+        st.session_state.app_refresh_count = 0
+    st.session_state.app_refresh_count += 1
+    
     # Sync ALL data with current job for persistence (COMPREHENSIVE SYNC)
     sync_all_data_with_job()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("Pnaseer DDS Optimization") 
+    st.sidebar.title("Pnaseer DDS Optimization")
+    
+    # DEBUG: Show app state info
+    with st.sidebar.expander("🔍 Debug App State", expanded=False):
+        st.write(f"**App Refresh Count:** {st.session_state.app_refresh_count}")
+        if st.session_state.get("debug_last_sync"):
+            st.write(f"**Last Sync:** {st.session_state.debug_last_sync}")
+        if st.session_state.get("current_job"):
+            current_job = st.session_state.jobs.get(st.session_state.current_job)
+            if current_job:
+                st.write(f"**Current Job:** {current_job.name}")
+                st.write(f"**Target Profiles:** {len(current_job.complete_target_profiles)}")
+                st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
+                st.write(f"**API Datasets:** {len(current_job.common_api_datasets)}")
+                st.write(f"**Session API:** {len(st.session_state.get('common_api_datasets', {}))}")
+        
+        # Storage Location Info
+        st.write("**Storage Location:** Unified local storage")
+        st.write("**Jobs saved to:** `saved_jobs/`")
+        st.write("**Databases saved to:** `saved_datasets/`")
     
     # Main navigation
     st.sidebar.markdown("### Main Menu")
@@ -275,4 +305,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
