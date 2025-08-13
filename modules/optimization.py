@@ -28,6 +28,10 @@ def ensure_job_attributes(job):
 
 def save_optimization_selections_to_job(current_job, target_profile_name, atps_model, drug_release_model):
     """Save current optimization selections to job for persistence"""
+    # Ensure attributes exist
+    if not hasattr(current_job, 'current_optimization_progress'):
+        current_job.current_optimization_progress = None
+    
     progress_data = {
         "target_profile_name": target_profile_name,
         "atps_model": atps_model,
@@ -35,11 +39,15 @@ def save_optimization_selections_to_job(current_job, target_profile_name, atps_m
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "status": "in_progress"
     }
-    current_job.save_optimization_progress(progress_data)
+    current_job.current_optimization_progress = progress_data
 
 def get_saved_optimization_selections(current_job):
     """Get saved optimization selections from job"""
-    progress = current_job.get_optimization_progress()
+    # Ensure attributes exist
+    if not hasattr(current_job, 'current_optimization_progress'):
+        current_job.current_optimization_progress = None
+    
+    progress = current_job.current_optimization_progress
     if progress:
         return (
             progress.get("target_profile_name", ""),
@@ -47,6 +55,17 @@ def get_saved_optimization_selections(current_job):
             progress.get("drug_release_model", "")
         )
     return "", "", ""
+
+def clear_optimization_progress(current_job):
+    """Clear current optimization progress"""
+    if hasattr(current_job, 'current_optimization_progress'):
+        current_job.current_optimization_progress = None
+
+def has_optimization_progress(current_job):
+    """Check if there is saved optimization progress"""
+    if hasattr(current_job, 'current_optimization_progress'):
+        return current_job.current_optimization_progress is not None
+    return False
 
 def show():
     st.header("Modeling Optimization")
@@ -179,7 +198,7 @@ def show():
                 # Save ATPS model selection when it changes
                 if selected_atps_model != saved_atps_model:
                     # Get current selections to preserve them
-                    current_target = st.session_state.get(f"{prefix}_target_profile_select", saved_target_profile)
+                    current_target = selected_target_profile_name if selected_target_profile_name else saved_target_profile
                     current_drug_release = st.session_state.get(f"{prefix}_drug_release_model_select", saved_drug_release_model)
                     save_optimization_selections_to_job(current_job, current_target, selected_atps_model, current_drug_release)
                     st.session_state.jobs[current_job_name] = current_job
@@ -208,8 +227,8 @@ def show():
                 # Save Drug Release model selection when it changes
                 if selected_drug_release_model != saved_drug_release_model:
                     # Get current selections to preserve them
-                    current_target = st.session_state.get(f"{prefix}_target_profile_select", saved_target_profile)
-                    current_atps = st.session_state.get(f"{prefix}_atps_model_select", saved_atps_model)
+                    current_target = selected_target_profile_name if selected_target_profile_name else saved_target_profile
+                    current_atps = selected_atps_model if selected_atps_model else saved_atps_model
                     save_optimization_selections_to_job(current_job, current_target, current_atps, selected_drug_release_model)
                     st.session_state.jobs[current_job_name] = current_job
 
@@ -426,12 +445,10 @@ def show():
                             current_job.set_formulation_result(selected_target_profile_name, formulation_name, formulation_result_data)
                         
                         # Update optimization progress to mark as completed with results
-                        if current_job.get_optimization_progress():
-                            progress_data = current_job.get_optimization_progress()
-                            progress_data["status"] = "completed"
-                            progress_data["results_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            progress_data["formulation_count"] = formulation_count
-                            current_job.save_optimization_progress(progress_data)
+                        if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
+                            current_job.current_optimization_progress["status"] = "completed"
+                            current_job.current_optimization_progress["results_generated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            current_job.current_optimization_progress["formulation_count"] = formulation_count
                         
                         # Ensure the job is updated in session state for persistence
                         st.session_state.jobs[current_job_name] = current_job
@@ -454,7 +471,7 @@ def show():
                     clear_options.append(f"Clear '{selected_target_profile_name}' Results ({formulation_count} formulations)")
                 if has_any_results:
                     clear_options.append("Clear All Results")
-                if current_job.has_optimization_progress():
+                if has_optimization_progress(current_job):
                     clear_options.append("Clear Optimization Progress")
                 
                 if clear_options:
@@ -472,7 +489,7 @@ def show():
                                 current_job.formulation_results = {}
                         elif clear_choice.startswith("Clear Optimization"):
                             # Clear optimization progress
-                            current_job.clear_optimization_progress()
+                            clear_optimization_progress(current_job)
                         elif clear_choice.startswith("Clear") and selected_target_profile_name:
                             # Clear all formulation results for the selected profile
                             if (hasattr(current_job, 'formulation_results') and
