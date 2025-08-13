@@ -19,38 +19,24 @@ except ImportError:
 
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
-    if not hasattr(job, 'common_api_datasets'):
-        job.common_api_datasets = {}
-    if not hasattr(job, 'polymer_datasets'):
-        job.polymer_datasets = {}
     if not hasattr(job, 'complete_target_profiles'):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
         job.formulation_results = {}
     return job
 
-def ensure_databases_synced(current_job):
-    """Ensure databases are properly synced between job and session state"""
-    # FORCE sync from job to session state - this is the key fix
-    if current_job.common_api_datasets:
-        st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
-    elif "common_api_datasets" not in st.session_state:
-        st.session_state["common_api_datasets"] = {}
-    
-    if current_job.polymer_datasets:
-        st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
-    elif "polymer_datasets" not in st.session_state:
-        st.session_state["polymer_datasets"] = {}
-    
-    # Also sync from session state to job if session state has data but job doesn't  
-    if st.session_state.get("common_api_datasets") and not current_job.common_api_datasets:
-        current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
-    
-    if st.session_state.get("polymer_datasets") and not current_job.polymer_datasets:
-        current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
+def initialize_global_databases():
+    """Initialize global database storage independent of jobs"""
+    if "global_api_databases" not in st.session_state:
+        st.session_state["global_api_databases"] = {}
+    if "global_polymer_databases" not in st.session_state:
+        st.session_state["global_polymer_databases"] = {}
 
 def show():
     st.markdown('<p class="font-large"><b>Manage Target Profile</b></p>', unsafe_allow_html=True)
+
+    # Initialize global database storage
+    initialize_global_databases()
 
     # Check if a job is selected
     current_job_name = st.session_state.get("current_job")
@@ -63,9 +49,6 @@ def show():
     # Ensure job has all required attributes
     current_job = ensure_job_attributes(current_job)
     
-    # Ensure databases are properly synced (IMPORTANT: This fixes the issue where datasets aren't available after job load)
-    ensure_databases_synced(current_job)
-    
     # Update the job in session state
     st.session_state.jobs[current_job_name] = current_job
     
@@ -77,8 +60,17 @@ def show():
             st.write(f"**Profile Names:** {list(current_job.complete_target_profiles.keys())}")
         else:
             st.write("**No target profiles found in job**")
-        st.write(f"**API Datasets:** {len(current_job.common_api_datasets)} in job, {len(st.session_state.get('common_api_datasets', {}))} in session")
-        st.write(f"**Polymer Datasets:** {len(current_job.polymer_datasets)} in job, {len(st.session_state.get('polymer_datasets', {}))} in session")
+        
+        # Show global database status
+        api_count = len(st.session_state.get("global_api_databases", {}))
+        polymer_count = len(st.session_state.get("global_polymer_databases", {}))
+        st.write(f"**Global API Databases:** {api_count}")
+        st.write(f"**Global Polymer Databases:** {polymer_count}")
+        
+        if api_count > 0:
+            st.write(f"**Available API:** {list(st.session_state['global_api_databases'].keys())}")
+        if polymer_count > 0:
+            st.write(f"**Available Polymer:** {list(st.session_state['global_polymer_databases'].keys())}")
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
@@ -98,8 +90,8 @@ def show():
         # ── 1st Row: Select API from database ─────────────────────────────────
         st.subheader("Select API from database")
         
-        # Get API datasets from session state (which should now be synced)
-        api_datasets = st.session_state.get("common_api_datasets", {})
+        # Get API datasets from global storage (not job-specific)
+        api_datasets = st.session_state.get("global_api_databases", {})
         
         if api_datasets:
             api_dataset_options = [""] + list(api_datasets.keys())
@@ -159,15 +151,20 @@ def show():
                     else:
                         st.error("Please select API data first.")
         else:
-            st.warning("⚠️ No API datasets available. Please import datasets in Database Management first, or load a job that contains datasets.")
+            st.warning("⚠️ No API databases available. Please import databases in Database Management first.")
+            
+            # Add helpful link
+            if st.button("📂 Go to Database Management", key="goto_db_management_api"):
+                st.session_state.current_tab = "Manage Database"
+                st.rerun()
 
         st.divider()
 
         # ── 2nd Row: Select Gel Polymer from database ────────────────────────
         st.subheader("Select Gel Polymer from database")
         
-        # Get Polymer datasets from session state (which should now be synced)
-        polymer_datasets = st.session_state.get("polymer_datasets", {})
+        # Get Polymer datasets from global storage (not job-specific)
+        polymer_datasets = st.session_state.get("global_polymer_databases", {})
         
         if polymer_datasets:
             polymer_dataset_options = [""] + list(polymer_datasets.keys())
@@ -227,7 +224,12 @@ def show():
                     else:
                         st.error("Please select polymer data first.")
         else:
-            st.warning("⚠️ No Polymer datasets available. Please import datasets in Database Management first, or load a job that contains datasets.")
+            st.warning("⚠️ No Polymer databases available. Please import databases in Database Management first.")
+            
+            # Add helpful link  
+            if st.button("📂 Go to Database Management", key="goto_db_management_polymer"):
+                st.session_state.current_tab = "Manage Database"
+                st.rerun()
 
         st.divider()
 
