@@ -202,14 +202,22 @@ def get_saved_jobs():
             if filename.endswith(".json"):
                 job_name = filename[:-5]  # Remove .json extension
                 filepath = f"saved_jobs/{filename}"
-                # Get file modification time
-                mtime = os.path.getmtime(filepath)
-                saved_files.append({
-                    "name": job_name,
-                    "filename": filename,
-                    "filepath": filepath,
-                    "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-                })
+                try:
+                    # Test if the file is valid JSON
+                    with open(filepath, 'r') as f:
+                        json.load(f)
+                    
+                    # Get file modification time
+                    mtime = os.path.getmtime(filepath)
+                    saved_files.append({
+                        "name": job_name,
+                        "filename": filename,
+                        "filepath": filepath,
+                        "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                except (json.JSONDecodeError, Exception):
+                    # Skip corrupted files
+                    continue
         
         # Sort by modification time (newest first)
         saved_files.sort(key=lambda x: x["modified"], reverse=True)
@@ -282,6 +290,46 @@ def show():
             progress = current_job.current_optimization_progress
             progress_status = progress.get('status', 'unknown')
             st.info(f"🔬 Optimization Progress: {progress_status.title()} | Target Profile: {progress.get('target_profile_name', 'None')} | Models: {progress.get('atps_model', 'None')}, {progress.get('drug_release_model', 'None')}")
+        
+        # Debug section (optional - can be removed later)
+        with st.expander("🔍 Debug Job Data", expanded=False):
+            st.write("**Current Job Data:**")
+            st.write(f"- API Datasets: {list(current_job.common_api_datasets.keys()) if current_job.common_api_datasets else 'None'}")
+            st.write(f"- Polymer Datasets: {list(current_job.polymer_datasets.keys()) if current_job.polymer_datasets else 'None'}")
+            st.write(f"- Target Profiles: {list(current_job.complete_target_profiles.keys()) if current_job.complete_target_profiles else 'None'}")
+            st.write(f"- Optimization Progress: {'Yes' if current_job.current_optimization_progress else 'None'}")
+            st.write(f"- Formulation Results: {len(current_job.formulation_results)} profiles" if current_job.formulation_results else "- Formulation Results: None")
+            
+            st.write("**Session State Databases:**")
+            st.write(f"- API: {list(st.session_state.get('common_api_datasets', {}).keys())}")
+            st.write(f"- Polymer: {list(st.session_state.get('polymer_datasets', {}).keys())}")
+            
+            # Test data persistence buttons
+            col_test1, col_test2 = st.columns(2)
+            with col_test1:
+                if st.button("🧪 Add Test Target Profile", key="add_test_target_profile"):
+                    test_profile = {
+                        "api_data": pd.DataFrame([{"Name": "Test API", "Property": "Test Value"}]),
+                        "polymer_data": pd.DataFrame([{"Name": "Test Polymer", "Property": "Test Value"}]),
+                        "formulation_data": pd.DataFrame([{"Name": "Test Formulation", "Modulus": 100, "Type": "Test"}]),
+                        "created_timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    current_job.complete_target_profiles["Debug_Test_Profile"] = test_profile
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success("Test target profile added!")
+                    
+            with col_test2:
+                if st.button("🧪 Add Test Optimization Progress", key="add_test_optimization"):
+                    test_progress = {
+                        "target_profile_name": "Debug_Test_Profile",
+                        "atps_model": "Debug ATPS Model",
+                        "drug_release_model": "Debug Drug Release Model",
+                        "last_updated": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "status": "debug_test"
+                    }
+                    current_job.current_optimization_progress = test_progress
+                    st.session_state.jobs[current_job_name] = current_job
+                    st.success("Test optimization progress added!")
     
     st.divider()
     
@@ -342,6 +390,9 @@ def show():
                     current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
                 if "polymer_datasets" in st.session_state:
                     current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
+                
+                # Update job in session state
+                st.session_state.jobs[current_job_name] = current_job
                 
                 success, result = save_job_to_file(current_job, current_job_name)
                 if success:
@@ -434,6 +485,18 @@ def show():
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Failed to remove: {str(e)}")
+            
+            # Debug: Clear all saved jobs button
+            if saved_jobs:
+                st.divider()
+                if st.button("🗑️ Clear All Saved Jobs", key="clear_all_saved_jobs", help="Remove all saved job files (debugging)"):
+                    try:
+                        for job_file in saved_jobs:
+                            os.remove(job_file["filepath"])
+                        st.success("✅ All saved jobs cleared")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Failed to clear all jobs: {str(e)}")
         else:
             st.markdown("### 📂 Load Saved Jobs")
             st.info("No saved jobs found. Create and save jobs to see them here.")
