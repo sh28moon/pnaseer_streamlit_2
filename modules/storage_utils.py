@@ -45,12 +45,21 @@ def save_data_to_file(data, data_type, save_name):
         
         # Handle different data types
         if data_type == "datasets":
-            # For datasets: data is a dict of DataFrames
+            # For datasets: data is a dict of DataFrames, save_name format: "dataset_type_name"
             dataset_data = {}
             for name, df in data.items():
                 dataset_data[name] = serialize_dataframe(df)
             save_data["datasets"] = dataset_data
             save_data["dataset_count"] = len(dataset_data)
+            
+            # Extract dataset_type from save_name (format: "dataset_type_actual_name")
+            if "_" in save_name:
+                dataset_type_part = save_name.split("_", 1)[0]  # Get first part as dataset_type
+                actual_save_name = save_name.split("_", 1)[1]   # Get rest as actual name
+                save_data["dataset_type"] = dataset_type_part
+                save_data["save_name"] = actual_save_name
+            else:
+                save_data["dataset_type"] = "unknown"
             
         elif data_type == "jobs":
             # For jobs: data is a Job object
@@ -182,12 +191,22 @@ def get_saved_data_list(data_type):
             return []
         
         saved_files = []
-        prefix = f"{data_type}_"
         
         for filename in os.listdir(directory):
-            if filename.startswith(prefix) and filename.endswith(".json"):
-                save_name = filename[len(prefix):-5]  # Remove prefix and .json
+            if filename.endswith(".json"):
                 filepath = f"{directory}/{filename}"
+                
+                if data_type == "datasets":
+                    # For datasets: filename format is "dataset_type_name.json"
+                    # Extract save_name as the full filename without .json
+                    save_name = filename[:-5]  # Remove .json
+                else:
+                    # For jobs: filename format is "jobs_name.json" 
+                    prefix = f"{data_type}_"
+                    if filename.startswith(prefix):
+                        save_name = filename[len(prefix):-5]  # Remove prefix and .json
+                    else:
+                        continue  # Skip files that don't match expected pattern
                 
                 try:
                     # Test if the file is valid JSON
@@ -211,6 +230,28 @@ def get_saved_data_list(data_type):
         return saved_files
     except Exception:
         return []
+
+def get_saved_datasets_by_type(dataset_type):
+    """Get list of saved dataset files filtered by dataset type
+    
+    Args:
+        dataset_type: Type of dataset ('common_api', 'polymer', etc.)
+    
+    Returns:
+        list: List of filtered dataset file info dicts
+    """
+    all_datasets = get_saved_data_list("datasets")
+    filtered_datasets = []
+    
+    prefix = f"{dataset_type}_"
+    for dataset in all_datasets:
+        if dataset["save_name"].startswith(prefix):
+            # Create a copy with the display name (without prefix)
+            filtered_dataset = dataset.copy()
+            filtered_dataset["display_name"] = dataset["save_name"][len(prefix):]
+            filtered_datasets.append(filtered_dataset)
+    
+    return filtered_datasets
 
 def delete_saved_data(filepath):
     """Delete a saved data file
