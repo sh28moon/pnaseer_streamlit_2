@@ -6,11 +6,11 @@ from datetime import datetime
 # FIXED: Import the correct function names from storage_utils
 try:
     from modules.storage_utils import (
-        save_data_to_file,           # Was: save_database_to_file
-        load_data_from_file,         # Was: load_database_from_file  
-        get_saved_data_list,         # Was: get_saved_databases_list
-        get_saved_datasets_by_type,  # ADDED: This was missing
-        delete_saved_data,           # Was: delete_database_file
+        save_data_to_file,           
+        load_data_from_file,         
+        get_saved_data_list,         
+        get_saved_datasets_by_type, 
+        delete_saved_data,           
         save_progress_to_job,
         clear_progress_from_job
     )
@@ -38,37 +38,37 @@ def initialize_global_databases():
     if "global_polymer_databases" not in st.session_state:
         st.session_state["global_polymer_databases"] = {}
     
-    # AUTO-LOAD: Restore databases from saved files if session state is empty
-    if "databases_auto_loaded" not in st.session_state:
-        auto_load_all_databases()
-        st.session_state["databases_auto_loaded"] = True
+    # # AUTO-LOAD: Restore databases from saved files if session state is empty
+    # if "databases_auto_loaded" not in st.session_state:
+    #     auto_load_all_databases()
+    #     st.session_state["databases_auto_loaded"] = True
 
-def auto_load_all_databases():
-    """Auto-load all saved databases into session state on app start/refresh"""
-    try:
-        # Load API databases
-        api_databases = get_saved_datasets_by_type("api")
-        for db_info in api_databases:
-            display_name = db_info['display_name']
-            if display_name not in st.session_state["global_api_databases"]:
-                loaded_databases, _, _ = load_data_from_file(db_info["filepath"], "datasets")
-                if loaded_databases:
-                    for db_name, db_data in loaded_databases.items():
-                        st.session_state["global_api_databases"][db_name] = db_data
+# def auto_load_all_databases():
+#     """Auto-load all saved databases into session state on app start/refresh"""
+#     try:
+#         # Load API databases
+#         api_databases = get_saved_datasets_by_type("api")
+#         for db_info in api_databases:
+#             display_name = db_info['display_name']
+#             if display_name not in st.session_state["global_api_databases"]:
+#                 loaded_databases, _, _ = load_data_from_file(db_info["filepath"], "datasets")
+#                 if loaded_databases:
+#                     for db_name, db_data in loaded_databases.items():
+#                         st.session_state["global_api_databases"][db_name] = db_data
         
-        # Load Polymer databases
-        polymer_databases = get_saved_datasets_by_type("polymer")
-        for db_info in polymer_databases:
-            display_name = db_info['display_name']
-            if display_name not in st.session_state["global_polymer_databases"]:
-                loaded_databases, _, _ = load_data_from_file(db_info["filepath"], "datasets")
-                if loaded_databases:
-                    for db_name, db_data in loaded_databases.items():
-                        st.session_state["global_polymer_databases"][db_name] = db_data
+#         # Load Polymer databases
+#         polymer_databases = get_saved_datasets_by_type("polymer")
+#         for db_info in polymer_databases:
+#             display_name = db_info['display_name']
+#             if display_name not in st.session_state["global_polymer_databases"]:
+#                 loaded_databases, _, _ = load_data_from_file(db_info["filepath"], "datasets")
+#                 if loaded_databases:
+#                     for db_name, db_data in loaded_databases.items():
+#                         st.session_state["global_polymer_databases"][db_name] = db_data
                         
-    except Exception as e:
-        # Silently fail auto-loading (user can manually load if needed)
-        pass
+#     except Exception as e:
+#         # Silently fail auto-loading (user can manually load if needed)
+#         pass
 
 def show():
     st.header("Database Managementss")
@@ -110,7 +110,7 @@ def show():
             
             # Right Column: Save database to cloud
             with col_save:
-                st.markdown("**Save database to cloud**")
+                st.markdown("**Save database**")
                 
                 # Dataset name input
                 save_name = st.text_input(
@@ -119,29 +119,31 @@ def show():
                     key=f"{database_type}_new_save_name"
                 )
                 
-                # Save button - FIXED: Now properly persists across refreshes
-                save_disabled = f"{database_type}_temp_dataset" not in st.session_state
-                if st.button("Save", key=f"{database_type}_new_save_btn", disabled=save_disabled):
-                    if save_name.strip() and f"{database_type}_temp_dataset" in st.session_state:
+                # Save button - EXACT JOB MANAGEMENT PATTERN
+                has_temp_dataset = f"{database_type}_temp_dataset" in st.session_state
+                
+                if st.button("Save", key=f"{database_type}_new_save_btn", 
+                           disabled=not has_temp_dataset,
+                           help="Save database to cloud"):
+                    if has_temp_dataset and save_name.strip():
+                        dataset_name = save_name.strip()
+                        
+                        # Get the dataset from session state (like job_management gets current_job)
                         temp_df = st.session_state[f"{database_type}_temp_dataset"]
                         
                         # Check if database name already exists
-                        if save_name.strip() in st.session_state[global_db_key]:
-                            st.error(f"❌ Database '{save_name.strip()}' already exists!")
+                        if dataset_name in st.session_state[global_db_key]:
+                            st.error(f"❌ Database '{dataset_name}' already exists!")
                         else:
-                            # Add to global database storage (independent of jobs)
-                            dataset_name = save_name.strip()
+                            # REPLICATE JOB MANAGEMENT PATTERN EXACTLY:
+                            
+                            # Update session state (like job_management does)
                             st.session_state[global_db_key][dataset_name] = temp_df
                             
-                            # Save individual database file (this ensures persistence)
-                            datasets_to_save = {dataset_name: temp_df}
-                            success, result = save_data_to_file(
-                                datasets_to_save, 
-                                "datasets", 
-                                f"{database_type}_{dataset_name}"
-                            )
+                            # Save using unified storage function (SAME AS JOB_MANAGEMENT)
+                            database_for_saving = {dataset_name: temp_df}
+                            success, result = save_data_to_file(database_for_saving, "datasets", f"{database_type}_{dataset_name}")
                             
-                            # Show results
                             if success:
                                 # Clear temporary data
                                 if f"{database_type}_temp_dataset" in st.session_state:
@@ -149,15 +151,16 @@ def show():
                                 if f"{database_type}_temp_filename" in st.session_state:
                                     del st.session_state[f"{database_type}_temp_filename"]
                                 
-                                st.success(f"✅ Database '{dataset_name}' saved successfully!")
-                                st.success(f"✅ Database will persist across app refreshes!")
+                                # EXACT SAME SUCCESS MESSAGE AS JOB MANAGEMENT
+                                st.success(f"✅ Database '{dataset_name}' saved successfully.}")
                                 st.rerun()
                             else:
-                                st.error(f"❌ Failed to save: {result}")
+                                # EXACT SAME ERROR MESSAGE AS JOB MANAGEMENT
+                                st.error(f"❌ Failed to save database: {result}")
                     elif not save_name.strip():
                         st.error("Please enter a database name")
                     else:
-                        st.error("Please upload a CSV file first")
+                        st.error("❌ No dataset to save!")
             
             st.divider()
             
@@ -176,7 +179,7 @@ def show():
                     
                     st.markdown(f"**📂 Currently Loaded ({len(current_databases)}):**")
                     
-                    # Dataset selector (moved from right column)
+                    # Dataset selector
                     database_names = list(current_databases.keys())
                     if database_names:
                         selected_database = st.selectbox(
@@ -199,6 +202,31 @@ def show():
                 else:
                     selected_database = None
                     st.info("No databases loaded in memory")
+
+                # Manual Load Section (since auto-loading removed)
+                st.markdown("**Load Saved Databases**")
+                saved_databases = get_saved_datasets_by_type(database_type)
+                
+                if saved_databases:
+                    if st.button(f"📂 Load All {tab_name} Databases", 
+                               key=f"{database_type}_load_all_manual"):
+                        loaded_count = 0
+                        for ds in saved_databases:
+                            display_name = ds['display_name']
+                            if display_name not in st.session_state.get(global_db_key, {}):
+                                loaded_databases, _, _ = load_data_from_file(ds["filepath"], "datasets")
+                                if loaded_databases:
+                                    for db_name, db_data in loaded_databases.items():
+                                        st.session_state[global_db_key][db_name] = db_data
+                                        loaded_count += 1
+                        
+                        if loaded_count > 0:
+                            st.success(f"✅ Loaded {loaded_count} database(s)!")
+                            st.rerun()
+                        else:
+                            st.info("All databases already loaded")
+                else:
+                    st.info("No saved databases found")                
                 
                 st.divider()
                 
@@ -211,33 +239,8 @@ def show():
                     st.metric("📂 Loaded", total_loaded, help="Currently in memory")
                 with col_stat2:
                     st.metric("💾 Saved", total_saved, help="Available files")
-                
-                # Quick load all button if there are unloaded databases
-                if total_saved > total_loaded:
-                    unloaded_count = total_saved - total_loaded
-                    if st.button(f"⚡ Load All Available ({unloaded_count})", 
-                               key=f"{database_type}_load_all",
-                               help="Load all saved databases into memory"):
-                        saved_databases = get_saved_datasets_by_type(database_type)
-                        loaded_count = 0
-                        
-                        for ds in saved_databases:
-                            display_name = ds['display_name']
-                            # Only load if not already loaded
-                            if display_name not in st.session_state.get(global_db_key, {}):
-                                loaded_databases, _, _ = load_data_from_file(ds["filepath"], "datasets")
-                                if loaded_databases:
-                                    for db_name, db_data in loaded_databases.items():
-                                        st.session_state[global_db_key][db_name] = db_data
-                                        loaded_count += 1
-                        
-                        if loaded_count > 0:
-                            st.success(f"✅ Loaded {loaded_count} additional database(s)!")
-                            st.rerun()
-                        else:
-                            st.info("All databases already loaded")
             
-            # Right Column: Database Table Display (kept in right column)
+            # Right Column: Database Table Display
             with col_summary:
                 st.markdown("**Database Table**")
                 
@@ -253,63 +256,7 @@ def show():
                 elif global_db_key in st.session_state and st.session_state[global_db_key]:
                     st.info("Select a database from the left to view its contents")
                 else:
-                    st.info("No databases loaded in memory")
-            
-            st.divider()
-            
-            # ── 3rd Row: Save Progress and Clear Progress buttons ─────────────────────────
-            st.subheader("Progress Management")
-            
-            col_save_progress, col_clear_progress = st.columns(2)
-            
-            # Get current job
-            current_job_name = st.session_state.get("current_job")
-            current_job = None
-            if current_job_name and current_job_name in st.session_state.get("jobs", {}):
-                current_job = st.session_state.jobs[current_job_name]
-            
-            with col_save_progress:
-                st.markdown("**Save Progress**")
-                
-                # Show what will be saved based on whether there's a job or not
-                if current_job:
-                    help_text = "Save current job progress to cloud"
-                    button_text = "💾 Save Job Progress"
-                else:
-                    help_text = "Save global database state to cloud (no job required)"
-                    button_text = "💾 Save Database Progress"
-                
-                if st.button(button_text, key=f"{database_type}_save_progress", 
-                           help=help_text):
-                    # Updated to work with or without a job
-                    success, result = save_progress_to_job(current_job)  # Pass current_job (can be None)
-                    
-                    if success:
-                        if current_job:
-                            st.success(f"✅ Job progress saved successfully!")
-                        else:
-                            st.success(f"✅ Global database progress saved successfully!")
-                    else:
-                        st.error(f"❌ Failed to save progress: {result}")
-            
-            with col_clear_progress:
-                st.markdown("**Clear Progress**")
-                
-                # Clear progress button - only works if there's a job
-                if st.button("🗑️ Clear Progress", key=f"{database_type}_clear_progress",
-                           disabled=not current_job,
-                           help="Clear optimization progress (requires active job)"):
-                    if current_job:
-                        success, result = clear_progress_from_job(current_job)
-                        if success:
-                            # Update job in session state
-                            st.session_state.jobs[current_job_name] = current_job
-                            st.success(f"✅ Progress cleared successfully!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Failed to clear progress: {result}")
-                    else:
-                        st.error("❌ No current job to clear!")
+                    st.info("No databases loaded in memory")            
 
     # Render each subpage with independent database management
     render_subpage(tab_api, "api", "API")
