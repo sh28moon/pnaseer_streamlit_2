@@ -1,82 +1,21 @@
-# pages/data_management.py
+# modules/data_management.py
 import streamlit as st
 import pandas as pd
-import json
-import os
 from datetime import datetime
 
-def save_datasets_to_file(datasets, dataset_type, save_name):
-    """Save datasets to JSON file"""
-    try:
-        # Create saved_datasets directory if it doesn't exist
-        os.makedirs("saved_datasets", exist_ok=True)
-        
-        # Convert datasets to serializable format
-        dataset_data = {}
-        for name, df in datasets.items():
-            if df is not None:
-                dataset_data[name] = df.to_dict('records')
-        
-        # Create save data structure
-        save_data = {
-            "save_name": save_name,
-            "dataset_type": dataset_type,
-            "datasets": dataset_data,
-            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "dataset_count": len(dataset_data)
-        }
-        
-        # Save to file
-        filename = f"saved_datasets/{dataset_type}_{save_name}.json"
-        with open(filename, 'w') as f:
-            json.dump(save_data, f, indent=2)
-        
-        return True, filename
-    except Exception as e:
-        return False, str(e)
-
-def load_datasets_from_file(filepath):
-    """Load datasets from JSON file"""
-    try:
-        with open(filepath, 'r') as f:
-            save_data = json.load(f)
-        
-        # Convert back to DataFrames
-        loaded_datasets = {}
-        for name, records in save_data["datasets"].items():
-            loaded_datasets[name] = pd.DataFrame(records)
-        
-        return loaded_datasets, save_data.get("saved_timestamp", "Unknown"), save_data.get("dataset_count", 0)
-    except Exception as e:
-        return None, str(e), 0
-
-def get_saved_datasets(dataset_type):
-    """Get list of saved dataset files for specific type"""
-    try:
-        if not os.path.exists("saved_datasets"):
-            return []
-        
-        saved_files = []
-        prefix = f"{dataset_type}_"
-        
-        for filename in os.listdir("saved_datasets"):
-            if filename.startswith(prefix) and filename.endswith(".json"):
-                save_name = filename[len(prefix):-5]  # Remove prefix and .json
-                filepath = f"saved_datasets/{filename}"
-                # Get file modification time
-                mtime = os.path.getmtime(filepath)
-                saved_files.append({
-                    "save_name": save_name,
-                    "filename": filename,
-                    "filepath": filepath,
-                    "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-                })
-        
-        # Sort by modification time (newest first)
-        saved_files.sort(key=lambda x: x["modified"], reverse=True)
-        return saved_files
-    except Exception:
-        return []
+# Import unified storage functions
+try:
+    from modules.storage_utils import (
+        save_data_to_file, 
+        load_data_from_file, 
+        get_saved_data_list, 
+        delete_saved_data,
+        save_progress_to_job,
+        clear_progress_from_job
+    )
+except ImportError:
+    # Fallback if storage_utils not available yet
+    st.error("Storage utilities not found. Please ensure storage_utils.py is in the modules folder.")
 
 def sync_datasets_with_current_job():
     """Sync datasets with current job for comprehensive persistence"""
@@ -152,12 +91,12 @@ def show():
                         dataset_name = save_name.strip()
                         st.session_state[session_key][dataset_name] = temp_df
                         
-                        # Also save permanently
+                        # Save using unified storage function
                         datasets_to_save = {dataset_name: temp_df}
-                        success, result = save_datasets_to_file(
+                        success, result = save_data_to_file(
                             datasets_to_save, 
-                            dataset_type, 
-                            dataset_name
+                            "datasets", 
+                            f"{dataset_type}_{dataset_name}"
                         )
                         
                         if success:
@@ -188,10 +127,14 @@ def show():
             with col_load:
                 st.markdown("**Load database from cloud**")
                 
-                saved_datasets = get_saved_datasets(dataset_type)
-                if saved_datasets:
+                # Get saved datasets using unified function
+                saved_datasets = get_saved_data_list("datasets")
+                # Filter for this dataset type
+                filtered_datasets = [ds for ds in saved_datasets if ds["save_name"].startswith(f"{dataset_type}_")]
+                
+                if filtered_datasets:
                     # Create options for selectbox (toggle box of saved databases)
-                    dataset_options = [""] + [f"{ds['save_name']} ({ds['modified']})" for ds in saved_datasets]
+                    dataset_options = [""] + [f"{ds['save_name'].replace(f'{dataset_type}_', '')} ({ds['modified']})" for ds in filtered_datasets]
                     selected_saved = st.selectbox(
                         "Toggle box of saved databases:",
                         dataset_options,
@@ -200,11 +143,12 @@ def show():
                     
                     if selected_saved and selected_saved != "":
                         # Extract save name from selection
-                        selected_save_name = selected_saved.split(" (")[0]
+                        selected_display_name = selected_saved.split(" (")[0]
+                        selected_save_name = f"{dataset_type}_{selected_display_name}"
                         
                         # Find the corresponding file
                         selected_file = None
-                        for ds in saved_datasets:
+                        for ds in filtered_datasets:
                             if ds["save_name"] == selected_save_name:
                                 selected_file = ds
                                 break
@@ -215,7 +159,10 @@ def show():
                         with col_load_btn:
                             if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
                                 if selected_file:
-                                    loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])
+                                    # Load using unified function
+                                    loaded_datasets, saved_time, count = load_data_from_file(
+                                        selected_file["filepath"], "datasets"
+                                    )
                                     
                                     if loaded_datasets is not None:
                                         # Replace current datasets with loaded ones
@@ -229,11 +176,12 @@ def show():
                         with col_remove_btn:
                             if st.button("🗑️ Remove", key=f"{session_key}_remove_database_btn"):
                                 if selected_file:
-                                    try:
-                                        os.remove(selected_file["filepath"])
+                                    success, message = delete_saved_data(selected_file["filepath"])
+                                    if success:
+                                        st.success(f"✅ Removed database successfully")
                                         st.rerun()
-                                    except Exception as e:
-                                        st.error(f"❌ Failed to remove: {str(e)}")
+                                    else:
+                                        st.error(f"❌ Failed to remove: {message}")
                 else:
                     st.selectbox(
                         "Toggle box of saved databases:",
@@ -267,6 +215,50 @@ def show():
                         st.info("No datasets loaded in current session")
                 else:
                     st.info("No datasets loaded in current session")
+            
+            st.divider()
+            
+            # ── 3rd Row: Save Progress and Clear Progress buttons ─────────────────────────
+            st.subheader("Progress Management")
+            
+            col_save_progress, col_clear_progress = st.columns(2)
+            
+            # Get current job
+            current_job_name = st.session_state.get("current_job")
+            current_job = None
+            if current_job_name and current_job_name in st.session_state.get("jobs", {}):
+                current_job = st.session_state.jobs[current_job_name]
+            
+            with col_save_progress:
+                st.markdown("**Save Progress**")
+                if st.button("💾 Save Progress", key=f"{session_key}_save_progress", 
+                           disabled=not current_job,
+                           help="Save current progress to cloud"):
+                    if current_job:
+                        success, result = save_progress_to_job(current_job)
+                        if success:
+                            st.success(f"✅ Progress saved successfully!")
+                        else:
+                            st.error(f"❌ Failed to save progress: {result}")
+                    else:
+                        st.error("❌ No current job to save!")
+            
+            with col_clear_progress:
+                st.markdown("**Clear Progress**")
+                if st.button("🗑️ Clear Progress", key=f"{session_key}_clear_progress",
+                           disabled=not current_job,
+                           help="Clear optimization progress"):
+                    if current_job:
+                        success, result = clear_progress_from_job(current_job)
+                        if success:
+                            # Update job in session state
+                            st.session_state.jobs[current_job_name] = current_job
+                            st.success(f"✅ Progress cleared successfully!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Failed to clear progress: {result}")
+                    else:
+                        st.error("❌ No current job to clear!")
 
     # Render each subpage
     render_subpage(tab_api, "common_api_datasets", "API")
