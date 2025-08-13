@@ -382,8 +382,13 @@ def show():
                             if not hasattr(loaded_job, 'current_optimization_progress'):
                                 loaded_job.current_optimization_progress = None
                             
-                            st.session_state["common_api_datasets"] = loaded_job.common_api_datasets
-                            st.session_state["polymer_datasets"] = loaded_job.polymer_datasets
+                            # COMPREHENSIVE SYNC: Sync ALL job data to session state immediately
+                            st.session_state["common_api_datasets"] = loaded_job.common_api_datasets.copy()
+                            st.session_state["polymer_datasets"] = loaded_job.polymer_datasets.copy()
+                            
+                            # Ensure ALL data is available immediately after loading
+                            # Target profiles and optimization progress are accessed directly from job
+                            # but we need to ensure session state has the current job reference
                             
                             # Show loaded data summary
                             profile_count = len(loaded_job.complete_target_profiles)
@@ -399,6 +404,9 @@ def show():
                             optimization_status = "None"
                             if hasattr(loaded_job, 'current_optimization_progress') and loaded_job.current_optimization_progress:
                                 optimization_status = loaded_job.current_optimization_progress.get('status', 'Unknown')
+                            
+                            # Force immediate sync of all data
+                            st.session_state.jobs[loaded_job.name] = loaded_job
                             
                             st.rerun()
                         else:
