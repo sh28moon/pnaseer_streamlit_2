@@ -1,7 +1,7 @@
 {
   "name": "job_1",
   "created_at": "2025-08-13 01:04:16",
-  "saved_timestamp": "2025-08-13 01:08:55",
+  "saved_timestamp": "2025-08-13 01:09:27",
   "api_dataset": null,
   "target_profile_dataset": null,
   "model_dataset": null,
@@ -91,5 +91,73 @@
   "formulation_results": {},
   "optimization_progress": {},
   "current_optimization_progress": null,
-  "complete_target_profiles": {}
+  "complete_target_profiles": {
+    "profile_1": {
+      "api_data": [
+        {
+          "Name": "Memantine",
+          "Type": "Small Molecule",
+          "indication": "alzheimer",
+          "Formula": "C12H21N",
+          "Molecular Weight[Da]": 179.3,
+          "Water Solubility[mg/mL]": 0.0455,
+          "LogP": 3.28,
+          "pKa": 10.27
+        }
+      ],
+      "polymer_data": [
+        {
+          "Name": "Hyaluronic Acid",
+          "Formula(Monomer)": "C14H21NO12",
+          "Molecular Weight(Monomer)": 395.3,
+          "Solubility in Water[mg/mL]": 5.0,
+          "LogP": -6.62,
+          "pKa": 4.0
+        }
+      ],
+      "formulation_data": [
+        {
+          "Name": "Target #1",
+          "Modulus[Mpa]": 0.5,
+          "Encapsulation Ratio": 0.65,
+          "Release Time(Week)": 2.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Powder"
+        },
+        {
+          "Name": "Target #2",
+          "Modulus[Mpa]": 0.2,
+          "Encapsulation Ratio": 0.75,
+          "Release Time(Week)": 1.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Powder"
+        },
+        {
+          "Name": "Target #3",
+          "Modulus[Mpa]": 1.0,
+          "Encapsulation Ratio": 0.8,
+          "Release Time(Week)": 1.5,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Gel"
+        },
+        {
+          "Name": "Target #4",
+          "Modulus[Mpa]": 0.7,
+          "Encapsulation Ratio": 0.5,
+          "Release Time(Week)": 1.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Powder"
+        },
+        {
+          "Name": "Target #5",
+          "Modulus[Mpa]": 0.85,
+          "Encapsulation Ratio": 0.6,
+          "Release Time(Week)": 3.0,
+          "Gel Polymer": "Hyaluronic Acid",
+          "Type": "Gel"
+        }
+      ],
+      "created_timestamp": "2025-08-13 01:09:22"
+    }
+  }
 }
