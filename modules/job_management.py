@@ -41,9 +41,6 @@ def show():
     # Initialize global database storage
     initialize_global_databases()
     
-    # Simplified storage info (no database dependency)
-    st.info("🏠 **Separated Storage**: Jobs and databases are managed independently")
-    
     # Display current job information if available
     current_job_name = st.session_state.get("current_job")
     if current_job_name and current_job_name in st.session_state.get("jobs", {}):
@@ -79,18 +76,7 @@ def show():
             progress = current_job.current_optimization_progress
             progress_status = progress.get('status', 'unknown')
             st.info(f"🔬 Optimization Progress: {progress_status.title()} | Target Profile: {progress.get('target_profile_name', 'None')} | Models: {progress.get('atps_model', 'None')}, {progress.get('drug_release_model', 'None')}")
-        
-        # Debug section (optional - can be removed later)
-        with st.expander("🔍 Debug Job Data", expanded=False):
-            st.write("**Current Job Data:**")
-            st.write(f"- Target Profiles: {list(current_job.complete_target_profiles.keys()) if current_job.complete_target_profiles else 'None'}")
-            st.write(f"- Optimization Progress: {'Yes' if current_job.current_optimization_progress else 'None'}")
-            st.write(f"- Formulation Results: {len(current_job.formulation_results)} profiles" if current_job.formulation_results else "- Formulation Results: None")
             
-            st.write("**Global Database Status (Independent):**")
-            st.write(f"- API: {list(st.session_state.get('global_api_databases', {}).keys())}")
-            st.write(f"- Polymer: {list(st.session_state.get('global_polymer_databases', {}).keys())}")
-    
     st.divider()
     
     st.markdown("## 🏗️ Create & Manage Jobs")
@@ -248,47 +234,5 @@ def show():
     
     st.divider()
     
-    # ── Progress Management Section ─────────────────────────────────────────
-    st.markdown("## 💾 Progress Management")
-    
-    col_save_progress, col_clear_progress = st.columns(2)
-    
-    # Get current job
-    current_job = None
-    if current_job_name and current_job_name in st.session_state.get("jobs", {}):
-        current_job = st.session_state.jobs[current_job_name]
-    
-    with col_save_progress:
-        st.markdown("### Save Progress")
-        st.markdown("Save current job progress (same as 'Save Job to Cloud')")
-        
-        if st.button("💾 Save Progress", key="save_progress_main", 
-                   disabled=not current_job,
-                   help="Save current progress to cloud"):
-            if current_job:
-                success, result = save_progress_to_job(current_job)
-                if success:
-                    st.success(f"✅ Progress saved successfully!")
-                else:
-                    st.error(f"❌ Failed to save progress: {result}")
-            else:
-                st.error("❌ No current job to save!")
-    
-    with col_clear_progress:
-        st.markdown("### Clear Progress")
-        st.markdown("Clear optimization progress data")
-        
-        if st.button("🗑️ Clear Progress", key="clear_progress_main",
-                   disabled=not current_job,
-                   help="Clear optimization progress"):
-            if current_job:
-                success, result = clear_progress_from_job(current_job)
-                if success:
-                    # Update job in session state
-                    st.session_state.jobs[current_job_name] = current_job
-                    st.success(f"✅ Progress cleared successfully!")
-                    st.rerun()
-                else:
-                    st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
