@@ -3,10 +3,308 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import requests
+import base64
 from datetime import datetime
 
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
+
+def serialize_dataframe(df):
+    """Safely serialize a DataFrame to dict"""
+    if df is None:
+        return None
+    if hasattr(df, 'to_dict'):
+        return df.to_dict('records')
+    return df
+
+def deserialize_dataframe(data):
+    """Safely deserialize dict to DataFrame"""
+    if data is None:
+        return None
+    if isinstance(data, list):
+        return pd.DataFrame(data)
+    return data
+
+# GitHub Storage Functions
+def get_github_config():
+    """Get GitHub configuration from secrets"""
+    try:
+        return {
+            "token": st.secrets.github.token,
+            "owner": st.secrets.github.owner,
+            "repo": st.secrets.github.repo,
+            "branch": st.secrets.github.get("branch", "main")
+        }
+    except:
+        return None
+
+def save_job_to_github(job_data, job_name):
+    """Save job to GitHub repository"""
+    config = get_github_config()
+    if not config:
+        return save_job_to_file(job_data, job_name)  # Fallback to local
+    
+    try:
+        file_path = f"saved_jobs/{job_name}.json"
+        content = json.dumps(job_data, indent=2)
+        encoded_content = base64.b64encode(content.encode()).decode()
+        
+        # GitHub API URL
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{file_path}"
+        headers = {
+            "Authorization": f"token {config['token']}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Check if file exists to get SHA for update
+        sha = None
+        try:
+            get_response = requests.get(url, headers=headers)
+            if get_response.status_code == 200:
+                sha = get_response.json()["sha"]
+        except:
+            pass
+        
+        # Create/update file
+        payload = {
+            "message": f"Save job: {job_name} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "content": encoded_content,
+            "branch": config["branch"]
+        }
+        if sha:
+            payload["sha"] = sha
+        
+        response = requests.put(url, headers=headers, json=payload)
+        
+        if response.status_code in [200, 201]:
+            return True, f"Saved to GitHub: {config['owner']}/{config['repo']}"
+        else:
+            return False, f"GitHub API error: {response.status_code}"
+            
+    except Exception as e:
+        return False, str(e)
+
+# Fallback functions for local storage when GitHub is not configured
+def save_job_to_file(job_data, job_name):
+    """Fallback: Save job to local JSON file"""
+    try:
+        os.makedirs("saved_jobs", exist_ok=True)
+        filename = f"saved_jobs/{job_name}.json"
+        with open(filename, 'w') as f:
+            json.dump(job_data, f, indent=2)
+        return True, filename
+    except Exception as e:
+        return False, str(e)
+
+def load_job_from_file(filename):
+    """Fallback: Load job from local JSON file"""
+    try:
+        with open(filename, 'r') as f:
+            job_data = json.load(f)
+        
+        from app import Job
+        job = Job(job_data["name"])
+        job.created_at = job_data["created_at"]
+        
+        # Use the same deserialization logic as GitHub loader
+        job.api_dataset = deserialize_dataframe(job_data.get("api_dataset"))
+        
+        # ... (rest of deserialization logic same as GitHub loader)
+        
+        return job, job_data.get("saved_timestamp", "Unknown")
+    except Exception as e:
+        return None, str(e)
+
+def get_saved_jobs():
+    """Fallback: Get list of local saved job files"""
+    try:
+        if not os.path.exists("saved_jobs"):
+            return []
+        
+        saved_files = []
+        for filename in os.listdir("saved_jobs"):
+            if filename.endswith(".json"):
+                job_name = filename[:-5]
+                filepath = f"saved_jobs/{filename}"
+                try:
+                    with open(filepath, 'r') as f:
+                        json.load(f)
+                    mtime = os.path.getmtime(filepath)
+                    saved_files.append({
+                        "name": job_name,
+                        "filename": filename,
+                        "filepath": filepath,
+                        "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                        "source": "local"
+                    })
+                except:
+                    continue
+        
+        saved_files.sort(key=lambda x: x["modified"], reverse=True)
+        return saved_files
+    except:
+        return []
+
+def load_job_from_github(job_name):
+    """Load job from GitHub repository"""
+    config = get_github_config()
+    if not config:
+        return load_job_from_file(f"saved_jobs/{job_name}.json")  # Fallback to local
+    
+    try:
+        file_path = f"saved_jobs/{job_name}.json"
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{file_path}"
+        headers = {
+            "Authorization": f"token {config['token']}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            content = response.json()["content"]
+            decoded_content = base64.b64decode(content).decode()
+            job_data = json.loads(decoded_content)
+            
+            # Import Job class
+            from app import Job
+            
+            # Create job object from data
+            job = Job(job_data["name"])
+            job.created_at = job_data["created_at"]
+            
+            # Restore all data using the existing deserialization logic
+            job.api_dataset = deserialize_dataframe(job_data.get("api_dataset"))
+            
+            if job_data.get("target_profile_dataset") is not None:
+                if isinstance(job_data["target_profile_dataset"], dict):
+                    job.target_profile_dataset = {k: deserialize_dataframe(v) for k, v in job_data["target_profile_dataset"].items()}
+                else:
+                    job.target_profile_dataset = deserialize_dataframe(job_data["target_profile_dataset"])
+            
+            if job_data.get("model_dataset") is not None:
+                if isinstance(job_data["model_dataset"], dict):
+                    job.model_dataset = {k: deserialize_dataframe(v) for k, v in job_data["model_dataset"].items()}
+                else:
+                    job.model_dataset = deserialize_dataframe(job_data["model_dataset"])
+            
+            if job_data.get("result_dataset") is not None:
+                result_data = {}
+                for key, value in job_data["result_dataset"].items():
+                    result_data[key] = deserialize_dataframe(value)
+                job.result_dataset = result_data
+            
+            # Restore database data
+            job.common_api_datasets = {}
+            if job_data.get("common_api_datasets"):
+                for k, v in job_data["common_api_datasets"].items():
+                    job.common_api_datasets[k] = deserialize_dataframe(v)
+            
+            job.polymer_datasets = {}
+            if job_data.get("polymer_datasets"):
+                for k, v in job_data["polymer_datasets"].items():
+                    job.polymer_datasets[k] = deserialize_dataframe(v)
+            
+            # Restore complete target profiles
+            job.complete_target_profiles = {}
+            if job_data.get("complete_target_profiles"):
+                for profile_name, profile_data in job_data["complete_target_profiles"].items():
+                    restored_profile = {}
+                    for key, value in profile_data.items():
+                        restored_profile[key] = deserialize_dataframe(value)
+                    job.complete_target_profiles[profile_name] = restored_profile
+            
+            # Restore formulation results and optimization progress
+            job.formulation_results = job_data.get("formulation_results", {})
+            job.optimization_progress = job_data.get("optimization_progress", {})
+            job.current_optimization_progress = job_data.get("current_optimization_progress")
+            
+            return job, f"Loaded from GitHub: {config['owner']}/{config['repo']}"
+        else:
+            return None, f"GitHub API error: {response.status_code}"
+            
+    except Exception as e:
+        return None, str(e)
+
+def list_github_jobs():
+    """List jobs stored in GitHub repository with fallback to local"""
+    config = get_github_config()
+    if not config:
+        return get_saved_jobs()  # Fallback to local
+    
+    try:
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/saved_jobs"
+        headers = {
+            "Authorization": f"token {config['token']}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            files = response.json()
+            job_files = []
+            for file in files:
+                if file["name"].endswith(".json"):
+                    job_name = file["name"][:-5]  # Remove .json
+                    job_files.append({
+                        "name": job_name,
+                        "filename": file["name"],
+                        "filepath": file["download_url"],
+                        "modified": file.get("updated_at", "Unknown"),
+                        "source": "github"
+                    })
+            return sorted(job_files, key=lambda x: x["modified"], reverse=True)
+        else:
+            # If GitHub folder doesn't exist, try to create it by saving a dummy file
+            if response.status_code == 404:
+                dummy_job = {"info": "This folder stores Streamlit job data"}
+                dummy_content = base64.b64encode(json.dumps(dummy_job).encode()).decode()
+                create_url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/saved_jobs/.gitkeep"
+                payload = {
+                    "message": "Initialize saved_jobs folder",
+                    "content": dummy_content,
+                    "branch": config["branch"]
+                }
+                requests.put(create_url, headers=headers, json=payload)
+            return []
+    except:
+        return get_saved_jobs()  # Fallback to local on any error
+
+def delete_job_from_github(job_name):
+    """Delete job from GitHub repository"""
+    config = get_github_config()
+    if not config:
+        return False, "GitHub not configured"
+    
+    try:
+        file_path = f"saved_jobs/{job_name}.json"
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{file_path}"
+        headers = {
+            "Authorization": f"token {config['token']}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Get file SHA for deletion
+        get_response = requests.get(url, headers=headers)
+        if get_response.status_code != 200:
+            return False, "File not found"
+        
+        sha = get_response.json()["sha"]
+        
+        # Delete file
+        payload = {
+            "message": f"Delete job: {job_name} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "sha": sha,
+            "branch": config["branch"]
+        }
+        
+        response = requests.delete(url, headers=headers, json=payload)
+        return response.status_code == 200, f"Deleted from GitHub: {response.status_code}"
+        
+    except Exception as e:
+        return False, str(e)
 
 def serialize_dataframe(df):
     """Safely serialize a DataFrame to dict"""
@@ -256,6 +554,30 @@ def force_sync_job_to_session_state(job):
 def show():
     st.header("Job Management")
     
+    # GitHub Storage Status
+    config = get_github_config()
+    if config:
+        st.info(f"🌤️ **GitHub Storage Active**: {config['owner']}/{config['repo']} (branch: {config['branch']})")
+    else:
+        st.warning("⚠️ **Local Storage Only**: Configure GitHub secrets for cloud persistence")
+        with st.expander("📋 GitHub Setup Instructions"):
+            st.markdown("""
+            **To enable GitHub cloud storage, add to `.streamlit/secrets.toml`:**
+            ```toml
+            [github]
+            token = "ghp_your_github_personal_access_token"
+            owner = "your-github-username"
+            repo = "your-storage-repository-name"
+            branch = "main"  # optional, defaults to main
+            ```
+            
+            **Steps:**
+            1. Create a GitHub repository for job storage
+            2. Generate a GitHub Personal Access Token with 'repo' permissions
+            3. Add the secrets configuration above
+            4. Jobs will automatically save/load from GitHub!
+            """)
+    
     # Display current job information if available
     current_job_name = st.session_state.get("current_job")
     if current_job_name and current_job_name in st.session_state.get("jobs", {}):
@@ -394,9 +716,37 @@ def show():
                 # Update job in session state
                 st.session_state.jobs[current_job_name] = current_job
                 
-                success, result = save_job_to_file(current_job, current_job_name)
+                # Serialize job data for saving
+                job_data = {
+                    "name": current_job.name,
+                    "created_at": current_job.created_at,
+                    "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "api_dataset": serialize_dataframe(current_job.api_dataset),
+                    "target_profile_dataset": serialize_dataframe(current_job.target_profile_dataset) if current_job.target_profile_dataset else None,
+                    "model_dataset": serialize_dataframe(current_job.model_dataset) if current_job.model_dataset else None,
+                    "result_dataset": current_job.result_dataset,
+                    "common_api_datasets": {k: serialize_dataframe(v) for k, v in current_job.common_api_datasets.items()} if current_job.common_api_datasets else {},
+                    "polymer_datasets": {k: serialize_dataframe(v) for k, v in current_job.polymer_datasets.items()} if current_job.polymer_datasets else {},
+                    "formulation_results": current_job.formulation_results if hasattr(current_job, 'formulation_results') else {},
+                    "optimization_progress": current_job.optimization_progress if hasattr(current_job, 'optimization_progress') else {},
+                    "current_optimization_progress": current_job.current_optimization_progress if hasattr(current_job, 'current_optimization_progress') else None
+                }
+                
+                # Handle complete_target_profiles with DataFrame serialization
+                if hasattr(current_job, 'complete_target_profiles') and current_job.complete_target_profiles:
+                    serialized_profiles = {}
+                    for profile_name, profile_data in current_job.complete_target_profiles.items():
+                        serialized_profile = {}
+                        for key, value in profile_data.items():
+                            serialized_profile[key] = serialize_dataframe(value)
+                        serialized_profiles[profile_name] = serialized_profile
+                    job_data["complete_target_profiles"] = serialized_profiles
+                else:
+                    job_data["complete_target_profiles"] = {}
+                
+                success, result = save_job_to_github(job_data, current_job_name)
                 if success:
-                    st.success(f"✅ Job '{current_job_name}' saved successfully!")
+                    st.success(f"✅ Job '{current_job_name}' saved successfully! {result}")
                 else:
                     st.error(f"❌ Failed to save job: {result}")
             else:
@@ -405,7 +755,7 @@ def show():
 
     # ═══ RIGHT COLUMN: Load Saved Jobs ══════════════════════════════════════
     with col_right:        
-        saved_jobs = get_saved_jobs()
+        saved_jobs = list_github_jobs()
         
         if saved_jobs:
             st.markdown(f"### 📂 Load Saved Jobs")
@@ -432,7 +782,10 @@ def show():
                 
                 with col_load:
                     if st.button("📂 Load Job", key="load_saved_job_main"):
-                        loaded_job, saved_time = load_job_from_file(selected_job_file["filepath"])
+                        if selected_job_file.get("source") == "github":
+                            loaded_job, saved_time = load_job_from_github(selected_job_name)
+                        else:
+                            loaded_job, saved_time = load_job_from_file(selected_job_file["filepath"])
                         
                         if loaded_job:
                             # Ensure job attributes are properly initialized
@@ -464,7 +817,9 @@ def show():
                             if hasattr(loaded_job, 'current_optimization_progress') and loaded_job.current_optimization_progress:
                                 optimization_status = loaded_job.current_optimization_progress.get('status', 'Unknown')
                             
-                            st.success(f"""✅ Job '{loaded_job.name}' loaded successfully!
+                            source_info = "GitHub" if selected_job_file.get("source") == "github" else "Local"
+                            
+                            st.success(f"""✅ Job '{loaded_job.name}' loaded successfully from {source_info}!
                             
 **Loaded Data:**
 - Target Profiles: {profile_count}
@@ -480,8 +835,15 @@ def show():
                 with col_remove:
                     if st.button("🗑️ Remove Job", key="remove_saved_job_main"):
                         try:
-                            os.remove(selected_job_file["filepath"])
-                            st.success(f"✅ Removed '{selected_job_name}' from saved jobs")
+                            if selected_job_file.get("source") == "github":
+                                success, message = delete_job_from_github(selected_job_name)
+                                if success:
+                                    st.success(f"✅ Removed '{selected_job_name}' from GitHub storage")
+                                else:
+                                    st.error(f"❌ Failed to remove from GitHub: {message}")
+                            else:
+                                os.remove(selected_job_file["filepath"])
+                                st.success(f"✅ Removed '{selected_job_name}' from local storage")
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Failed to remove: {str(e)}")
