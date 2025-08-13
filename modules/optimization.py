@@ -81,7 +81,7 @@ def show():
     # Ensure job has all required attributes
     current_job = ensure_job_attributes(current_job)
     
-    # Update the job in session state
+    # Update the job in session state (ensures all data is current)
     st.session_state.jobs[current_job_name] = current_job
 
     # Get saved optimization selections for persistence across page changes
