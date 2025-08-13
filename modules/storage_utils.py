@@ -4,6 +4,122 @@ import os
 import pandas as pd
 from datetime import datetime
 
+def save_global_database_progress():
+    """Save current global database state as progress (no job required)
+    
+    Returns:
+        tuple: (success: bool, result: str)
+    """
+    try:
+        import streamlit as st
+        from datetime import datetime
+        
+        # Create a progress snapshot of current global database state
+        global_db_progress = {
+            "global_api_databases": {},
+            "global_polymer_databases": {},
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "progress_type": "global_database_state"
+        }
+        
+        # Serialize global API databases
+        if "global_api_databases" in st.session_state:
+            for db_name, db_data in st.session_state["global_api_databases"].items():
+                global_db_progress["global_api_databases"][db_name] = serialize_complex_data(db_data)
+        
+        # Serialize global Polymer databases  
+        if "global_polymer_databases" in st.session_state:
+            for db_name, db_data in st.session_state["global_polymer_databases"].items():
+                global_db_progress["global_polymer_databases"][db_name] = serialize_complex_data(db_data)
+        
+        # Count total databases
+        total_api = len(global_db_progress["global_api_databases"])
+        total_polymer = len(global_db_progress["global_polymer_databases"])
+        global_db_progress["summary"] = f"API: {total_api}, Polymer: {total_polymer}"
+        
+        # Save using the unified storage system
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        success, result = save_data_to_file(
+            global_db_progress,
+            "global_progress", 
+            f"database_state_{timestamp}"
+        )
+        
+        return success, result
+    except Exception as e:
+        return False, str(e)
+
+def load_global_database_progress(filepath):
+    """Load global database progress from file
+    
+    Args:
+        filepath: Path to the progress file
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    try:
+        import streamlit as st
+        
+        # Load progress data
+        progress_data, saved_timestamp, _ = load_data_from_file(filepath, "global_progress")
+        
+        if progress_data is None:
+            return False, "Failed to load progress data"
+        
+        # Restore global API databases
+        if "global_api_databases" in progress_data:
+            if "global_api_databases" not in st.session_state:
+                st.session_state["global_api_databases"] = {}
+            
+            for db_name, db_data in progress_data["global_api_databases"].items():
+                st.session_state["global_api_databases"][db_name] = deserialize_complex_data(db_data)
+        
+        # Restore global Polymer databases
+        if "global_polymer_databases" in progress_data:
+            if "global_polymer_databases" not in st.session_state:
+                st.session_state["global_polymer_databases"] = {}
+            
+            for db_name, db_data in progress_data["global_polymer_databases"].items():
+                st.session_state["global_polymer_databases"][db_name] = deserialize_complex_data(db_data)
+        
+        summary = progress_data.get("summary", "Unknown")
+        return True, f"Global database progress loaded successfully! {summary}"
+        
+    except Exception as e:
+        return False, str(e)
+
+def get_global_progress_files():
+    """Get list of saved global progress files
+    
+    Returns:
+        list: List of global progress file info dicts
+    """
+    return get_saved_data_list("global_progress")
+
+# Update the existing save_progress_to_job function to also work without a job
+def save_progress_to_job(current_job=None):
+    """Save progress function that works with or without a job
+    
+    Args:
+        current_job: Current job object to save (optional)
+    
+    Returns:
+        tuple: (success: bool, result: str)
+    """
+    if current_job:
+        # Original functionality - save job
+        try:
+            from app import ensure_job_attributes
+            current_job = ensure_job_attributes(current_job)
+            success, result = save_data_to_file(current_job, "jobs", current_job.name)
+            return success, result
+        except Exception as e:
+            return False, str(e)
+    else:
+        # New functionality - save global database state when no job
+        return save_global_database_progress()
+
 def serialize_dataframe(df):
     """Safely serialize a DataFrame to dict"""
     if df is None:
