@@ -20,7 +20,7 @@ except ImportError:
         st.error("Updated Job Management module not found. Please ensure all storage utilities are properly installed.")
 
 class Job:
-    """Job class to manage datasets for each analysis job"""
+    """Job class to manage analysis job data (without owning databases)"""
     def __init__(self, name):
         self.name = name
         self.api_dataset = None
@@ -29,9 +29,7 @@ class Job:
         self.result_dataset = None
         self.created_at = st.session_state.get('current_time', 'Unknown')
         
-        # Add database storage to Job for persistence
-        self.common_api_datasets = {}
-        self.polymer_datasets = {}
+        # Jobs store complete target profiles (which reference global databases)
         self.complete_target_profiles = {}
         
         # Add formulation-specific results storage
@@ -107,10 +105,6 @@ class Job:
 
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
-    if not hasattr(job, 'common_api_datasets'):
-        job.common_api_datasets = {}
-    if not hasattr(job, 'polymer_datasets'):
-        job.polymer_datasets = {}
     if not hasattr(job, 'complete_target_profiles'):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
@@ -121,70 +115,23 @@ def ensure_job_attributes(job):
         job.current_optimization_progress = None
     return job
 
+def initialize_global_databases():
+    """Initialize global database storage independent of jobs"""
+    if "global_api_databases" not in st.session_state:
+        st.session_state["global_api_databases"] = {}
+    if "global_polymer_databases" not in st.session_state:
+        st.session_state["global_polymer_databases"] = {}
 
-def sync_all_data_with_job():
-    """Sync ALL data between session state and current job for persistence after browser refresh"""
+def sync_job_data():
+    """Sync job-specific data (not databases) for persistence"""
     if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
         current_job = st.session_state.jobs[st.session_state.current_job]
         
         # Ensure all attributes exist
         current_job = ensure_job_attributes(current_job)
         
-        # 1. FORCE sync databases from job to session state - this is the key fix for refresh persistence
-        if current_job.common_api_datasets:
-            st.session_state["common_api_datasets"] = current_job.common_api_datasets.copy()
-        elif "common_api_datasets" not in st.session_state:
-            st.session_state["common_api_datasets"] = {}
-            
-        if current_job.polymer_datasets:
-            st.session_state["polymer_datasets"] = current_job.polymer_datasets.copy()
-        elif "polymer_datasets" not in st.session_state:
-            st.session_state["polymer_datasets"] = {}
-        
-        # 2. Target profiles, optimization progress, and results are accessed directly from job
-        # No session state sync needed since modules access current_job directly
-        
-        # DEBUG: Add session state debug info (can be removed later)
-        if "debug_sync_count" not in st.session_state:
-            st.session_state.debug_sync_count = 0
-        st.session_state.debug_sync_count += 1
-        st.session_state.debug_last_sync = f"Sync #{st.session_state.debug_sync_count}: Job={current_job.name}, Profiles={len(current_job.complete_target_profiles)}, Progress={'Yes' if current_job.current_optimization_progress else 'No'}"
-        
-        # Update the job in session state
+        # Update the job in session state (databases are managed globally, not per job)
         st.session_state.jobs[st.session_state.current_job] = current_job
-
-
-def save_all_data_to_job():
-    """Save ALL data from session state to current job for persistence"""
-    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
-        current_job = st.session_state.jobs[st.session_state.current_job]
-        
-        # Ensure all attributes exist
-        current_job = ensure_job_attributes(current_job)
-        
-        # 1. FORCE save databases from session state to job (ALWAYS sync)
-        if "common_api_datasets" in st.session_state:
-            current_job.common_api_datasets = st.session_state["common_api_datasets"].copy()
-        if "polymer_datasets" in st.session_state:
-            current_job.polymer_datasets = st.session_state["polymer_datasets"].copy()
-        
-        # 2. Target profiles, optimization progress, and results are already saved directly to job
-        # But ensure the job reference in session state is current
-        
-        # 3. FORCE update the job in session state to ensure persistence
-        st.session_state.jobs[st.session_state.current_job] = current_job
-
-
-def sync_databases_with_job():
-    """LEGACY: Sync database data between session state and current job for persistence"""
-    # This function is kept for backward compatibility but now calls the comprehensive sync
-    sync_all_data_with_job()
-
-
-def save_databases_to_job():
-    """LEGACY: Save database data from session state to current job for persistence"""  
-    # This function is kept for backward compatibility but now calls the comprehensive save
-    save_all_data_to_job()
 
 
 def main(): 
@@ -211,13 +158,16 @@ def main():
     if "current_tab" not in st.session_state:
         st.session_state.current_tab = "Manage Job"
     
+    # Initialize global database storage (independent of jobs)
+    initialize_global_databases()
+    
     # DEBUG: Add debug session state tracking
     if "app_refresh_count" not in st.session_state:
         st.session_state.app_refresh_count = 0
     st.session_state.app_refresh_count += 1
     
-    # Sync ALL data with current job for persistence (COMPREHENSIVE SYNC)
-    sync_all_data_with_job()
+    # Sync job-specific data (not databases) for persistence
+    sync_job_data()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
     st.sidebar.title("Pnaseer DDS Optimization")
@@ -225,19 +175,22 @@ def main():
     # DEBUG: Show app state info
     with st.sidebar.expander("🔍 Debug App State", expanded=False):
         st.write(f"**App Refresh Count:** {st.session_state.app_refresh_count}")
-        if st.session_state.get("debug_last_sync"):
-            st.write(f"**Last Sync:** {st.session_state.debug_last_sync}")
+        
         if st.session_state.get("current_job"):
             current_job = st.session_state.jobs.get(st.session_state.current_job)
             if current_job:
                 st.write(f"**Current Job:** {current_job.name}")
                 st.write(f"**Target Profiles:** {len(current_job.complete_target_profiles)}")
                 st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
-                st.write(f"**API Datasets:** {len(current_job.common_api_datasets)}")
-                st.write(f"**Session API:** {len(st.session_state.get('common_api_datasets', {}))}")
+        
+        # Show global database status
+        api_count = len(st.session_state.get("global_api_databases", {}))
+        polymer_count = len(st.session_state.get("global_polymer_databases", {}))
+        st.write(f"**Global API Databases:** {api_count}")
+        st.write(f"**Global Polymer Databases:** {polymer_count}")
         
         # Storage Location Info
-        st.write("**Storage Location:** Unified local storage")
+        st.write("**Architecture:** Database-Job Separation")
         st.write("**Jobs saved to:** `saved_jobs/`")
         st.write("**Databases saved to:** `saved_datasets/`")
     
@@ -273,14 +226,8 @@ def main():
             
             # Switch job if selection changed
             if selected_job != st.session_state.current_job:
-                # Save current job data before switching (COMPREHENSIVE SAVE)
-                save_all_data_to_job()
-                
-                # Switch to new job
+                # Switch to new job (no database syncing needed)
                 st.session_state.current_job = selected_job
-                
-                # Sync new job data to session state (COMPREHENSIVE SYNC)
-                sync_all_data_with_job()
                 st.rerun()
         else:
             st.sidebar.markdown("**No Jobs Available**")
@@ -288,9 +235,6 @@ def main():
         st.sidebar.markdown("**No Jobs Available**")
 
     # ═══ RENDER PAGES ════════════════════════════════════════════════════════
-    # Save ALL data to job before rendering pages (COMPREHENSIVE SAVE)
-    save_all_data_to_job()
-    
     tab = st.session_state.current_tab
     if tab == "Manage Job":
         show_job_management()
