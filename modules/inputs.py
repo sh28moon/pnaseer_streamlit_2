@@ -4,8 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-import modules.job_management as job_management
-
 from modules.global_css import GLOBAL_CSS
 st.markdown(f"<style>{GLOBAL_CSS}</style>", unsafe_allow_html=True)
 
@@ -360,9 +358,6 @@ def show():
                             
                             st.success(f"✅ Complete target profile '{profile_name.strip()}' saved successfully!")
                             st.rerun()
-
-                if st.button("💾 Save to JSON", key="save_job_from_input"):
-                    success, result = job_management.save_current_job_to_github()
                     
             else:
                 st.warning("Complete all three components above to create target profile.")
@@ -445,6 +440,7 @@ def show():
                         st.info("No formulation properties to display")
         else:
             st.info("No complete target profiles found. Create profiles in 'Create New Profile' tab.")
+
 
 
 
