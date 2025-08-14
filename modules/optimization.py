@@ -113,7 +113,7 @@ def show():
     #     st.write(f"**Retrieved Saved Selections:** Target='{saved_target_profile}', ATPS='{saved_atps_model}', Drug='{saved_drug_release_model}'")
 
     # Top-level tabs
-    tab_atps = st.tabs(["ATPS Partition"])[0]
+    tab_atps = st.tabs(["ATPS & Release"])[0]
 
     def render_model_tab(prefix, tab):
         with tab:
