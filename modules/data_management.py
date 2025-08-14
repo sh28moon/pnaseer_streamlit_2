@@ -184,18 +184,19 @@ def show():
                 st.markdown("**Database Table**")
                 
                 # Show current loaded databases in session
-                if session_key in st.session_state and st.session_state[session_key]:
-                    current_datasets = st.session_state[session_key]
-                    dataset_names = list(current_datasets.keys())
+                if ('selected_saved' in locals() and selected_saved and 
+                    session_key in st.session_state and 
+                    selected_saved in st.session_state[session_key]):
                         
-                    if loaded_datasets:
-                        dataset_df = current_datasets[sloaded_datasets]
-                        st.dataframe(dataset_df, use_container_width=True)
-                        st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
-                    else:
-                        st.info("No datasets loaded in current session")
+
+                    dataset_df = st.session_state[session_key][selected_saved]
+                    st.dataframe(dataset_df, use_container_width=True)
+                    st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
+                        
+                elif session_key in st.session_state and st.session_state[session_key]:
+                    st.info("Select a database from the left to view its contents")
                 else:
-                    st.info("No datasets loaded in current session")
+                    st.info("No databases loaded in current session")
             
             st.divider()         
 
