@@ -255,7 +255,7 @@ def show():
 
             if selected_candidate:
                 # Get release time from the formulation properties
-                release_time_value = 10  # Default fallback
+                release_time_value = 4  # Default fallback
                 if 'formulation_properties' in result_data and 'Release Time (Week)' in result_data['formulation_properties']:
                     release_time_value = result_data['formulation_properties']['Release Time (Week)']
                     if isinstance(release_time_value, str):
