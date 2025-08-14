@@ -55,16 +55,6 @@ def show():
     if not hasattr(current_job, 'formulation_results'):
         current_job.formulation_results = {}
     
-    # DEBUG: Show results data state
-    with st.expander("🔍 Debug Results Data", expanded=False):
-        st.write(f"**Job Name:** {current_job.name}")
-        st.write(f"**Old Results:** {'Yes' if current_job.result_dataset else 'No'}")
-        st.write(f"**Formulation Results:** {len(current_job.formulation_results)} profiles")
-        if current_job.formulation_results:
-            for profile_name, formulations in current_job.formulation_results.items():
-                st.write(f"  - {profile_name}: {len(formulations)} formulations")
-        st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
-    
     # Check if current job has results (either old format or new formulation-specific format)
     has_old_results = current_job.result_dataset is not None
     has_formulation_results = bool(current_job.formulation_results)
@@ -105,15 +95,6 @@ def show():
         # Show optimization progress info if available
         if has_optimization_progress:
             progress = current_job.current_optimization_progress
-            with st.expander("🔬 Optimization Progress Info", expanded=False):
-                st.markdown(f"**Status:** {progress.get('status', 'Unknown').title()}")
-                st.markdown(f"**Target Profile:** {progress.get('target_profile_name', 'Unknown')}")
-                st.markdown(f"**ATPS Model:** {progress.get('atps_model', 'Unknown')}")
-                st.markdown(f"**Drug Release Model:** {progress.get('drug_release_model', 'Unknown')}")
-                if 'results_generated' in progress:
-                    st.markdown(f"**Results Generated:** {progress.get('results_generated', 'Unknown')}")
-                if 'formulation_count' in progress:
-                    st.markdown(f"**Formulations Processed:** {progress.get('formulation_count', 0)}")
         
         # Formulation-specific results selection
         col_profile_sel, col_form_sel, col_clear = st.columns([2, 2, 1])
@@ -402,16 +383,9 @@ def show():
                     ax.plot(x_values, log_y_values, marker="o", linewidth=2, markersize=4, color=color)
                     ax.fill_between(x_values, log_y_values, alpha=0.3, color=color)
                     
-                    # Highlight the pivot point at the start
-                    if len(x_values) > 0 and len(log_y_values) > 0:
-                        pivot_y = log_y_values[0]
-                        ax.plot(x_values[0], log_y_values[0], marker="^", markersize=8, 
-                               color='red', markeredgecolor='darkred', markeredgewidth=1.5, 
-                               label=f'Start Point ({pivot_y:.3f})')
-                    
                     # Set axis limits and labels with smaller font
                     ax.set_xlim(0, release_time_value)
-                    ax.set_ylim(0, 0.75)  # Slightly above 0.7 for better visualization
+                    ax.set_ylim(0, 1)  # Slightly above 0.7 for better visualization
                     ax.set_xlabel("Time (Weeks)", fontsize=9)
                     ax.set_ylabel("Drug Release", fontsize=9)
                     ax.set_title(f"Drug Release (Log Curve)", fontsize=10, fontweight='bold')
@@ -472,8 +446,8 @@ def show():
                     ax.set_ylim(0, 120)  # Scale to accommodate 110% max with headroom
                     
                     # Set 5 graduations with 100% at 4th position
-                    ax.set_yticks([0, 30, 60, 90, 120])
-                    ax.set_yticklabels(['0%', '30%', '60%', '90%', '120%'], fontsize=6)
+                    ax.set_yticks([0, 20, 40, 60, 80, 100, 120])
+                    ax.set_yticklabels(['0%', '20%', '40%', '60%', '80%','100%', '120%'], fontsize=6)
                     
                     ax.set_title(f"Target vs Result\n{selected_candidate}", 
                                y=1.05, fontsize=9, fontweight='bold')
@@ -633,7 +607,7 @@ def show():
     
     with col_clear_progress:
         st.markdown("### Clear Progress")
-        st.markdown("Clear optimization progress data")
+        st.markdown("Clear current job progress data")
         
         if st.button("🗑️ Clear Progress", key="results_clear_progress",
                    disabled=not current_job,
