@@ -325,130 +325,76 @@ def show():
                 with col_performance:
                     st.markdown("**Drug Release**")
                     
-                    # Use performance trends from the result data if available
+                    # ONLY LOAD PRE-GENERATED GRAPH DATA (no generation here)
                     if 'performance_trends' in result_data and selected_candidate in result_data['performance_trends']:
+                        # Load complete graph data generated in optimization.py
                         trend_data = result_data['performance_trends'][selected_candidate]
+                        
+                        # Extract pre-generated data
                         x_values = trend_data['x_values']
                         y_values = trend_data['y_values']
-                        release_time_value = trend_data['release_time']
+                        graph_config = trend_data.get('graph_config', {})
+                        key_points = trend_data.get('key_points', {})
+                        model_description = trend_data.get('model_description', 'Drug Release Profile')
+                        
+                        # Create graph using PRE-GENERATED data only
+                        fig, ax = plt.subplots(figsize=(4, 3.3))
+                        
+                        # Use pre-generated graph configuration
+                        colors = graph_config.get('colors', ['#1f77b4', '#ff7f0e', '#2ca02c'])
+                        candidate_color_index = graph_config.get('candidate_color_index', 0)
+                        color = colors[candidate_color_index % len(colors)]
+                        linewidth = graph_config.get('linewidth', 2)
+                        markersize = graph_config.get('markersize', 4)
+                        alpha = graph_config.get('alpha', 0.3)
+                        
+                        # Plot the PRE-GENERATED curve
+                        ax.plot(x_values, y_values, marker="o", linewidth=linewidth, markersize=markersize, color=color)
+                        ax.fill_between(x_values, y_values, alpha=alpha, color=color)
+                        
+                        # Add PRE-GENERATED key points
+                        if 'start' in key_points:
+                            start_point = key_points['start']
+                            ax.plot(start_point['x'], start_point['y'], 
+                                   marker=start_point['marker'], markersize=start_point['size'], 
+                                   color=start_point['color'], markeredgecolor=f"dark{start_point['color']}", 
+                                   markeredgewidth=1.5, label=start_point['label'])
+                        
+                        if 'peak' in key_points:
+                            peak_point = key_points['peak']
+                            ax.plot(peak_point['x'], peak_point['y'], 
+                                   marker=peak_point['marker'], markersize=peak_point['size'], 
+                                   color=peak_point['color'], markeredgecolor=f"dark{peak_point['color']}", 
+                                   markeredgewidth=1.5, label=peak_point['label'])
+                        
+                        # Use PRE-GENERATED graph settings
+                        title = graph_config.get('title', 'Drug Release Profile')
+                        xlabel = graph_config.get('xlabel', 'Time (Weeks)')
+                        ylabel = graph_config.get('ylabel', 'Drug Concentration')
+                        ylim = graph_config.get('ylim', [0, 1.0])
+                        
+                        ax.set_xlim(0, trend_data.get('release_time', 10))
+                        ax.set_ylim(*ylim)
+                        ax.set_xlabel(xlabel, fontsize=9)
+                        ax.set_ylabel(ylabel, fontsize=9)
+                        ax.set_title(title, fontsize=10, fontweight='bold')
+                        
+                        # Add grid for better readability
+                        ax.grid(True, alpha=0.3)
+                        ax.set_axisbelow(True)
+                        
+                        # Add legend with smaller font
+                        ax.legend(loc='center right', fontsize=7)
+                        
+                        # Adjust tick label sizes
+                        ax.tick_params(labelsize=8)                      
+                        
+                        st.pyplot(fig)
+                        
                     else:
-                        # Generate NEW CUSTOM DRUG RELEASE CURVE as requested
-                        x_points = 20  # More points for smoother curve
-                        release_time_value = 10  # Default release time
-                        
-                        # Get release time from formulation properties if available
-                        if 'formulation_properties' in result_data and 'Release Time (Week)' in result_data['formulation_properties']:
-                            release_time_value = result_data['formulation_properties']['Release Time (Week)']
-                            if isinstance(release_time_value, str):
-                                release_time_value = float(release_time_value.replace('%', '').replace('Day', '').replace('Week', '').strip())
-                            elif not isinstance(release_time_value, (int, float)):
-                                release_time_value = float(release_time_value)
-                        
-                        x_values = np.linspace(0, release_time_value, x_points).tolist()
-                        
-                        # Set seed for consistent curve per formulation and candidate
-                        seed_str = f"{current_job_name}_{selected_profile_for_results}_{selected_formulation_for_results}_{selected_candidate}_drug_release"
-                        random.seed(hash(seed_str) % 2147483647)
-                        
-                        # CUSTOM DRUG RELEASE CURVE PARAMETERS
-                        # 1. Starting point: 0.1 ~ 0.5
-                        start_value = random.uniform(0.1, 0.5)
-                        
-                        # 2. Peak at 1/3 of graph: 0.7-0.8
-                        peak_position = release_time_value / 3  # 1/3 of total time
-                        peak_value = random.uniform(0.7, 0.8)
-                        
-                        # 3. Sink after peak: 0.2-0.6 (assuming you meant 0.2, not 0.6-2)
-                        sink_value = random.uniform(0.2, 0.6)
-                        sink_position = release_time_value * 0.6  # Around 60% of total time
-                        
-                        # 4. Final value: 0.4-0.6
-                        final_value = random.uniform(0.4, 0.6)
-                        
-                        # GENERATE CUSTOM BIPHASIC CURVE
-                        # This curve combines multiple pharmaceutical release mechanisms:
-                        # - Initial burst release (exponential rise)
-                        # - Peak due to polymer swelling/drug diffusion
-                        # - Dip due to barrier formation or outer layer depletion  
-                        # - Sustained release as polymer matrix degrades
-                        
-                        y_values = []
-                        for x in x_values:
-                            if x <= peak_position:
-                                # Phase 1: Rise to peak (Modified Weibull-like)
-                                # Commonly used in pharmaceutical release modeling
-                                t_norm = x / peak_position
-                                y = start_value + (peak_value - start_value) * (1 - np.exp(-3 * t_norm**1.5))
-                            
-                            elif x <= sink_position:
-                                # Phase 2: Decay to sink (Exponential decay)
-                                # Models barrier formation or drug depletion
-                                t_norm = (x - peak_position) / (sink_position - peak_position)
-                                y = peak_value + (sink_value - peak_value) * (1 - np.exp(-2 * t_norm))
-                            
-                            else:
-                                # Phase 3: Gradual rise to final (Logarithmic-like)
-                                # Models sustained release as matrix degrades
-                                t_norm = (x - sink_position) / (release_time_value - sink_position)
-                                y = sink_value + (final_value - sink_value) * np.log(1 + 2 * t_norm) / np.log(3)
-                            
-                            y_values.append(y)
-                        
-                        # Add small random noise for realism (±2%)
-                        noise_factor = 0.02
-                        for i in range(len(y_values)):
-                            noise = random.uniform(-noise_factor, noise_factor)
-                            y_values[i] = max(0, min(1, y_values[i] + noise))
-                    
-                    # Create graph using the curve data
-                    fig, ax = plt.subplots(figsize=(4, 3.3))
-                    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Different colors for each candidate
-                    
-                    # Get color index based on candidate name
-                    candidate_num = int(selected_candidate.split()[-1]) - 1 if selected_candidate.split()[-1].isdigit() else 0
-                    color = colors[candidate_num % len(colors)]
-                    
-                    # Plot the curve
-                    ax.plot(x_values, y_values, marker="o", linewidth=2, markersize=4, color=color)
-                    ax.fill_between(x_values, y_values, alpha=0.3, color=color)
-                    
-                    # Highlight key points
-                    if len(x_values) > 0 and len(y_values) > 0:
-                        # Starting point
-                        ax.plot(x_values[0], y_values[0], marker="^", markersize=8, 
-                               color='green', markeredgecolor='darkgreen', markeredgewidth=1.5, 
-                               label=f'Start ({y_values[0]:.3f})')
-                        
-                        # Peak point (around 1/3)
-                        peak_idx = len(x_values) // 3
-                        if peak_idx < len(y_values):
-                            ax.plot(x_values[peak_idx], y_values[peak_idx], marker="*", markersize=10, 
-                                   color='red', markeredgecolor='darkred', markeredgewidth=1.5, 
-                                   label=f'Peak ({y_values[peak_idx]:.3f})')
-                    
-                    # Set axis limits and labels
-                    ax.set_xlim(0, release_time_value)
-                    ax.set_ylim(0, 0.9)  # Slightly above max possible value
-                    ax.set_xlabel("Time (Weeks)", fontsize=9)
-                    ax.set_ylabel("Drug Release", fontsize=9)
-                    ax.set_title(f"Biphasic Drug Release Profile", fontsize=10, fontweight='bold')
-                    
-                    # Add grid for better readability
-                    ax.grid(True, alpha=0.3)
-                    ax.set_axisbelow(True)
-                    
-                    # Add legend with smaller font
-                    ax.legend(loc='center right', fontsize=7)
-                    
-                    # Adjust tick label sizes
-                    ax.tick_params(labelsize=8)
-                    
-                    # Add curve description
-                    ax.text(0.02, 0.98, f"Model: Custom Biphasic Release\n4-Phase Profile", 
-                           transform=ax.transAxes, fontsize=7, verticalalignment='top',
-                           bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.7))
-                    
-                    st.pyplot(fig)
+                        # Fallback if no pre-generated data exists
+                        st.warning("⚠️ No drug release data available. Please run optimization first.")
+                        st.info("💡 Graph data is generated during optimization and displayed here.")
 
                 with col_radar:
                     st.markdown("**Target vs Result**")
