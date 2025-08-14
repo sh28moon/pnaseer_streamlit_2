@@ -25,18 +25,19 @@ def ensure_job_attributes(job):
         job.formulation_results = {}
     return job
 
-def initialize_global_databases():
-    """Initialize global database storage independent of jobs"""
-    if "global_api_databases" not in st.session_state:
-        st.session_state["global_api_databases"] = {}
-    if "global_polymer_databases" not in st.session_state:
-        st.session_state["global_polymer_databases"] = {}
+def initialize_databases():
+    """Initialize database storage using WORKING session state keys"""
+    # Use the WORKING session state keys from old data_management.py
+    if "common_api_datasets" not in st.session_state:
+        st.session_state["common_api_datasets"] = {}
+    if "polymer_datasets" not in st.session_state:
+        st.session_state["polymer_datasets"] = {}
 
 def show():
     st.markdown('<p class="font-large"><b>Manage Target Profile</b></p>', unsafe_allow_html=True)
 
-    # Initialize global database storage
-    initialize_global_databases()
+    # Initialize database storage using WORKING keys
+    initialize_databases()
 
     # Check if a job is selected
     current_job_name = st.session_state.get("current_job")
@@ -61,16 +62,16 @@ def show():
         else:
             st.write("**No target profiles found in job**")
         
-        # Show global database status
-        api_count = len(st.session_state.get("global_api_databases", {}))
-        polymer_count = len(st.session_state.get("global_polymer_databases", {}))
-        st.write(f"**Global API Databases:** {api_count}")
-        st.write(f"**Global Polymer Databases:** {polymer_count}")
+        # Show database status using WORKING session keys
+        api_count = len(st.session_state.get("common_api_datasets", {}))
+        polymer_count = len(st.session_state.get("polymer_datasets", {}))
+        st.write(f"**API Databases:** {api_count}")
+        st.write(f"**Polymer Databases:** {polymer_count}")
         
         if api_count > 0:
-            st.write(f"**Available API:** {list(st.session_state['global_api_databases'].keys())}")
+            st.write(f"**Available API:** {list(st.session_state['common_api_datasets'].keys())}")
         if polymer_count > 0:
-            st.write(f"**Available Polymer:** {list(st.session_state['global_polymer_databases'].keys())}")
+            st.write(f"**Available Polymer:** {list(st.session_state['polymer_datasets'].keys())}")
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
@@ -90,8 +91,8 @@ def show():
         # ── 1st Row: Select API from database ─────────────────────────────────
         st.subheader("Select API from database")
         
-        # Get API datasets from global storage (not job-specific)
-        api_datasets = st.session_state.get("global_api_databases", {})
+        # Get API datasets from WORKING session state key
+        api_datasets = st.session_state.get("common_api_datasets", {})
         
         if api_datasets:
             api_dataset_options = [""] + list(api_datasets.keys())
@@ -163,8 +164,8 @@ def show():
         # ── 2nd Row: Select Gel Polymer from database ────────────────────────
         st.subheader("Select Gel Polymer from database")
         
-        # Get Polymer datasets from global storage (not job-specific)
-        polymer_datasets = st.session_state.get("global_polymer_databases", {})
+        # Get Polymer datasets from WORKING session state key
+        polymer_datasets = st.session_state.get("polymer_datasets", {})
         
         if polymer_datasets:
             polymer_dataset_options = [""] + list(polymer_datasets.keys())
