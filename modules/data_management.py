@@ -163,7 +163,7 @@ def show():
                                         # COMPREHENSIVE SYNC: Save to current job for persistence - WORKING VERSION
                                         sync_datasets_with_current_job()
                                         
-                                        st.success(f"✅ Loaded {count} dataset(s) from {saved_time}")
+                                        st.success(f"✅ Loaded {loaded_datasets} dataset")
                                         st.rerun()
                         
                         with col_remove_btn:
@@ -187,17 +187,11 @@ def show():
                 if session_key in st.session_state and st.session_state[session_key]:
                     current_datasets = st.session_state[session_key]
                     dataset_names = list(current_datasets.keys())
-                    if dataset_names:
-                        selected_dataset = st.selectbox(
-                            "Select dataset to view:",
-                            dataset_names,
-                            key=f"{session_key}_summary_select"
-                        )
                         
-                        if selected_dataset:
-                            dataset_df = current_datasets[selected_dataset]
-                            st.dataframe(dataset_df, use_container_width=True)
-                            st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
+                    if loaded_datasets:
+                        dataset_df = current_datasets[sloaded_datasets]
+                        st.dataframe(dataset_df, use_container_width=True)
+                        st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
                     else:
                         st.info("No datasets loaded in current session")
                 else:
