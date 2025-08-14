@@ -493,7 +493,7 @@ def show():
                 #                              hasattr(current_job, 'formulation_results') and
                 #                              selected_target_profile_name in current_job.formulation_results)
                 
-                # clear_options = []
+                clear_options = []
                 # if has_current_profile_results:
                 #     formulation_count = len(current_job.formulation_results[selected_target_profile_name])
                 #     clear_options.append(f"Clear '{selected_target_profile_name}' Results ({formulation_count} formulations)")
