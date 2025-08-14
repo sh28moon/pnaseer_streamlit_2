@@ -350,22 +350,7 @@ def show():
                         
                         # Plot the PRE-GENERATED curve
                         ax.plot(x_values, y_values, marker="o", linewidth=linewidth, markersize=markersize, color=color)
-                        ax.fill_between(x_values, y_values, alpha=alpha, color=color)
-                        
-                        # Add PRE-GENERATED key points
-                        if 'start' in key_points:
-                            start_point = key_points['start']
-                            ax.plot(start_point['x'], start_point['y'], 
-                                   marker=start_point['marker'], markersize=start_point['size'], 
-                                   color=start_point['color'], markeredgecolor=f"dark{start_point['color']}", 
-                                   markeredgewidth=1.5, label=start_point['label'])
-                        
-                        if 'peak' in key_points:
-                            peak_point = key_points['peak']
-                            ax.plot(peak_point['x'], peak_point['y'], 
-                                   marker=peak_point['marker'], markersize=peak_point['size'], 
-                                   color=peak_point['color'], markeredgecolor=f"dark{peak_point['color']}", 
-                                   markeredgewidth=1.5, label=peak_point['label'])
+                        ax.fill_between(x_values, y_values, alpha=alpha, color=color)                        
                         
                         # Use PRE-GENERATED graph settings
                         title = graph_config.get('title', 'Drug Release Profile')
