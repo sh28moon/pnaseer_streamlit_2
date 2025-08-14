@@ -183,19 +183,27 @@ def show():
             with col_summary:
                 st.markdown("**Database Table**")
                 
-                # Show the selected database table
-                if ('selected_file' in locals() and selected_file and 
-                    session_key in st.session_state and 
-                    selected_file in st.session_state[session_key]):
+                # Show current loaded databases in session
+                if session_key in st.session_state and st.session_state[session_key]:
+                    current_datasets = st.session_state[session_key]
                     
-                    dataset_df = st.session_state[session_key][selected_file]
-                    st.dataframe(dataset_df, use_container_width=True)
-                    st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
-                    
-                elif session_key in st.session_state and st.session_state[session_key]:
-                    st.info("Select a database from the left to view its contents")
+                    # Dataset selector
+                    dataset_names = list(current_datasets.keys())
+                    if dataset_names:
+                        selected_dataset = st.selectbox(
+                            "Select dataset to view:",
+                            dataset_names,
+                            key=f"{session_key}_summary_select"
+                        )
+                        
+                        if selected_dataset:
+                            dataset_df = current_datasets[selected_dataset]
+                            st.dataframe(dataset_df, use_container_width=True)
+                            st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
+                    else:
+                        st.info("No datasets loaded in current session")
                 else:
-                    st.info("No databases loaded in current session")
+                    st.info("No datasets loaded in current session")
             
             st.divider()         
 
