@@ -63,25 +63,25 @@ def show():
     # Update the job in session state
     st.session_state.jobs[current_job_name] = current_job
     
-    # DEBUG: Show target profile data state
-    with st.expander("🔍 Debug Target Profile Data", expanded=False):
-        st.write(f"**Job Name:** {current_job.name}")
-        st.write(f"**Target Profiles Count:** {len(current_job.complete_target_profiles)}")
-        if current_job.complete_target_profiles:
-            st.write(f"**Profile Names:** {list(current_job.complete_target_profiles.keys())}")
-        else:
-            st.write("**No target profiles found in job**")
+    # # DEBUG: Show target profile data state
+    # with st.expander("🔍 Debug Target Profile Data", expanded=False):
+    #     st.write(f"**Job Name:** {current_job.name}")
+    #     st.write(f"**Target Profiles Count:** {len(current_job.complete_target_profiles)}")
+    #     if current_job.complete_target_profiles:
+    #         st.write(f"**Profile Names:** {list(current_job.complete_target_profiles.keys())}")
+    #     else:
+    #         st.write("**No target profiles found in job**")
         
-        # Show database status using WORKING session keys
-        api_count = len(st.session_state.get("common_api_datasets", {}))
-        polymer_count = len(st.session_state.get("polymer_datasets", {}))
-        st.write(f"**API Databases:** {api_count}")
-        st.write(f"**Polymer Databases:** {polymer_count}")
+    #     # Show database status using WORKING session keys
+    #     api_count = len(st.session_state.get("common_api_datasets", {}))
+    #     polymer_count = len(st.session_state.get("polymer_datasets", {}))
+    #     st.write(f"**API Databases:** {api_count}")
+    #     st.write(f"**Polymer Databases:** {polymer_count}")
         
-        if api_count > 0:
-            st.write(f"**Available API:** {list(st.session_state['common_api_datasets'].keys())}")
-        if polymer_count > 0:
-            st.write(f"**Available Polymer:** {list(st.session_state['polymer_datasets'].keys())}")
+    #     if api_count > 0:
+    #         st.write(f"**Available API:** {list(st.session_state['common_api_datasets'].keys())}")
+    #     if polymer_count > 0:
+    #         st.write(f"**Available Polymer:** {list(st.session_state['polymer_datasets'].keys())}")
 
     # Two main tabs
     tab_create, tab_summary = st.tabs(["Create New Profile", "Target Profile Summary"])
@@ -123,9 +123,9 @@ def show():
                     if len(dataset_df) > 1:
                         if 'Name' in dataset_df.columns:
                             row_options = []
-                            for idx, row in dataset_df.iterrows():
+                            for row in dataset_df.iterrows():
                                 name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
-                                row_options.append(f"{name} (Row {idx + 1})")
+                                row_options.append(f"{name})")
                             
                             selected_row_option = st.selectbox(
                                 "Select API:",
@@ -198,7 +198,7 @@ def show():
                             row_options = []
                             for idx, row in dataset_df.iterrows():
                                 name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
-                                row_options.append(f"{name} (Row {idx + 1})")
+                                row_options.append(f"{name}")
                             
                             selected_row_option = st.selectbox(
                                 "Select Polymer:",
@@ -251,10 +251,10 @@ def show():
 
         # Left Column: Import CSV file
         with col_import:
-            st.markdown("**Import CSV file**")
+            st.markdown("**Import External file**")
             
             uploaded_formulation = st.file_uploader(
-                "Import Formulation CSV",
+                "Import external CSV file",
                 type=["csv"],
                 key="formulation_csv_file"
             )
@@ -515,4 +515,5 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
 
