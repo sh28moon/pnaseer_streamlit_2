@@ -151,7 +151,7 @@ def show():
                         # Load and Remove buttons
                         col_load_btn, col_remove_btn = st.columns(2)
                         
-with col_load_btn:
+                        with col_load_btn:
                             if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
                                 if selected_file:
                                     loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])  # USING WORKING FUNCTION
