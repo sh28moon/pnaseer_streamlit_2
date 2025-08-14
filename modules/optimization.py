@@ -421,11 +421,11 @@ def show():
                                 peak_value = random.uniform(0.75, 0.85)
                                 
                                 # 3. Sink after peak: 0.2-0.6
-                                sink_value = random.uniform(0.2, 0.6)
+                                sink_value = random.uniform(0.2, 0.25)
                                 sink_position = release_time_value * 0.3  # Around 30% of total time
                                 
                                 # 4. Final value: 0.4-0.6
-                                final_value = random.uniform(0.4, 0.6)
+                                final_value = random.uniform(0.4, 0.5)
                                 
                                 # GENERATE CUSTOM BIPHASIC CURVE
                                 y_values = []
