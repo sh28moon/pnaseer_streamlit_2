@@ -223,7 +223,7 @@ def show():
                         
 
                     dataset_df = st.session_state[session_key][selected_saved]
-                    st.dataframe(dataset_df, use_container_width=True)In
+                    st.dataframe(dataset_df, use_container_width=True)
                     st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
                         
                 elif session_key in st.session_state and st.session_state[session_key]:
