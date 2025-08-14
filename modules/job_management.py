@@ -41,41 +41,41 @@ def show():
     # Initialize global database storage
     initialize_global_databases()
     
-    # Display current job information if available
-    current_job_name = st.session_state.get("current_job")
-    if current_job_name and current_job_name in st.session_state.get("jobs", {}):
-        current_job = st.session_state.jobs[current_job_name]
+    # # Display current job information if available
+    # current_job_name = st.session_state.get("current_job")
+    # if current_job_name and current_job_name in st.session_state.get("jobs", {}):
+    #     current_job = st.session_state.jobs[current_job_name]
         
-        current_job = ensure_job_attributes(current_job)
+    #     current_job = ensure_job_attributes(current_job)
         
-        # Update the job in session state (ensures all data is current)
-        st.session_state.jobs[current_job_name] = current_job
+    #     # Update the job in session state (ensures all data is current)
+    #     st.session_state.jobs[current_job_name] = current_job
         
-        # Show job status
-        col_info1, col_info2, col_info3 = st.columns(3)
-        with col_info1:
-            target_profile_count = len(getattr(current_job, 'complete_target_profiles', {}))
-            st.metric("Target Profiles", target_profile_count)
+    #     # Show job status
+    #     col_info1, col_info2, col_info3 = st.columns(3)
+    #     with col_info1:
+    #         target_profile_count = len(getattr(current_job, 'complete_target_profiles', {}))
+    #         st.metric("Target Profiles", target_profile_count)
         
-        with col_info2:
-            # Count formulations with results
-            formulation_result_count = 0
-            if hasattr(current_job, 'formulation_results'):
-                for profile_results in current_job.formulation_results.values():
-                    formulation_result_count += len(profile_results)
-            st.metric("Formulation Results", formulation_result_count)
+    #     with col_info2:
+    #         # Count formulations with results
+    #         formulation_result_count = 0
+    #         if hasattr(current_job, 'formulation_results'):
+    #             for profile_results in current_job.formulation_results.values():
+    #                 formulation_result_count += len(profile_results)
+    #         st.metric("Formulation Results", formulation_result_count)
         
-        with col_info3:
-            # Show global database status (independent of job)
-            api_dataset_count = len(st.session_state.get("global_api_databases", {}))
-            polymer_dataset_count = len(st.session_state.get("global_polymer_databases", {}))
-            st.metric("Global Databases", f"API: {api_dataset_count}, Polymer: {polymer_dataset_count}")
+    #     with col_info3:
+    #         # Show global database status (independent of job)
+    #         api_dataset_count = len(st.session_state.get("global_api_databases", {}))
+    #         polymer_dataset_count = len(st.session_state.get("global_polymer_databases", {}))
+    #         st.metric("Global Databases", f"API: {api_dataset_count}, Polymer: {polymer_dataset_count}")
         
-        # Show optimization progress status if available
-        if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
-            progress = current_job.current_optimization_progress
-            progress_status = progress.get('status', 'unknown')
-            st.info(f"🔬 Optimization Progress: {progress_status.title()} | Target Profile: {progress.get('target_profile_name', 'None')} | Models: {progress.get('atps_model', 'None')}, {progress.get('drug_release_model', 'None')}")
+    #     # Show optimization progress status if available
+    #     if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
+    #         progress = current_job.current_optimization_progress
+    #         progress_status = progress.get('status', 'unknown')
+    #         st.info(f"🔬 Optimization Progress: {progress_status.title()} | Target Profile: {progress.get('target_profile_name', 'None')} | Models: {progress.get('atps_model', 'None')}, {progress.get('drug_release_model', 'None')}")
             
     st.divider()
     
