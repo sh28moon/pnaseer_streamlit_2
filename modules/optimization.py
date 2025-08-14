@@ -414,15 +414,15 @@ def show():
                                 
                                 # CUSTOM DRUG RELEASE CURVE PARAMETERS
                                 # 1. Starting point: 0.1 ~ 0.5
-                                start_value = random.uniform(0.1, 0.5)
+                                start_value = random.uniform(0.1, 0.15)
                                 
                                 # 2. Peak at 1/3 of graph: 0.7-0.8
-                                peak_position = release_time_value / 3  # 1/3 of total time
-                                peak_value = random.uniform(0.7, 0.8)
+                                peak_position = release_time_value / 5  # 1/5 of total time
+                                peak_value = random.uniform(0.75, 0.85)
                                 
                                 # 3. Sink after peak: 0.2-0.6
                                 sink_value = random.uniform(0.2, 0.6)
-                                sink_position = release_time_value * 0.6  # Around 60% of total time
+                                sink_position = release_time_value * 0.3  # Around 30% of total time
                                 
                                 # 4. Final value: 0.4-0.6
                                 final_value = random.uniform(0.4, 0.6)
