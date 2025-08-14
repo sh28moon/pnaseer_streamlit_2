@@ -413,19 +413,19 @@ def show():
                                 random.seed(candidate_seed)
                                 
                                 # CUSTOM DRUG RELEASE CURVE PARAMETERS
-                                # 1. Starting point: 0.1 ~ 0.5
-                                start_value = random.uniform(0.1, 0.15)
+                                # 1. Starting point
+                                start_value = random.uniform(0.05, 0.15)
                                 
-                                # 2. Peak at 1/3 of graph: 0.7-0.8
+                                # 2. Peak at the start of graph
                                 peak_position = release_time_value / 5  # 1/5 of total time
-                                peak_value = random.uniform(0.75, 0.85)
+                                peak_value = random.uniform(0.75, 0.9)
                                 
-                                # 3. Sink after peak: 0.2-0.6
-                                sink_value = random.uniform(0.2, 0.25)
-                                sink_position = release_time_value * 0.3  # Around 30% of total time
+                                # 3. Sink after peak
+                                sink_value = random.uniform(0.1, 0.25)
+                                sink_position = release_time_value * (random.uniform(0.25, 0.35))  # Around 30% of total time
                                 
                                 # 4. Final value: 0.4-0.6
-                                final_value = random.uniform(0.4, 0.5)
+                                final_value = random.uniform(0.3, 0.5)
                                 
                                 # GENERATE CUSTOM BIPHASIC CURVE
                                 y_values = []
