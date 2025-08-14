@@ -89,7 +89,7 @@ def show():
         
         # Create new job section
         st.markdown("### ➕ Create New Job")
-        job_name = st.text_input("Job Name", placeholder="Enter a descriptive job name", key="new_job_name")
+        job_name = st.text_input("Job Name", placeholder="Enter a job name", key="new_job_name")
         
         if st.button("➕ Create Job", key="create_job"):
             if job_name and job_name not in st.session_state.get("jobs", {}):
@@ -154,7 +154,7 @@ def show():
             st.markdown(f"### 📂 Load Saved Jobs")
             
             # Load saved job section
-            job_options = [""] + [f"{job['save_name']} ({job['modified']})" for job in saved_jobs]
+            job_options = [""] + [f"{job['save_name']}" for job in saved_jobs]
             selected_saved = st.selectbox(
                 "Select Saved Job",
                 job_options,
