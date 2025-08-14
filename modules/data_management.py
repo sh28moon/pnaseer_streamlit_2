@@ -162,7 +162,7 @@ def show():
                         
                         if success:
                             # COMPREHENSIVE SYNC: Save to current job for persistence
-                            sync_datasets_with_current_job()
+                            # sync_datasets_with_current_job()
                             
                             # Clear temporary data
                             if f"{session_key}_temp_dataset" in st.session_state:
