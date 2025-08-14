@@ -130,7 +130,7 @@ def show():
                 saved_datasets = get_saved_datasets(dataset_type)  # USING WORKING FUNCTION
                 if saved_datasets:
                     # Create options for selectbox
-                    dataset_options = [""] + [f"{ds['save_name']} ({ds['modified']})" for ds in saved_datasets]
+                    dataset_options = [""] + [f"{ds['save_name']}" for ds in saved_datasets]
                     selected_saved = st.selectbox(
                         "Select saved database:",
                         dataset_options,
