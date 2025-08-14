@@ -398,28 +398,70 @@ def show():
                                 elif not isinstance(release_time_value, (int, float)):
                                     release_time_value = float(release_time_value)
                             
-                            # Generate performance trend data for 3 candidates
+                            # Generate performance trend data for 3 candidates - UPDATED CURVE SHAPE
                             performance_trends = {}
-                            x_points = 10
+                            x_points = 20  # More points for smoother curve
                             x_values = np.linspace(0, release_time_value, x_points).tolist()
                             
-                            start_values = [0.1, 0.15, 0.08]
-                            end_values = [0.85, 0.92, 0.88]
-                            
+                            # Generate different curve parameters for each candidate
                             for i in range(3):
                                 candidate_name = f"Candidate {i+1}"
-                                base_trend = np.linspace(start_values[i], end_values[i], x_points)
-                                noise = np.random.normal(0, 0.02, x_points)
-                                y_values = base_trend + noise
                                 
-                                # Ensure values stay within 0-1 range and maintain upward trend
-                                y_values = np.clip(y_values, 0, 1)
-                                y_values = np.sort(y_values)  # Force upward trend
+                                # Set seed for consistent results per candidate
+                                candidate_seed = hash(f"{current_job_name}_{selected_target_profile_name}_{formulation_name}_{candidate_name}") % 2147483647
+                                np.random.seed(candidate_seed)
+                                random.seed(candidate_seed)
+                                
+                                # CUSTOM DRUG RELEASE CURVE PARAMETERS (matching results.py)
+                                # 1. Starting point: 0.1 ~ 0.5
+                                start_value = random.uniform(0.1, 0.5)
+                                
+                                # 2. Peak at 1/3 of graph: 0.7-0.8
+                                peak_position = release_time_value / 3  # 1/3 of total time
+                                peak_value = random.uniform(0.7, 0.8)
+                                
+                                # 3. Sink after peak: 0.2-0.6
+                                sink_value = random.uniform(0.2, 0.6)
+                                sink_position = release_time_value * 0.6  # Around 60% of total time
+                                
+                                # 4. Final value: 0.4-0.6
+                                final_value = random.uniform(0.4, 0.6)
+                                
+                                # GENERATE CUSTOM BIPHASIC CURVE (same as results.py)
+                                y_values = []
+                                for x in x_values:
+                                    if x <= peak_position:
+                                        # Phase 1: Rise to peak (Modified Weibull-like)
+                                        t_norm = x / peak_position
+                                        y = start_value + (peak_value - start_value) * (1 - np.exp(-3 * t_norm**1.5))
+                                    
+                                    elif x <= sink_position:
+                                        # Phase 2: Decay to sink (Exponential decay)
+                                        t_norm = (x - peak_position) / (sink_position - peak_position)
+                                        y = peak_value + (sink_value - peak_value) * (1 - np.exp(-2 * t_norm))
+                                    
+                                    else:
+                                        # Phase 3: Gradual rise to final (Logarithmic-like)
+                                        t_norm = (x - sink_position) / (release_time_value - sink_position)
+                                        y = sink_value + (final_value - sink_value) * np.log(1 + 2 * t_norm) / np.log(3)
+                                    
+                                    y_values.append(y)
+                                
+                                # Add small random noise for realism (±2%)
+                                noise_factor = 0.02
+                                for j in range(len(y_values)):
+                                    noise = random.uniform(-noise_factor, noise_factor)
+                                    y_values[j] = max(0, min(1, y_values[j] + noise))
                                 
                                 performance_trends[candidate_name] = {
                                     "x_values": x_values,
-                                    "y_values": y_values.tolist(),
-                                    "release_time": release_time_value
+                                    "y_values": y_values,
+                                    "release_time": release_time_value,
+                                    "curve_type": "Custom Biphasic Release",
+                                    "start_value": start_value,
+                                    "peak_value": peak_value,
+                                    "sink_value": sink_value,
+                                    "final_value": final_value
                                 }
                             
                             # Generate evaluation diagrams data for each candidate
