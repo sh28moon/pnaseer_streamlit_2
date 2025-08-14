@@ -447,8 +447,8 @@ def show():
                                     
                                     y_values.append(y)
                                 
-                                # Add small random noise for realism (±2%)
-                                noise_factor = 0.02
+                                # Add small random noise for realism (±3%)
+                                noise_factor = 0.03
                                 for j in range(len(y_values)):
                                     noise = random.uniform(-noise_factor, noise_factor)
                                     y_values[j] = max(0, min(1, y_values[j] + noise))
