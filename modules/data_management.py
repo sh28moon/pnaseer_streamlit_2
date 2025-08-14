@@ -38,37 +38,78 @@ def initialize_global_databases():
     if "global_polymer_databases" not in st.session_state:
         st.session_state["global_polymer_databases"] = {}
     
-    # # AUTO-LOAD: Restore databases from saved files if session state is empty
-    # if "databases_auto_loaded" not in st.session_state:
-    #     auto_load_all_databases()
-    #     st.session_state["databases_auto_loaded"] = True
-
-# def auto_load_all_databases():
-#     """Auto-load all saved databases into session state on app start/refresh"""
-#     try:
-#         # Load API databases
-#         api_databases = get_saved_datasets_by_type("api")
-#         for db_info in api_databases:
-#             display_name = db_info['display_name']
-#             if display_name not in st.session_state["global_api_databases"]:
-#                 loaded_databases, _, _ = load_data_from_file(db_info["filepath"], "datasets")
-#                 if loaded_databases:
-#                     for db_name, db_data in loaded_databases.items():
-#                         st.session_state["global_api_databases"][db_name] = db_data
+def save_datasets_to_file(datasets, dataset_type, save_name):
+    """Save datasets to JSON file"""
+    try:
+        # Create saved_datasets directory if it doesn't exist
+        os.makedirs("saved_datasets", exist_ok=True)
         
-#         # Load Polymer databases
-#         polymer_databases = get_saved_datasets_by_type("polymer")
-#         for db_info in polymer_databases:
-#             display_name = db_info['display_name']
-#             if display_name not in st.session_state["global_polymer_databases"]:
-#                 loaded_databases, _, _ = load_data_from_file(db_info["filepath"], "datasets")
-#                 if loaded_databases:
-#                     for db_name, db_data in loaded_databases.items():
-#                         st.session_state["global_polymer_databases"][db_name] = db_data
-                        
-#     except Exception as e:
-#         # Silently fail auto-loading (user can manually load if needed)
-#         pass
+        # Convert datasets to serializable format
+        dataset_data = {}
+        for name, df in datasets.items():
+            if df is not None:
+                dataset_data[name] = df.to_dict('records')
+        
+        # Create save data structure
+        save_data = {
+            "save_name": save_name,
+            "dataset_type": dataset_type,
+            "datasets": dataset_data,
+            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "dataset_count": len(dataset_data)
+        }
+        
+        # Save to file
+        filename = f"saved_datasets/{dataset_type}_{save_name}.json"
+        with open(filename, 'w') as f:
+            json.dump(save_data, f, indent=2)
+        
+        return True, filename
+    except Exception as e:
+        return False, str(e)
+
+def load_datasets_from_file(filepath):
+    """Load datasets from JSON file"""
+    try:
+        with open(filepath, 'r') as f:
+            save_data = json.load(f)
+        
+        # Convert back to DataFrames
+        loaded_datasets = {}
+        for name, records in save_data["datasets"].items():
+            loaded_datasets[name] = pd.DataFrame(records)
+        
+        return loaded_datasets, save_data.get("saved_timestamp", "Unknown"), save_data.get("dataset_count", 0)
+    except Exception as e:
+        return None, str(e), 0
+
+def get_saved_datasets(dataset_type):
+    """Get list of saved dataset files for specific type"""
+    try:
+        if not os.path.exists("saved_datasets"):
+            return []
+        
+        saved_files = []
+        prefix = f"{dataset_type}_"
+        
+        for filename in os.listdir("saved_datasets"):
+            if filename.startswith(prefix) and filename.endswith(".json"):
+                save_name = filename[len(prefix):-5]  # Remove prefix and .json
+                filepath = f"saved_datasets/{filename}"
+                # Get file modification time
+                mtime = os.path.getmtime(filepath)
+                saved_files.append({
+                    "save_name": save_name,
+                    "filename": filename,
+                    "filepath": filepath,
+                    "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                })
+        
+        # Sort by modification time (newest first)
+        saved_files.sort(key=lambda x: x["modified"], reverse=True)
+        return saved_files
+    except Exception:
+        return []
 
 def sync_datasets_with_current_job():
     """Sync datasets with current job for comprehensive persistence"""
@@ -160,10 +201,9 @@ def show():
                             
                             # Save using unified storage function (SAME AS JOB_MANAGEMENT)
                             database_for_saving = {dataset_name: temp_df}
-                            success, result = save_data_to_file(database_for_saving, "datasets", f"{database_type}_{dataset_name}")
+                            success, result = save_datasets_to_file(database_for_saving, "datasets", f"{database_type}_{dataset_name}")
                             
                             if success:
-                                sync_datasets_with_current_job()
                                 # Clear temporary data
                                 if f"{database_type}_temp_dataset" in st.session_state:
                                     del st.session_state[f"{database_type}_temp_dataset"]
