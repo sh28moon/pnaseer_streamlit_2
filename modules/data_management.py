@@ -151,7 +151,7 @@ def show():
                         # Load and Remove buttons
                         col_load_btn, col_remove_btn = st.columns(2)
                         
-                        with col_load_btn:
+with col_load_btn:
                             if st.button("📂 Load", key=f"{session_key}_load_database_btn"):
                                 if selected_file:
                                     loaded_datasets, saved_time, count = load_datasets_from_file(selected_file["filepath"])  # USING WORKING FUNCTION
@@ -163,7 +163,40 @@ def show():
                                         # COMPREHENSIVE SYNC: Save to current job for persistence - WORKING VERSION
                                         sync_datasets_with_current_job()
                                         
-                                        st.success(f"✅ Loaded {loaded_datasets} dataset")
+                                        # NEW: Import database into selected job if one exists
+                                        current_job_name = st.session_state.get("current_job")
+                                        job_import_success = False
+                                        
+                                        if current_job_name and current_job_name in st.session_state.get("jobs", {}):
+                                            current_job = st.session_state.jobs[current_job_name]
+                                            
+                                            # Ensure job has database attributes
+                                            if not hasattr(current_job, 'common_api_datasets'):
+                                                current_job.common_api_datasets = {}
+                                            if not hasattr(current_job, 'polymer_datasets'):
+                                                current_job.polymer_datasets = {}
+                                            
+                                            # Import loaded datasets into job based on session key
+                                            if session_key == "common_api_datasets":
+                                                # Update job's API datasets
+                                                current_job.common_api_datasets.update(loaded_datasets)
+                                            elif session_key == "polymer_datasets":
+                                                # Update job's Polymer datasets
+                                                current_job.polymer_datasets.update(loaded_datasets)
+                                            
+                                            # Update job in session state
+                                            st.session_state.jobs[current_job_name] = current_job
+                                            job_import_success = True
+                                        
+                                        # Show appropriate success message
+                                        dataset_count = len(loaded_datasets)
+                                        if job_import_success:
+                                            st.success(f"✅ Loaded {dataset_count} dataset(s) to session AND imported to job '{current_job_name}'")
+                                        else:
+                                            st.success(f"✅ Loaded {dataset_count} dataset(s) to session (no job selected for import)")
+                                            if not current_job_name:
+                                                st.info("💡 Select a job to automatically import loaded databases into the job")
+                                        
                                         st.rerun()
                         
                         with col_remove_btn:
@@ -190,7 +223,7 @@ def show():
                         
 
                     dataset_df = st.session_state[session_key][selected_saved]
-                    st.dataframe(dataset_df, use_container_width=True)
+                    st.dataframe(dataset_df, use_container_width=True)In
                     st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
                         
                 elif session_key in st.session_state and st.session_state[session_key]:
