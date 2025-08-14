@@ -4,6 +4,111 @@ import os
 import pandas as pd
 from datetime import datetime
 
+# Add these working functions to modules/storage_utils.py
+
+def save_datasets_to_file(datasets, dataset_type, save_name):
+    """Save datasets to JSON file - WORKING VERSION FROM OLD FILE"""
+    try:
+        import os
+        import json
+        from datetime import datetime
+        
+        # Create saved_datasets directory if it doesn't exist
+        os.makedirs("saved_datasets", exist_ok=True)
+        
+        # Convert datasets to serializable format
+        dataset_data = {}
+        for name, df in datasets.items():
+            if df is not None:
+                dataset_data[name] = df.to_dict('records')
+        
+        # Create save data structure
+        save_data = {
+            "save_name": save_name,
+            "dataset_type": dataset_type,
+            "datasets": dataset_data,
+            "saved_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "dataset_count": len(dataset_data)
+        }
+        
+        # Save to file
+        filename = f"saved_datasets/{dataset_type}_{save_name}.json"
+        with open(filename, 'w') as f:
+            json.dump(save_data, f, indent=2)
+        
+        return True, filename
+    except Exception as e:
+        return False, str(e)
+
+def load_datasets_from_file(filepath):
+    """Load datasets from JSON file - WORKING VERSION FROM OLD FILE"""
+    try:
+        import json
+        import pandas as pd
+        
+        with open(filepath, 'r') as f:
+            save_data = json.load(f)
+        
+        # Convert back to DataFrames
+        loaded_datasets = {}
+        for name, records in save_data["datasets"].items():
+            loaded_datasets[name] = pd.DataFrame(records)
+        
+        return loaded_datasets, save_data.get("saved_timestamp", "Unknown"), save_data.get("dataset_count", 0)
+    except Exception as e:
+        return None, str(e), 0
+
+def get_saved_datasets(dataset_type):
+    """Get list of saved dataset files for specific type - WORKING VERSION FROM OLD FILE"""
+    try:
+        import os
+        from datetime import datetime
+        
+        if not os.path.exists("saved_datasets"):
+            return []
+        
+        saved_files = []
+        prefix = f"{dataset_type}_"
+        
+        for filename in os.listdir("saved_datasets"):
+            if filename.startswith(prefix) and filename.endswith(".json"):
+                save_name = filename[len(prefix):-5]  # Remove prefix and .json
+                filepath = f"saved_datasets/{filename}"
+                # Get file modification time
+                mtime = os.path.getmtime(filepath)
+                saved_files.append({
+                    "save_name": save_name,
+                    "filename": filename,
+                    "filepath": filepath,
+                    "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                })
+        
+        # Sort by modification time (newest first)
+        saved_files.sort(key=lambda x: x["modified"], reverse=True)
+        return saved_files
+    except Exception:
+        return []
+
+def sync_datasets_with_current_job():
+    """Sync datasets with current job for comprehensive persistence - WORKING VERSION FROM OLD FILE"""
+    import streamlit as st
+    
+    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
+        current_job = st.session_state.jobs[st.session_state.current_job]
+        
+        # Ensure job has dataset attributes
+        if not hasattr(current_job, 'common_api_datasets'):
+            current_job.common_api_datasets = {}
+        if not hasattr(current_job, 'polymer_datasets'):
+            current_job.polymer_datasets = {}
+        
+        # Sync session state changes to job
+        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {}).copy()
+        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {}).copy()
+        
+        # Update job in session state
+        st.session_state.jobs[st.session_state.current_job] = current_job
+
 def save_global_database_progress():
     """Save current global database state as progress (no job required)
     
