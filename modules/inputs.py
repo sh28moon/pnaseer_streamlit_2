@@ -125,7 +125,7 @@ def show():
                             row_options = []
                             for row in dataset_df.iterrows():
                                 name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
-                                row_options.append(f"{name})")
+                                row_options.append(f"{name}")
                             
                             selected_row_option = st.selectbox(
                                 "Select API:",
@@ -515,5 +515,6 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
 
 
