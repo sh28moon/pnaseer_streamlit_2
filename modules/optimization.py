@@ -480,28 +480,8 @@ def show():
                                         "linewidth": 2,
                                         "markersize": 4,
                                         "alpha": 0.3
-                                    },
-                                    
-                                    # Key points for highlighting
-                                    "key_points": {
-                                        "start": {
-                                            "x": x_values[0],
-                                            "y": y_values[0],
-                                            "marker": "^",
-                                            "size": 8,
-                                            "color": "green",
-                                            "label": f"Start ({y_values[0]:.3f})"
-                                        },
-                                        "peak": {
-                                            "x": x_values[len(x_values) // 3],
-                                            "y": y_values[len(x_values) // 3],
-                                            "marker": "*",
-                                            "size": 10,
-                                            "color": "red",
-                                            "label": f"Peak ({y_values[len(x_values) // 3]:.3f})"
-                                        }
-                                    },
-                                    
+                                    },                                    
+
                                     # Model description
                                     "model_description": "Custom Biphasic Release\n4-Phase Profile",
                                     
