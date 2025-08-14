@@ -133,8 +133,12 @@ def show():
                                 key="create_api_row_select"
                             )
                             
-                            selected_row_index = int(selected_row_option.split("(Row ")[1].split(")")[0]) - 1
-                            selected_api_data = dataset_df.iloc[[selected_row_index]].copy()
+                            if selected_row_option:
+                                selected_row_index = row_options.index(selected_row_option)
+                                selected_api_data = dataset_df.iloc[[selected_row_index]].copy()
+                            else:
+                                selected_api_data = None
+                            
                         else:
                             row_numbers = [f"Row {i+1}" for i in range(len(dataset_df))]
                             selected_row_display = st.selectbox(
@@ -527,6 +531,7 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
 
 
 
