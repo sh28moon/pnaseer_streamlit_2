@@ -70,6 +70,24 @@ def initialize_global_databases():
 #         # Silently fail auto-loading (user can manually load if needed)
 #         pass
 
+def sync_datasets_with_current_job():
+    """Sync datasets with current job for comprehensive persistence"""
+    if st.session_state.get("current_job") and st.session_state.current_job in st.session_state.get("jobs", {}):
+        current_job = st.session_state.jobs[st.session_state.current_job]
+        
+        # Ensure job has dataset attributes
+        if not hasattr(current_job, 'common_api_datasets'):
+            current_job.common_api_datasets = {}
+        if not hasattr(current_job, 'polymer_datasets'):
+            current_job.polymer_datasets = {}
+        
+        # Sync session state changes to job
+        current_job.common_api_datasets = st.session_state.get("common_api_datasets", {}).copy()
+        current_job.polymer_datasets = st.session_state.get("polymer_datasets", {}).copy()
+        
+        # Update job in session state
+        st.session_state.jobs[st.session_state.current_job] = current_job
+
 def show():
     st.header("Database Managementss")
     
@@ -145,17 +163,16 @@ def show():
                             success, result = save_data_to_file(database_for_saving, "datasets", f"{database_type}_{dataset_name}")
                             
                             if success:
+                                sync_datasets_with_current_job()
                                 # Clear temporary data
                                 if f"{database_type}_temp_dataset" in st.session_state:
                                     del st.session_state[f"{database_type}_temp_dataset"]
                                 if f"{database_type}_temp_filename" in st.session_state:
-                                    del st.session_state[f"{database_type}_temp_filename"]
-                                
-                                # EXACT SAME SUCCESS MESSAGE AS JOB MANAGEMENT
+                                    del st.session_state[f"{database_type}_temp_filename"]                                
+
                                 st.success(f"✅ Database '{dataset_name}' saved successfully.")
                                 st.rerun()
                             else:
-                                # EXACT SAME ERROR MESSAGE AS JOB MANAGEMENT
                                 st.error(f"❌ Failed to save database: {result}")
                     elif not save_name.strip():
                         st.error("Please enter a database name")
