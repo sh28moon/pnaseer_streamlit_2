@@ -123,7 +123,7 @@ def show():
                     if len(dataset_df) > 1:
                         if 'Name' in dataset_df.columns:
                             row_options = []
-                            for row in dataset_df.iterrows():
+                            for idx, row in dataset_df.iterrows():
                                 name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
                                 row_options.append(f"{name}")
                             
@@ -515,6 +515,7 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
 
 
 
