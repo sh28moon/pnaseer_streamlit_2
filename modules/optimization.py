@@ -471,9 +471,9 @@ def show():
                                     
                                     # Graph display settings
                                     "graph_config": {
-                                        "title": "Biphasic Drug Release Profile",
+                                        "title": "Drug Release Profile",
                                         "xlabel": "Time (Weeks)",
-                                        "ylabel": "Drug Release",
+                                        "ylabel": "Drug Concentration",
                                         "ylim": [0, 0.9],
                                         "colors": ['#1f77b4', '#ff7f0e', '#2ca02c'],
                                         "candidate_color_index": i,
