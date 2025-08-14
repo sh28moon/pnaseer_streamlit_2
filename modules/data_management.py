@@ -186,8 +186,6 @@ def show():
                 # Show current loaded databases in session
                 if session_key in st.session_state and st.session_state[session_key]:
                     current_datasets = st.session_state[session_key]
-                    
-                    # Dataset selector
                     dataset_names = list(current_datasets.keys())
                     if dataset_names:
                         selected_dataset = st.selectbox(
