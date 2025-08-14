@@ -125,7 +125,7 @@ def show():
                             row_options = []
                             for idx, row in dataset_df.iterrows():
                                 name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
-                                row_options.append(f"{name}")
+                                row_options.append(name)
                             
                             selected_row_option = st.selectbox(
                                 "Select API:",
@@ -142,8 +142,12 @@ def show():
                                 row_numbers,
                                 key="create_api_row_select"
                             )
-                            selected_row_index = row_numbers.index(selected_row_display)
-                            selected_api_data = dataset_df.iloc[[selected_row_index]].copy()
+                            
+                            if selected_row_option:
+                                selected_row_index = row_options.index(selected_row_option)
+                                selected_api_data = dataset_df.iloc[[selected_row_index]].copy()
+                            else:
+                                selected_api_data = None
                     else:
                         selected_api_data = dataset_df.copy()
                         st.selectbox("Select API:", ["Single API (auto-selected)"], disabled=True, key="api_single")
@@ -198,7 +202,7 @@ def show():
                             row_options = []
                             for idx, row in dataset_df.iterrows():
                                 name = row['Name'] if pd.notna(row['Name']) else f"Row {idx + 1}"
-                                row_options.append(f"{name}")
+                                row_options.append(name)
                             
                             selected_row_option = st.selectbox(
                                 "Select Polymer:",
@@ -206,8 +210,12 @@ def show():
                                 key="create_polymer_row_select"
                             )
                             
-                            selected_row_index = int(selected_row_option.split("(Row ")[1].split(")")[0]) - 1
-                            selected_polymer_data = dataset_df.iloc[[selected_row_index]].copy()
+                            if selected_row_option:
+                                selected_row_index = row_options.index(selected_row_option)
+                                selected_polymer_data = dataset_df.iloc[[selected_row_index]].copy()
+                            else:
+                                selected_polymer_data = None
+                                
                         else:
                             row_numbers = [f"Row {i+1}" for i in range(len(dataset_df))]
                             selected_row_display = st.selectbox(
@@ -215,8 +223,12 @@ def show():
                                 row_numbers,
                                 key="create_polymer_row_select"
                             )
-                            selected_row_index = row_numbers.index(selected_row_display)
-                            selected_polymer_data = dataset_df.iloc[[selected_row_index]].copy()
+                            
+                            if selected_row_display:
+                                selected_row_index = row_numbers.index(selected_row_display)
+                                selected_polymer_data = dataset_df.iloc[[selected_row_index]].copy()
+                            else:
+                                selected_polymer_data = None
                     else:
                         selected_polymer_data = dataset_df.copy()
                         st.selectbox("Select Polymer:", ["Single Polymer (auto-selected)"], disabled=True, key="polymer_single")
@@ -515,6 +527,7 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
 
 
 
