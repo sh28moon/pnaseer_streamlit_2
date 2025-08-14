@@ -398,7 +398,7 @@ def show():
                                 elif not isinstance(release_time_value, (int, float)):
                                     release_time_value = float(release_time_value)
                             
-                            # Generate performance trend data for 3 candidates - UPDATED CURVE SHAPE
+                            # Generate performance trend data for 3 candidates - COMPLETE GRAPH DATA
                             performance_trends = {}
                             x_points = 20  # More points for smoother curve
                             x_values = np.linspace(0, release_time_value, x_points).tolist()
@@ -412,7 +412,7 @@ def show():
                                 np.random.seed(candidate_seed)
                                 random.seed(candidate_seed)
                                 
-                                # CUSTOM DRUG RELEASE CURVE PARAMETERS (matching results.py)
+                                # CUSTOM DRUG RELEASE CURVE PARAMETERS
                                 # 1. Starting point: 0.1 ~ 0.5
                                 start_value = random.uniform(0.1, 0.5)
                                 
@@ -427,7 +427,7 @@ def show():
                                 # 4. Final value: 0.4-0.6
                                 final_value = random.uniform(0.4, 0.6)
                                 
-                                # GENERATE CUSTOM BIPHASIC CURVE (same as results.py)
+                                # GENERATE CUSTOM BIPHASIC CURVE
                                 y_values = []
                                 for x in x_values:
                                     if x <= peak_position:
@@ -453,17 +453,62 @@ def show():
                                     noise = random.uniform(-noise_factor, noise_factor)
                                     y_values[j] = max(0, min(1, y_values[j] + noise))
                                 
+                                # SAVE COMPLETE GRAPH DATA (not just curve data)
                                 performance_trends[candidate_name] = {
+                                    # Raw curve data
                                     "x_values": x_values,
                                     "y_values": y_values,
                                     "release_time": release_time_value,
+                                    
+                                    # Curve parameters for recreation
                                     "curve_type": "Custom Biphasic Release",
                                     "start_value": start_value,
                                     "peak_value": peak_value,
                                     "sink_value": sink_value,
-                                    "final_value": final_value
+                                    "final_value": final_value,
+                                    "peak_position": peak_position,
+                                    "sink_position": sink_position,
+                                    
+                                    # Graph display settings
+                                    "graph_config": {
+                                        "title": "Biphasic Drug Release Profile",
+                                        "xlabel": "Time (Weeks)",
+                                        "ylabel": "Drug Release",
+                                        "ylim": [0, 0.9],
+                                        "colors": ['#1f77b4', '#ff7f0e', '#2ca02c'],
+                                        "candidate_color_index": i,
+                                        "linewidth": 2,
+                                        "markersize": 4,
+                                        "alpha": 0.3
+                                    },
+                                    
+                                    # Key points for highlighting
+                                    "key_points": {
+                                        "start": {
+                                            "x": x_values[0],
+                                            "y": y_values[0],
+                                            "marker": "^",
+                                            "size": 8,
+                                            "color": "green",
+                                            "label": f"Start ({y_values[0]:.3f})"
+                                        },
+                                        "peak": {
+                                            "x": x_values[len(x_values) // 3],
+                                            "y": y_values[len(x_values) // 3],
+                                            "marker": "*",
+                                            "size": 10,
+                                            "color": "red",
+                                            "label": f"Peak ({y_values[len(x_values) // 3]:.3f})"
+                                        }
+                                    },
+                                    
+                                    # Model description
+                                    "model_description": "Custom Biphasic Release\n4-Phase Profile",
+                                    
+                                    # Generation metadata
+                                    "generated_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    "seed_used": candidate_seed
                                 }
-                            
                             # Generate evaluation diagrams data for each candidate
                             evaluation_diagrams_data = {}
                             
