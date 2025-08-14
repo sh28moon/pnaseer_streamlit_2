@@ -101,16 +101,16 @@ def show():
     # Get saved optimization selections for persistence across page changes
     saved_target_profile, saved_atps_model, saved_drug_release_model = get_saved_optimization_selections(current_job)
     
-    # DEBUG: Show optimization progress data state
-    with st.expander("🔍 Debug Optimization Data", expanded=False):
-        st.write(f"**Job Name:** {current_job.name}")
-        st.write(f"**Target Profiles Available:** {len(current_job.complete_target_profiles)}")
-        if current_job.complete_target_profiles:
-            st.write(f"**Available Profiles:** {list(current_job.complete_target_profiles.keys())}")
-        st.write(f"**Saved Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
-        if current_job.current_optimization_progress:
-            st.json(current_job.current_optimization_progress)
-        st.write(f"**Retrieved Saved Selections:** Target='{saved_target_profile}', ATPS='{saved_atps_model}', Drug='{saved_drug_release_model}'")
+    # # DEBUG: Show optimization progress data state
+    # with st.expander("🔍 Debug Optimization Data", expanded=False):
+    #     st.write(f"**Job Name:** {current_job.name}")
+    #     st.write(f"**Target Profiles Available:** {len(current_job.complete_target_profiles)}")
+    #     if current_job.complete_target_profiles:
+    #         st.write(f"**Available Profiles:** {list(current_job.complete_target_profiles.keys())}")
+    #     st.write(f"**Saved Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
+    #     if current_job.current_optimization_progress:
+    #         st.json(current_job.current_optimization_progress)
+    #     st.write(f"**Retrieved Saved Selections:** Target='{saved_target_profile}', ATPS='{saved_atps_model}', Drug='{saved_drug_release_model}'")
 
     # Top-level tabs
     tab_atps = st.tabs(["ATPS Partition"])[0]
@@ -182,7 +182,6 @@ def show():
                                 st.dataframe(formulation_data, use_container_width=True)
                                 formulation_count = len(formulation_data)
                                 st.markdown(f"**Number of formulations:** {formulation_count}")
-                                st.info(f"💡 All {formulation_count} formulations will be optimized when you submit the job")
                             else:
                                 st.warning("⚠️ No Formulation data in this profile")
                     else:
@@ -257,52 +256,28 @@ def show():
             st.divider()
 
             # Calculate section
-            st.subheader("Input Review and Submit Job")
+            st.subheader("Input Review and Submit Job")           
             
-            # Add Optimization Progress Selection (NEW)
-            if hasattr(current_job, 'current_optimization_progress') and current_job.current_optimization_progress:
-                with st.expander("🔄 Load Previous Optimization Progress", expanded=False):
-                    progress = current_job.current_optimization_progress
-                    st.markdown("**Saved Optimization Setup:**")
-                    st.markdown(f"- **Target Profile:** {progress.get('target_profile_name', 'None')}")
-                    st.markdown(f"- **ATPS Model:** {progress.get('atps_model', 'None')}")
-                    st.markdown(f"- **Drug Release Model:** {progress.get('drug_release_model', 'None')}")
-                    st.markdown(f"- **Status:** {progress.get('status', 'Unknown')}")
-                    st.markdown(f"- **Last Updated:** {progress.get('last_updated', 'Unknown')}")
-                    
-                    col_load_progress, col_clear_progress = st.columns(2)
-                    with col_load_progress:
-                        if st.button("📂 Load This Setup", key="load_saved_optimization_progress"):
-                            # Force load the saved selections by clearing session state and rerunning
-                            # This will cause the selectboxes to use the saved values
-                            st.rerun()
-                    
-                    with col_clear_progress:
-                        if st.button("🗑️ Clear Setup", key="clear_saved_optimization_progress"):
-                            current_job.current_optimization_progress = None
-                            st.session_state.jobs[current_job_name] = current_job
-                            st.rerun()
-            
-            # Debug section (can be removed later)
-            with st.expander("🔍 Debug Optimization Progress", expanded=False):
-                if current_job.current_optimization_progress:
-                    st.write("**Current Optimization Progress:**")
-                    st.json(current_job.current_optimization_progress)
-                else:
-                    st.write("No optimization progress saved yet")
+            # # Debug section (can be removed later)
+            # with st.expander("🔍 Debug Optimization Progress", expanded=False):
+            #     if current_job.current_optimization_progress:
+            #         st.write("**Current Optimization Progress:**")
+            #         st.json(current_job.current_optimization_progress)
+            #     else:
+            #         st.write("No optimization progress saved yet")
                 
-                # Manual test save button
-                if st.button("🧪 Test Save Progress", key="test_save_progress"):
-                    test_progress = {
-                        "target_profile_name": "Test Profile",
-                        "atps_model": "Test ATPS Model", 
-                        "drug_release_model": "Test Drug Release Model",
-                        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "status": "test"
-                    }
-                    current_job.current_optimization_progress = test_progress
-                    st.session_state.jobs[current_job_name] = current_job
-                    st.success("Test progress saved!")
+            #     # Manual test save button
+            #     if st.button("🧪 Test Save Progress", key="test_save_progress"):
+            #         test_progress = {
+            #             "target_profile_name": "Test Profile",
+            #             "atps_model": "Test ATPS Model", 
+            #             "drug_release_model": "Test Drug Release Model",
+            #             "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            #             "status": "test"
+            #         }
+            #         current_job.current_optimization_progress = test_progress
+            #         st.session_state.jobs[current_job_name] = current_job
+            #         st.success("Test progress saved!")
             
             # Show selected target profile and model summary
             col_profile_summary, col_model_summary = st.columns(2)
@@ -310,15 +285,6 @@ def show():
             with col_profile_summary:
                 st.markdown("**Selected Target Profile**")
                 if selected_target_profile and selected_target_profile_name:
-                    st.markdown(f"*Profile: {selected_target_profile_name}*")
-                    
-                    # Show formulation count that will be processed
-                    if ('formulation_data' in selected_target_profile and 
-                        selected_target_profile['formulation_data'] is not None):
-                        formulation_count = len(selected_target_profile['formulation_data'])
-                        st.markdown(f"*Will process: {formulation_count} formulation(s)*")
-                        total_candidates = formulation_count * 3
-                        st.markdown(f"*Total candidates: {total_candidates}*")
                     
                     # Quick summary of profile components
                     api_status = "✅" if selected_target_profile.get('api_data') is not None else "❌"
@@ -328,12 +294,7 @@ def show():
                     st.markdown(f"• API Data: {api_status}")
                     st.markdown(f"• Polymer Data: {polymer_status}")
                     st.markdown(f"• Formulation Data: {formulation_status}")
-                    
-                    # Show type if available
-                    if (selected_target_profile.get('formulation_data') is not None and 
-                        'Type' in selected_target_profile['formulation_data'].columns):
-                        profile_type = selected_target_profile['formulation_data'].iloc[0]['Type']
-                        st.markdown(f"• **Type:** {profile_type}")
+
                 else:
                     st.info("No target profile selected")
                     selected_target_profile_name = None
@@ -526,48 +487,48 @@ def show():
                             st.rerun()
             
             with col_clear:
-                # Clear Results button - clear all results for the selected profile or all results
-                has_any_results = current_job.has_result_data()
-                has_current_profile_results = (selected_target_profile_name and 
-                                             hasattr(current_job, 'formulation_results') and
-                                             selected_target_profile_name in current_job.formulation_results)
+                # # Clear Results button - clear all results for the selected profile or all results
+                # has_any_results = current_job.has_result_data()
+                # has_current_profile_results = (selected_target_profile_name and 
+                #                              hasattr(current_job, 'formulation_results') and
+                #                              selected_target_profile_name in current_job.formulation_results)
                 
-                clear_options = []
-                if has_current_profile_results:
-                    formulation_count = len(current_job.formulation_results[selected_target_profile_name])
-                    clear_options.append(f"Clear '{selected_target_profile_name}' Results ({formulation_count} formulations)")
-                if has_any_results:
-                    clear_options.append("Clear All Results")
-                if has_optimization_progress(current_job):
-                    clear_options.append("Clear Optimization Progress")
+                # clear_options = []
+                # if has_current_profile_results:
+                #     formulation_count = len(current_job.formulation_results[selected_target_profile_name])
+                #     clear_options.append(f"Clear '{selected_target_profile_name}' Results ({formulation_count} formulations)")
+                # if has_any_results:
+                #     clear_options.append("Clear All Results")
+                # if has_optimization_progress(current_job):
+                #     clear_options.append("Clear Optimization Progress")
                 
-                if clear_options:
-                    clear_choice = st.selectbox(
-                        "Clear Options:",
-                        [""] + clear_options,
-                        key=f"{prefix}_clear_choice"
-                    )
+                # if clear_options:
+                #     clear_choice = st.selectbox(
+                #         "Clear Options:",
+                #         [""] + clear_options,
+                #         key=f"{prefix}_clear_choice"
+                #     )
                     
-                    if clear_choice and st.button("🗑️ Clear Results", key=f"{prefix}_clear_results"):
-                        if clear_choice.startswith("Clear All"):
-                            # Clear all results
-                            current_job.result_dataset = None
-                            if hasattr(current_job, 'formulation_results'):
-                                current_job.formulation_results = {}
-                        elif clear_choice.startswith("Clear Optimization"):
-                            # Clear optimization progress
-                            clear_optimization_progress(current_job)
-                        elif clear_choice.startswith("Clear") and selected_target_profile_name:
-                            # Clear all formulation results for the selected profile
-                            if (hasattr(current_job, 'formulation_results') and
-                                selected_target_profile_name in current_job.formulation_results):
-                                formulation_count = len(current_job.formulation_results[selected_target_profile_name])
-                                del current_job.formulation_results[selected_target_profile_name]
+                #     if clear_choice and st.button("🗑️ Clear Results", key=f"{prefix}_clear_results"):
+                #         if clear_choice.startswith("Clear All"):
+                #             # Clear all results
+                #             current_job.result_dataset = None
+                #             if hasattr(current_job, 'formulation_results'):
+                #                 current_job.formulation_results = {}
+                #         elif clear_choice.startswith("Clear Optimization"):
+                #             # Clear optimization progress
+                #             clear_optimization_progress(current_job)
+                #         elif clear_choice.startswith("Clear") and selected_target_profile_name:
+                #             # Clear all formulation results for the selected profile
+                #             if (hasattr(current_job, 'formulation_results') and
+                #                 selected_target_profile_name in current_job.formulation_results):
+                #                 formulation_count = len(current_job.formulation_results[selected_target_profile_name])
+                #                 del current_job.formulation_results[selected_target_profile_name]
                         
-                        st.session_state.jobs[current_job_name] = current_job
-                        st.rerun()
-                else:
-                    st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
+                #         st.session_state.jobs[current_job_name] = current_job
+                #         st.rerun()
+                # else:
+                #     st.button("🗑️ Clear Results", disabled=True, help="No results to clear")
 
     # Render each tab
     render_model_tab("atps", tab_atps)
@@ -581,7 +542,7 @@ def show():
     
     with col_save_progress:
         st.markdown("### Save Progress")
-        st.markdown("Save current optimization progress to cloud")
+        st.markdown("Save current job progress to cloud")
         
         if st.button("💾 Save Progress", key="optimization_save_progress", 
                    disabled=not current_job,
@@ -597,7 +558,7 @@ def show():
     
     with col_clear_progress:
         st.markdown("### Clear Progress")
-        st.markdown("Clear optimization progress data")
+        st.markdown("Clear current job progress")
         
         if st.button("🗑️ Clear Progress", key="optimization_clear_progress",
                    disabled=not current_job,
