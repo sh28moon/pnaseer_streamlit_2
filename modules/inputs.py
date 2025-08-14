@@ -19,10 +19,20 @@ except ImportError:
 
 def ensure_job_attributes(job):
     """Ensure all required attributes exist on a job object"""
+    # Use WORKING session state keys for consistency
+    if not hasattr(job, 'common_api_datasets'):
+        job.common_api_datasets = {}
+    if not hasattr(job, 'polymer_datasets'):
+        job.polymer_datasets = {}
     if not hasattr(job, 'complete_target_profiles'):
         job.complete_target_profiles = {}
     if not hasattr(job, 'formulation_results'):
         job.formulation_results = {}
+    # NEW: Ensure optimization progress attributes exist
+    if not hasattr(job, 'optimization_progress'):
+        job.optimization_progress = {}
+    if not hasattr(job, 'current_optimization_progress'):
+        job.current_optimization_progress = None
     return job
 
 def initialize_databases():
@@ -505,3 +515,4 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
