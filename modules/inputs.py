@@ -493,7 +493,7 @@ def show():
     st.divider()
     
     # ── Progress Management Section ─────────────────────────────────────────
-    st.markdown("## 💾 Progress Management")
+    st.markdown("## 💾 Save Current Progress")
     
     col_save_progress, col_clear_progress = st.columns(2)
     
@@ -515,7 +515,7 @@ def show():
     
     with col_clear_progress:
         st.markdown("### Clear Progress")
-        st.markdown("Clear optimization progress data")
+        st.markdown("Clear current job progress")
         
         if st.button("🗑️ Clear Progress", key="inputs_clear_progress",
                    disabled=not current_job,
@@ -531,6 +531,7 @@ def show():
                     st.error(f"❌ Failed to clear progress: {result}")
             else:
                 st.error("❌ No current job to clear!")
+
 
 
 
