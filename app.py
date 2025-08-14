@@ -170,29 +170,7 @@ def main():
     sync_job_data()
 
     # ═══ SIMPLIFIED SIDEBAR ══════════════════════════════════════════════════
-    st.sidebar.title("Pnaseer DDS Optimization")
-    
-    # DEBUG: Show app state info
-    with st.sidebar.expander("🔍 Debug App State", expanded=False):
-        st.write(f"**App Refresh Count:** {st.session_state.app_refresh_count}")
-        
-        if st.session_state.get("current_job"):
-            current_job = st.session_state.jobs.get(st.session_state.current_job)
-            if current_job:
-                st.write(f"**Current Job:** {current_job.name}")
-                st.write(f"**Target Profiles:** {len(current_job.complete_target_profiles)}")
-                st.write(f"**Optimization Progress:** {'Yes' if current_job.current_optimization_progress else 'No'}")
-        
-        # Show global database status
-        api_count = len(st.session_state.get("global_api_databases", {}))
-        polymer_count = len(st.session_state.get("global_polymer_databases", {}))
-        st.write(f"**Global API Databases:** {api_count}")
-        st.write(f"**Global Polymer Databases:** {polymer_count}")
-        
-        # Storage Location Info
-        st.write("**Architecture:** Database-Job Separation")
-        st.write("**Jobs saved to:** `saved_jobs/`")
-        st.write("**Databases saved to:** `saved_datasets/`")
+    st.sidebar.title("Pnaseer DDS Optimization")    
     
     # Main navigation
     st.sidebar.markdown("### Main Menu")
@@ -249,3 +227,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
