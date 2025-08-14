@@ -184,11 +184,11 @@ def show():
                 st.markdown("**Database Table**")
                 
                 # Show the selected database table
-                if ('selected_dataset' in locals() and selected_dataset and 
+                if ('selected_file' in locals() and selected_file and 
                     session_key in st.session_state and 
-                    selected_dataset in st.session_state[session_key]):
+                    selected_file in st.session_state[session_key]):
                     
-                    dataset_df = st.session_state[session_key][selected_dataset]
+                    dataset_df = st.session_state[session_key][selected_file]
                     st.dataframe(dataset_df, use_container_width=True)
                     st.caption(f"Shape: {dataset_df.shape[0]} rows × {dataset_df.shape[1]} columns")
                     
